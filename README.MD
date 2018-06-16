@@ -21,7 +21,7 @@ readline()
 ```
 
 ## Then, compile it.
-It will transform while and if statement to cmp and jmp statement to speed up script execution.
+It will transform while and if statements to cmp and jmp statement to speed up script execution.
 
 You will get something similar to:
 ```
@@ -63,10 +63,10 @@ freadline 0
 
 First, you start with an empty stack. Everytime, it evaluate one element and then, it goes to the next element.
 It can add or remove elements on the stack.
-The cmp and jmp statement can jump in the program.
+The cmp and jmp statements can jump in the program.
 
-- The cmp statement evaluate the last element in the stack. If it is false, it will jump in the program based on the next element in the program. (typically a if or a while statement)
-- The jmp statement. (the end of while statement, we need to go up in the program to evaluate the condition and eventually, we will do cmp statement to determine if we continue in the while statement)
+- The cmp statement evaluate the last element in the stack. If it is false, it will jump in the program based on the next element in the program. (this is typically a if or a while statement)
+- The jmp statement. (the end of a while statement, we need to go up in the program to evaluate the condition and eventually, we will do cmp statement to determine if we continue in the while statement)
 
 ## Output
 ```
