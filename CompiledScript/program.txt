@@ -1,0 +1,20 @@
+﻿set(i 0)
+
+/* while i < 10 */
+while(not(=(10 get(i)))
+	print("Counter: " get(i))
+
+	if(=(get(i), 3)
+		// If i = 3, show this message.
+		print("this is 3.")
+	)
+
+	// Increment i.
+	set(i,+(get(i) 1))
+)
+
+// Optional.
+unset(i)
+
+print('Press enter to continue...')
+readline()
