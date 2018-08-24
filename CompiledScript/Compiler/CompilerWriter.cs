@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using CompiledScript.Utils;
 
 namespace CompiledScript.Compiler
@@ -73,18 +72,22 @@ namespace CompiledScript.Compiler
 				    if (!node.IsLeaf)
                     {
                         //node.Text = node.Text.ToLower();
-					    Node container = node;
-					    if (Regex.IsMatch(node.Text, "^(get|set|isset|unset)$") )
+					    var container = node;
+					    if (IsMemoryFunction(node) )
 					    {
-					        CompileIntrinstic(indent, debug, node, container, sb);
+					        CompileMemoryFunction(indent, debug, node, container, sb);
 					    }
-                        else if (Regex.IsMatch(node.Text, "if|while"))
+                        else if (IsFlowControl(node))
 					    {
 					        CompileConditionOrLoop(indent, debug, container, node, sb);
 					    }
+                        else if (IsFunctionDefinition(node))
+                        {
+                            CompileFunctionDefinition(indent, debug, container, node, sb);
+                        }
                         else
 					    {
-					        CompileFunctionDefinition(indent, debug, sb, node);
+					        CompileFunctionCall(indent, debug, sb, node);
 					    }
 				    }
                     else
@@ -95,8 +98,48 @@ namespace CompiledScript.Compiler
 		    }
 		    return sb.ToString();
 	    }
+        
+        private static bool IsFunctionDefinition(Node node)
+        {
+            switch (node.Text)
+            {
+                case "def":
+                    return true;
 
-        private static void CompileIntrinstic(int level, bool debug, Node node, Node container, StringBuilder sb)
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsFlowControl(Node node)
+        {
+            switch (node.Text)
+            {
+                case "if":
+                case "while":
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        private static bool IsMemoryFunction(Node node)
+        {
+            switch (node.Text)
+            {
+                case "get":
+                case "set":
+                case "isset":
+                case "unset":
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, StringBuilder sb)
         {
             switch (node.Text)
             {
@@ -266,7 +309,7 @@ namespace CompiledScript.Compiler
             }
         }
 
-        private static void CompileFunctionDefinition(int level, bool debug, StringBuilder sb, Node node)
+        private static void CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node)
         {
             sb.Append(Compile(node, level + 1, debug));
 
@@ -285,6 +328,23 @@ namespace CompiledScript.Compiler
             sb.Append(node.Children.Count); // parameter count
             //builder.Append(" ");
             sb.Append("\r\n");
+        }
+
+        private static void CompileFunctionDefinition(int level, bool debug, Node container, Node node, StringBuilder sb)
+        {
+            // TODO: implement.
+            // The first pass will probably go something like:
+            // 1) Compile the func to a temporary string
+            // 2) Inject a new 'def' op-code, that names the function and does an unconditional jump over it.
+            // 3) Inject the compiled func
+            // 4) Inject a new 'return' op-code
+
+            Console.WriteLine("I see a function call: " + node.Text);
+
+            // Then the runner will need to interpret both the new op-codes
+            // This would include a return-stack-push for calling functions,
+            //   a jump-to-absolute-position by name
+            //   a jump-to-absolute-position by return stack & pop
         }
     }
 }

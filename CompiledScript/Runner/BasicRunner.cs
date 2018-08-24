@@ -27,17 +27,16 @@ namespace CompiledScript.Runner
             Variables = new Dictionary<string, string>();
         }
 
-        public virtual string Execute(bool resetVars, bool verbose)
+        public string Execute(bool resetVars, bool verbose)
         {
-            if (resetVars)
-            {
-                Variables.Clear();
-            }
+		    string evalResult;
 
-		    LinkedList<string> stack = new LinkedList<string>();
-		    string resultat;
+            if (resetVars) { Variables.Clear(); }
+
+		    var valueStack = new LinkedList<string>();
+            var returnStack = new Stack<int>(); // absolute position for call and return TODO: implement 
 		    
-            LinkedList<string> param = new LinkedList<string>();
+            var param = new LinkedList<string>();
             int position = 0;
 		    int programCount = program.Count;
 		    
@@ -49,9 +48,9 @@ namespace CompiledScript.Runner
                 // Ex: if(true 1 10 20)
 			    if ((words & 127) == 0)
                 {
-					while (stack.Count > 200)
+					while (valueStack.Count > 200)
                     {
-						stack.RemoveFirst();
+						valueStack.RemoveFirst();
 				    }
 			    }
 
@@ -70,121 +69,21 @@ namespace CompiledScript.Runner
 			    switch (action)
                 {
 			        case 'v': // Value.
-				        stack.AddLast(word);
+				        valueStack.AddLast(word);
 				        break;
 
 			        case 'f': // Function CALL
-				        position++;
-				        var nbParams = TryParse(program[position].Trim());
-				        param.Clear();
-                        // Pop values from stack.
-				        for (int i = 0; i < nbParams; i++)
-                        {
-                            try
-                            {
-                                param.AddFirst(stack.Last().Substring(1));
-                                stack.RemoveLast();
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine("Runner error: " + ex);
-                            }
-                        }
-				        // Evaluate function.
-				        resultat = Eval(word.Substring(1), nbParams, param);
+				        position = HandleFunctionCall(position, param, valueStack, word);
+			            break;
 
-                        // Add result on stack as a value.
-                        if (resultat != null)
-                        {
-                            stack.AddLast("v" + resultat);
-                        }
+			        case 'c': // Controls -- conditions, jumps etc
+				        position = HandleControlSignal(word, valueStack, position);
+			            break;
 
-				        break;
+			        case 'm': // Memory access - get|set|isset|unset
+				        HandleMemoryAccess(word, valueStack);
+			            break;
 
-			        case 'c': // Compiler
-				        word = word.Substring(1);
-                        action = word[0];
-                        if (action == 'c') // cmp
-                        {
-                            string condition = stack.Last();
-                            stack.RemoveLast();
-					        if (condition.Length == 0)
-                            {
-						        condition = "false";
-					        }
-                            else
-                            {
-						        condition = condition.Substring(1);
-					        }
-
-					        position++;
-					        string bodyLengthString = program[position];
-					        int bodyLength = TryParse(bodyLengthString);
-
-					        // pile.addLast("v"+(!(condition.equals("false") ||
-					        // condition.equals("0"))));
-
-                            condition = condition.ToLower();
-
-                            if (condition.Equals("false") || condition.Equals("0"))
-                            {
-                                int ignorer = bodyLength;
-                                position += ignorer;
-
-                                //string test = program[position];
-                            }
-				        }
-                        else if (action == 'j') // jmp
-                        {
-					        position++;
-					        string jmpLengthString = program[position];
-					        int jmpLength = TryParse(jmpLengthString);
-					        position -= 2;
-						    position -= jmpLength;
-
-                            //string test = program[position];
-				        }
-				        break;
-			        case 'm': // Memory function
-				        word = word.Substring(1);
-				        // get|set|isset|unset
-				        action = word[0];
-
-                        string varName = stack.Last();
-                        stack.RemoveLast();
-                        //varName = StringEncoding.decode(nomVariable).Substring(1);
-                        varName = varName.Substring(1);
-
-				        switch (action)
-                        {
-				            case 'g':
-					            if (Variables.ContainsKey(varName))
-                                {
-						            stack.AddLast("v" + Variables[varName]);
-					            }
-                                else
-                                {
-						            stack.AddLast("vfalse");
-					            }
-					            break;
-                            case 's':
-                                string value = stack.Last();
-                                stack.RemoveLast();
-                                //value = StringEncoding.decode(valeur).Substring(1);
-                                value = value.Substring(1);
-                                {
-                                    Variables.Remove(varName);
-                                }
-                                Variables[varName] = value;
-                                break;
-				            case 'i':
-					            stack.AddLast("v" + Variables.ContainsKey(varName));
-					            break;
-				            case 'u':
-					            Variables.Remove(varName);
-					            break;
-				        }
-				        break;
 			        case 's':
 				        // Reserved for system operation.
 				        break;
@@ -192,23 +91,135 @@ namespace CompiledScript.Runner
 			    position++;
 		    }
 
-		    if (stack.Count != 0)
+		    if (valueStack.Count != 0)
             {
-                resultat = stack.Last();
-                stack.RemoveLast();
+                evalResult = valueStack.Last();
+                valueStack.RemoveLast();
 		    }
             else
             {
-			    resultat = "";
+			    evalResult = "";
 		    }
 
-		    stack.Clear();
+		    valueStack.Clear();
 
-		    return resultat;
+		    return evalResult;
 	    }
 
+        private void HandleMemoryAccess(string word, LinkedList<string> valueStack)
+        {
+            word = word.Substring(1);
+            var action = word[0];
+
+            string varName = valueStack.Last();
+            valueStack.RemoveLast();
+            varName = varName.Substring(1);
+
+            switch (action)
+            {
+                case 'g': // get (adds a value to the stack, false if not set)
+                    if (Variables.ContainsKey(varName))
+                    {
+                        valueStack.AddLast("v" + Variables[varName]);
+                    }
+                    else
+                    {
+                        // TODO: strict mode?
+                        valueStack.AddLast("vfalse");
+                    }
+
+                    break;
+                case 's': // set
+                    string value = valueStack.Last();
+                    valueStack.RemoveLast();
+                    //value = StringEncoding.decode(valeur).Substring(1);
+                    value = value.Substring(1);
+                    {
+                        Variables.Remove(varName);
+                    }
+                    Variables[varName] = value;
+                    break;
+                case 'i': // is set (adds a bool to the stack)
+                    valueStack.AddLast("v" + Variables.ContainsKey(varName));
+                    break;
+                case 'u': // unset
+                    Variables.Remove(varName);
+                    break;
+            }
+        }
+
+        private int HandleControlSignal(string word, LinkedList<string> valueStack, int position)
+        {
+            word = word.Substring(1);
+            var action = word[0];
+            switch (action)
+            {
+                // cmp - relative jump *DOWN* if top of stack is false
+                case 'c':
+                    string condition = valueStack.Last();
+                    valueStack.RemoveLast();
+                    condition = condition.Length == 0 ? "false" : condition.Substring(1);
+
+                    position++;
+                    var bodyLengthString = program[position];
+                    var bodyLength = TryParseInt(bodyLengthString);
+
+                    condition = condition.ToLower();
+
+                    if (condition.Equals("false") || condition.Equals("0"))
+                    {
+                        position += bodyLength;
+                    }
+
+                    break;
+                // jmp - unconditional relative jump *UP*
+                case 'j':
+                    position++;
+                    string jmpLengthString = program[position];
+                    int jmpLength = TryParseInt(jmpLengthString);
+                    position -= 2;
+                    position -= jmpLength;
+
+                    //string test = program[position];
+                    break;
+            }
+
+            return position;
+        }
+
+        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word)
+        {
+            position++;
+            var nbParams = TryParseInt(program[position].Trim());
+            param.Clear();
+            // Pop values from stack.
+            for (int i = 0; i < nbParams; i++)
+            {
+                try
+                {
+                    param.AddFirst(valueStack.Last().Substring(1));
+                    valueStack.RemoveLast();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Runner error: " + ex);
+                }
+            }
+
+            // Evaluate function.
+            var evalResult = Eval(word.Substring(1), nbParams, param);
+
+            // Add result on stack as a value.
+            if (evalResult != null)
+            {
+                valueStack.AddLast("v" + evalResult);
+            }
+
+            return position;
+        }
+
         // Evaluate a function call
-	    public virtual string Eval(string functionName, int nbParams, LinkedList<string> param)
+	    public string Eval(string functionName, int nbParams, LinkedList<string> param)
         {
             functionName = functionName.ToLower();
             string condition;
@@ -305,13 +316,13 @@ namespace CompiledScript.Runner
                     break;
 
                 case "substring" when nbParams == 2:
-                    return param.ElementAt(0).Substring(TryParse(param.ElementAt(1)));
+                    return param.ElementAt(0).Substring(TryParseInt(param.ElementAt(1)));
 
                 case "substring":
                     if(nbParams == 3)
                     {
-                        int start = TryParse(param.ElementAt(1));
-                        int length = TryParse(param.ElementAt(2));
+                        int start = TryParseInt(param.ElementAt(1));
+                        int length = TryParseInt(param.ElementAt(2));
                     
                         try
                         {
@@ -350,8 +361,8 @@ namespace CompiledScript.Runner
                     {
                         try
                         {
-                            return EvalMath(functionName[0], TryParse(param.ElementAt(0)),
-                                TryParse(param.ElementAt(1)));
+                            return EvalMath(functionName[0], TryParseInt(param.ElementAt(0)),
+                                TryParseInt(param.ElementAt(1)));
                         }
                         catch (Exception e)
                         {
@@ -365,7 +376,7 @@ namespace CompiledScript.Runner
 		    return null; // Void.
 	    }
 
-	    private static int TryParse(string s)
+	    private static int TryParseInt(string s)
         {
             int.TryParse(s, out int result);
             return result;
