@@ -1,7 +1,12 @@
 ﻿set(i 0)
 
+// TODO: Define a custom function
+/*myFunc () ( 
+    print("this is a custom subroutine")
+)*/
+
 /* while i < 10 */
-while(not(=(10 get(i)))
+while ( not (=(10 get(  i   )) ) // handles variable spacing
 	print("Counter: " get(i))
 
 	if(=(get(i), 3)
@@ -13,7 +18,7 @@ while(not(=(10 get(i)))
 	set(i,+(get(i) 1))
 )
 
-// Optional.
+// Optional. Remove memory definition
 unset(i)
 
 print('Press enter to continue...')

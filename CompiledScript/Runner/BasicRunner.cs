@@ -73,9 +73,9 @@ namespace CompiledScript.Runner
 				        stack.AddLast(word);
 				        break;
 
-			        case 'f': // Function.
+			        case 'f': // Function CALL
 				        position++;
-				        var nbParams = TryParse(program[position].Replace("\n", ""));
+				        var nbParams = TryParse(program[position].Trim());
 				        param.Clear();
                         // Pop values from stack.
 				        for (int i = 0; i < nbParams; i++)
@@ -207,9 +207,11 @@ namespace CompiledScript.Runner
 		    return resultat;
 	    }
 
+        // Evaluate a function call
 	    public virtual string Eval(string functionName, int nbParams, LinkedList<string> param)
         {
             functionName = functionName.ToLower();
+            string condition;
 
 		    if (functionName == "()" && nbParams != 0)
             {
@@ -221,150 +223,144 @@ namespace CompiledScript.Runner
 			    return ( param.ElementAt(0) == (param.ElementAt(1)) ) + "";
 		    }
 
-            if (functionName == "eval")
+            switch (functionName)
             {
-                SourceCodeReader reader = new SourceCodeReader();
-                Node programTmp = reader.Read(param.ElementAt(0));
-                string contenuBin = CompilerWriter.Compile(programTmp, false);
-                BasicRunner basicReader = new BasicRunner();
-                basicReader.Init(contenuBin);
-                basicReader.Execute(false, false);
-            }
+                case "eval":
+                    SourceCodeReader reader = new SourceCodeReader();
+                    Node programTmp = reader.Read(param.ElementAt(0));
+                    string contenuBin = CompilerWriter.Compile(programTmp, false);
+                    BasicRunner basicReader = new BasicRunner();
+                    basicReader.Init(contenuBin);
+                    basicReader.Execute(false, false);
+                    break;
 
-            if (functionName == "call")
-            {
-                functionName = param.ElementAt(0);
-                nbParams--;
-                param.RemoveFirst();
-                return Eval(functionName, nbParams, param);
-            }
+                case "call":
+                    functionName = param.ElementAt(0);
+                    nbParams--;
+                    param.RemoveFirst();
+                    return Eval(functionName, nbParams, param);
 
-		    if (functionName == "not" && nbParams == 1)
-            {
-			    string condition = param.ElementAt(0);
+                case "not" when nbParams == 1:
+                    condition = param.ElementAt(0);
 
-                condition = condition.ToLower();
-
-			    return "" + (condition == "false" || condition == "0");
-		    }
-
-            if (functionName == "or")
-            {
-                bool continuer = nbParams > 0;
-                int i = 0;
-                string result = "false";
-                while (continuer)
-                {
-                    var condition = param.ElementAt(i);
                     condition = condition.ToLower();
 
-                    if (condition != "false" && condition != "0")
+                    return "" + (condition == "false" || condition == "0");
+
+                case "or":
+                {
+                    bool continuer = nbParams > 0;
+                    int i = 0;
+                    string result = "false";
+                    while (continuer)
                     {
-                        result = "true";
-                        break;
+                        condition = param.ElementAt(i);
+                        condition = condition.ToLower();
+
+                        if (condition != "false" && condition != "0")
+                        {
+                            result = "true";
+                            break;
+                        }
+                        i++;
+                        continuer = i < nbParams;
                     }
-                    i++;
-                    continuer = i < nbParams;
+                    return result;
                 }
-                return result;
-            }
 
-            if (functionName == "and")
-            {
-                bool continuer = nbParams > 0;
-                int i = 0;
-                string result = continuer + "";
-                while (continuer)
+                case "and":
                 {
-                    var condition = param.ElementAt(i);
-                    condition = condition.ToLower();
-
-                    if (condition == "false" || condition == "0")
+                    bool continuer = nbParams > 0;
+                    int i = 0;
+                    string result = continuer + "";
+                    while (continuer)
                     {
-                        result = "false";
-                        break;
+                         condition = param.ElementAt(i);
+                        condition = condition.ToLower();
+
+                        if (condition == "false" || condition == "0")
+                        {
+                            result = "false";
+                            break;
+                        }
+                        i++;
+                        continuer = i < nbParams;
                     }
-                    i++;
-                    continuer = i < nbParams;
-                }
-                return result;
-            }
-
-            if (functionName.StartsWith("read"))
-            {
-                switch (functionName.Substring(4))
-                {
-                    case "key":
-                        Console.ReadKey();
-                        return null;
-                    case "line":
-                        return Console.ReadLine();
+                    return result;
                 }
 
-            }
-            else if (functionName == "print")
-            {
-			    foreach (string s in param)
-                {
-                    Console.Write(s);
-			    }
-                Console.WriteLine();
-            }
-            else if (functionName == "substring")
-            {
-                if (nbParams == 2)
-                {
+                case "readkey":
+                    Console.ReadKey();
+                    return null;
+
+                case "readline":
+                    return Console.ReadLine();
+
+                case "print":
+                    foreach (string s in param)
+                    {
+                        Console.Write(s);
+                    }
+                    Console.WriteLine();
+                    break;
+
+                case "substring" when nbParams == 2:
                     return param.ElementAt(0).Substring(TryParse(param.ElementAt(1)));
-                }
-                else if(nbParams == 3)
-                {
-                    int start = TryParse(param.ElementAt(1));
-                    int length = TryParse(param.ElementAt(2));
+
+                case "substring":
+                    if(nbParams == 3)
+                    {
+                        int start = TryParse(param.ElementAt(1));
+                        int length = TryParse(param.ElementAt(2));
                     
-                    try
-                    {
-                        string s = param.ElementAt(0).Substring(start, length);
-                        return s;
+                        try
+                        {
+                            string s = param.ElementAt(0).Substring(start, length);
+                            return s;
+                        }
+                        catch(Exception ex)
+                        {
+                            Console.WriteLine("Runner error: " + ex);
+                        }
                     }
-                    catch(Exception ex)
+
+                    break;
+
+                case "length" when nbParams == 1:
+                    return param.ElementAt(0).Length + "";
+
+                case "replace" when nbParams == 3:
+                    string exp = param.ElementAt(0);
+                    string oldValue = param.ElementAt(1);
+                    string newValue = param.ElementAt(2);
+                    exp = exp.Replace(oldValue, newValue);
+                    return exp;
+
+                case "concat":
+                    StringBuilder builder = new StringBuilder();
+                    foreach (string s in param)
                     {
-                        Console.WriteLine("Runner error: " + ex);
+                        builder.Append(s);
                     }
-                }
+                    return builder.ToString();
+
+
+                default:
+                    if (Regex.IsMatch(functionName, "^[\\+|\\-|\\*|\\/|\\%]$") && nbParams == 2)
+                    {
+                        try
+                        {
+                            return EvalMath(functionName[0], TryParse(param.ElementAt(0)),
+                                TryParse(param.ElementAt(1)));
+                        }
+                        catch (Exception e)
+                        {
+                            return "Math Error : " + e.Message;
+                        }
+                    }
+
+                    break;
             }
-            else if (functionName == "length" && nbParams == 1)
-            {
-                return param.ElementAt(0).Length + "";
-            }
-            else if (functionName == "replace" && nbParams == 3)
-            {
-                string exp = param.ElementAt(0);
-                string oldValue = param.ElementAt(1);
-                string newValue = param.ElementAt(2);
-                exp = exp.Replace(oldValue, newValue);
-                return exp;
-            }
-            else if (functionName == "concat")
-            {
-			    StringBuilder builder = new StringBuilder();
-			    foreach (string s in param)
-                {
-				    builder.Append(s);
-			    }
-			    return builder.ToString();
-		    }
-            else if (Regex.IsMatch(functionName, "^[\\+|\\-|\\*|\\/|\\%]$") && nbParams == 2)
-            {
-			    try
-                {
-				    return EvalMath(functionName[0], TryParse(param.ElementAt(0)),
-						    TryParse(param.ElementAt(1)));
-			    }
-                catch (Exception e)
-                {
-				    return "Math Error : " + e.Message;
-			    }
-		    }
 
 		    return null; // Void.
 	    }
