@@ -21,7 +21,7 @@ namespace CompiledScript.Runner
             {
                 if (s.Length != 0)
                 {
-                    program.Add(UrlUtil.Decode(s));
+                    program.Add(StringEncoding.Decode(s));
                 }
             }
             Variables = new Dictionary<string, string>();
@@ -39,9 +39,9 @@ namespace CompiledScript.Runner
 		    
             LinkedList<string> param = new LinkedList<string>();
             int position = 0;
-		    int taille = program.Count;
+		    int programCount = program.Count;
 		    
-		    while (position < taille)
+		    while (position < programCount)
             {
 			    words++;
                 
@@ -61,7 +61,7 @@ namespace CompiledScript.Runner
                 {
                     Console.WriteLine("---------------------------------------------");
                     Console.WriteLine("Iteration #" + words);
-                    Console.WriteLine("pos = "+position + "/" + taille);
+                    Console.WriteLine("pos = "+position + "/" + programCount);
                     Console.WriteLine("word = " + word);
                 }
 
@@ -152,7 +152,7 @@ namespace CompiledScript.Runner
 
                         string varName = stack.Last();
                         stack.RemoveLast();
-                        //varName = UrlUtil.decode(nomVariable).Substring(1);
+                        //varName = StringEncoding.decode(nomVariable).Substring(1);
                         varName = varName.Substring(1);
 
 				        switch (action)
@@ -170,7 +170,7 @@ namespace CompiledScript.Runner
                             case 's':
                                 string value = stack.Last();
                                 stack.RemoveLast();
-                                //value = UrlUtil.decode(valeur).Substring(1);
+                                //value = StringEncoding.decode(valeur).Substring(1);
                                 value = value.Substring(1);
                                 {
                                     Variables.Remove(varName);
@@ -207,21 +207,21 @@ namespace CompiledScript.Runner
 		    return resultat;
 	    }
 
-	    public virtual string Eval(string nom, int nbParams, LinkedList<string> param)
+	    public virtual string Eval(string functionName, int nbParams, LinkedList<string> param)
         {
-            nom = nom.ToLower();
+            functionName = functionName.ToLower();
 
-		    if (nom == "()" && nbParams != 0)
+		    if (functionName == "()" && nbParams != 0)
             {
 			    return param.ElementAt(nbParams - 1);
 		    }
 
-		    if ((nom == "=" || nom == "equals") && nbParams == 2)
+		    if ((functionName == "=" || functionName == "equals") && nbParams == 2)
             {
 			    return ( param.ElementAt(0) == (param.ElementAt(1)) ) + "";
 		    }
 
-            if (nom == "eval")
+            if (functionName == "eval")
             {
                 SourceCodeReader reader = new SourceCodeReader();
                 Node programTmp = reader.Read(param.ElementAt(0));
@@ -231,15 +231,15 @@ namespace CompiledScript.Runner
                 basicReader.Execute(false, false);
             }
 
-            if (nom == "call")
+            if (functionName == "call")
             {
-                nom = param.ElementAt(0);
+                functionName = param.ElementAt(0);
                 nbParams--;
                 param.RemoveFirst();
-                return Eval(nom, nbParams, param);
+                return Eval(functionName, nbParams, param);
             }
 
-		    if (nom == "not" && nbParams == 1)
+		    if (functionName == "not" && nbParams == 1)
             {
 			    string condition = param.ElementAt(0);
 
@@ -248,7 +248,7 @@ namespace CompiledScript.Runner
 			    return "" + (condition == "false" || condition == "0");
 		    }
 
-            if (nom == "or")
+            if (functionName == "or")
             {
                 bool continuer = nbParams > 0;
                 int i = 0;
@@ -269,7 +269,7 @@ namespace CompiledScript.Runner
                 return result;
             }
 
-            if (nom == "and")
+            if (functionName == "and")
             {
                 bool continuer = nbParams > 0;
                 int i = 0;
@@ -290,9 +290,9 @@ namespace CompiledScript.Runner
                 return result;
             }
 
-            if (nom.StartsWith("read"))
+            if (functionName.StartsWith("read"))
             {
-                switch (nom.Substring(4))
+                switch (functionName.Substring(4))
                 {
                     case "key":
                         Console.ReadKey();
@@ -302,7 +302,7 @@ namespace CompiledScript.Runner
                 }
 
             }
-            else if (nom == "print")
+            else if (functionName == "print")
             {
 			    foreach (string s in param)
                 {
@@ -310,7 +310,7 @@ namespace CompiledScript.Runner
 			    }
                 Console.WriteLine();
             }
-            else if (nom == "substring")
+            else if (functionName == "substring")
             {
                 if (nbParams == 2)
                 {
@@ -332,11 +332,11 @@ namespace CompiledScript.Runner
                     }
                 }
             }
-            else if (nom == "length" && nbParams == 1)
+            else if (functionName == "length" && nbParams == 1)
             {
                 return param.ElementAt(0).Length + "";
             }
-            else if (nom == "replace" && nbParams == 3)
+            else if (functionName == "replace" && nbParams == 3)
             {
                 string exp = param.ElementAt(0);
                 string oldValue = param.ElementAt(1);
@@ -344,7 +344,7 @@ namespace CompiledScript.Runner
                 exp = exp.Replace(oldValue, newValue);
                 return exp;
             }
-            else if (nom == "concat")
+            else if (functionName == "concat")
             {
 			    StringBuilder builder = new StringBuilder();
 			    foreach (string s in param)
@@ -353,11 +353,11 @@ namespace CompiledScript.Runner
 			    }
 			    return builder.ToString();
 		    }
-            else if (Regex.IsMatch(nom, "^[\\+|\\-|\\*|\\/|\\%]$") && nbParams == 2)
+            else if (Regex.IsMatch(functionName, "^[\\+|\\-|\\*|\\/|\\%]$") && nbParams == 2)
             {
 			    try
                 {
-				    return EvalMath(nom[0], TryParse(param.ElementAt(0)),
+				    return EvalMath(functionName[0], TryParse(param.ElementAt(0)),
 						    TryParse(param.ElementAt(1)));
 			    }
                 catch (Exception e)

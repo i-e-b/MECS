@@ -12,19 +12,19 @@ namespace CompiledScript
         static void Main()
         {
             var content = File.ReadAllText("program.txt");
-            Execute(content, false, new Dictionary<string, string>());
+            Execute(content, verbose: false, argsVariables: new Dictionary<string, string>());
         }
 
         public static void Execute(string inSRC, bool verbose, Dictionary<string, string> argsVariables)
         {
-            string contenu = FileReader.ReadComments(inSRC, true);
+            string contents = FileReader.ReadContent(inSRC, true);
             Console.WriteLine("\nSOURCE CODE");
             Console.WriteLine("-----------------------------------------------");
-            Console.WriteLine(contenu);
+            Console.WriteLine(contents);
 
             // COMPILE.
             SourceCodeReader reader = new SourceCodeReader();
-            Node program = reader.Read(contenu);
+            Node program = reader.Read(contents);
 
             Console.WriteLine("\nTREE VIEW");
             Console.WriteLine("-----------------------------------------------");
@@ -32,25 +32,24 @@ namespace CompiledScript
 
             Console.WriteLine("\nCOMPILED SCRIPT (debug)");
             Console.WriteLine("-----------------------------------------------");
-            string contenuBinDebug = CompilerWriter.Compile(reader.Read(contenu), true);
-            Console.WriteLine(contenuBinDebug);
+            Console.WriteLine(CompilerWriter.Compile(reader.Read(contents), debug: true));
 
-            string contenuBin = CompilerWriter.Compile(program, false);
+            string bin = CompilerWriter.Compile(program, debug: false);
             Console.WriteLine("\nCOMPILED SCRIPT (release)");
             Console.WriteLine("-----------------------------------------------");
-            Console.WriteLine(contenuBin);
-            File.WriteAllText("bin.txt", contenuBin);
+            Console.WriteLine(bin);
+            File.WriteAllText("bin.txt", bin);
 
             // PREPARE RUN.
-            string contenuBinRead = FileReader.ReadComments(File.ReadAllText("bin.txt"), true);
+            string contenuBinRead = FileReader.ReadContent(File.ReadAllText("bin.txt"), true);
             try
             {
-                BasicRunner readerBin = new BasicRunner();
+                var readerBin = new BasicRunner();
 
                 // Init the interpreter.
                 readerBin.Init(contenuBinRead);
 
-                foreach (KeyValuePair<string, string> pair in argsVariables.ToArray())
+                foreach (var pair in argsVariables.ToArray())
                 {
                     readerBin.Variables.Add(pair.Key, pair.Value);
                 }

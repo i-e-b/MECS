@@ -2,7 +2,7 @@
 
 namespace CompiledScript.Utils
 {
-    class UrlUtil
+    class StringEncoding
     {
         public static string Encode(string text)
         {

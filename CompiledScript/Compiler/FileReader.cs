@@ -4,7 +4,7 @@ namespace CompiledScript.Compiler
 {
     class FileReader
     {
-        public static string ReadComments(string content, bool removeComment)
+        public static string ReadContent(string content, bool removeComment)
         {
             return removeComment
                 ? RemoveMultiLinesComment(RemoveInlineComment(content))

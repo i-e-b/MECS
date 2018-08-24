@@ -11,62 +11,62 @@ namespace CompiledScript.Compiler
     {
         public static string Fill(int nb, char car)
         {
-            var builder = new StringBuilder();
+            var sb = new StringBuilder();
             for (int i = 0; i < nb * 4; i++)
             {
-                builder.Append(car);
+                sb.Append(car);
             }
-            return builder.ToString();
+            return sb.ToString();
         }
 
         public static string Compile(Node root, bool debug)
         {
-            var builder = new StringBuilder();
+            var sb = new StringBuilder();
 
             if (debug)
             {
-                builder.Append("/*\r\n");
-                builder.Append("CompiledScript - Intermediate Language\r\n");
-                builder.Append("Date    : " + DateTime.Now + "\r\n");
-                builder.Append("Version : 1.1\r\n");
-                builder.Append("*/\r\n\r\n");
+                sb.Append("/*\r\n");
+                sb.Append("CompiledScript - Intermediate Language\r\n");
+                sb.Append("Date    : " + DateTime.Now + "\r\n");
+                sb.Append("Version : 1.1\r\n");
+                sb.Append("*/\r\n\r\n");
             }
 
-            builder.Append(Compile(root, 0, debug));
+            sb.Append(Compile(root, 0, debug));
 
-            return builder.ToString();
+            return sb.ToString();
         }
 
         public static string Compile(Node root, int level, bool debug)
         {
-		    var builder = new StringBuilder();
+		    var sb = new StringBuilder();
 
 		    if (root.IsLeaf)
             {
                 if (debug)
                 {
-                    builder.Append(Fill(level - 1, ' '));
-                    builder.Append("// Value : \"");
-                    builder.Append(
-                        UrlUtil.Decode(root.Text)
+                    sb.Append(Fill(level - 1, ' '));
+                    sb.Append("// Value : \"");
+                    sb.Append(
+                        StringEncoding.Decode(root.Text)
                             .Replace("\\", "\\\\")
                             .Replace("\t", "\\t")
                             .Replace("\n", "\\n")
                             .Replace("\r", ""));
-                    builder.Append("\"\r\n");
-                    builder.Append(Fill(level - 1, ' '));
+                    sb.Append("\"\r\n");
+                    sb.Append(Fill(level - 1, ' '));
                 }
 
-			    builder.Append("v").Append(root.Text);
+			    sb.Append("v").Append(root.Text);
 			    //builder.Append(" ");
-                builder.Append("\r\n");
+                sb.Append("\r\n");
 		    }
             else
             {
                 Node rootContainer = root;
                 foreach (Node node in rootContainer.Children.ToList())
                 {
-				    node.Text = UrlUtil.Encode(node.Text);
+				    node.Text = StringEncoding.Encode(node.Text);
 				    if (!node.IsLeaf)
                     {
                         node.Text = node.Text.ToLower();
@@ -97,20 +97,20 @@ namespace CompiledScript.Compiler
 							    child.Children.AddLast(container.Children.ElementAt(i));
 						    }
                             
-						    builder.Append(Compile(child, level + 1, debug));
+						    sb.Append(Compile(child, level + 1, debug));
 
                             if (debug)
                             {
-                                builder.Append(Fill(level, ' '));
-                                builder.Append("// Memory function : " + node.Text);
-                                builder.Append("\r\n");
-                                builder.Append(Fill(level, ' '));
+                                sb.Append(Fill(level, ' '));
+                                sb.Append("// Memory function : " + node.Text);
+                                sb.Append("\r\n");
+                                sb.Append(Fill(level, ' '));
                             }
 
-						    builder.Append("m"+node.Text[0]);
+						    sb.Append("m"+node.Text[0]);
 						
 						    //builder.Append(" ");
-                            builder.Append("\r\n");
+                            sb.Append("\r\n");
 					    }
                         else if (Regex.IsMatch(node.Text, "if|while"))
                         {
@@ -128,12 +128,12 @@ namespace CompiledScript.Compiler
 
                             if (debug)
                             {
-                                builder.Append(Fill(level, ' '));
-                                builder.Append("// Condition for : " + node.Text);
-                                builder.Append("\r\n");
+                                sb.Append(Fill(level, ' '));
+                                sb.Append("// Condition for : " + node.Text);
+                                sb.Append("\r\n");
                             }
 
-                            builder.Append(compiledCondition);
+                            sb.Append(compiledCondition);
 
                             Node body = new Node(false);
 						    for (int i = 1; i < container.Children.Count; i++)
@@ -183,84 +183,84 @@ namespace CompiledScript.Compiler
 
                             if (debug)
                             {
-                                builder.Append("\r\n");
-                                builder.Append(Fill(level, ' '));
-                                builder.Append("// Compare condition for : " + node.Text);
-                                builder.Append("\r\n");
-                                builder.Append(Fill(level, ' '));
+                                sb.Append("\r\n");
+                                sb.Append(Fill(level, ' '));
+                                sb.Append("// Compare condition for : " + node.Text);
+                                sb.Append("\r\n");
+                                sb.Append(Fill(level, ' '));
                             }
 
-						    builder.Append("ccmp");
-						    builder.Append(" ").Append(nbElementBody);
+						    sb.Append("ccmp");
+						    sb.Append(" ").Append(nbElementBody);
 
                             if (debug)
                             {
-                                builder.Append(" // If false, skip "+nbElementBody+" element(s)");
+                                sb.Append(" // If false, skip "+nbElementBody+" element(s)");
                             }
 
 						    //builder.Append(" ");
-                            builder.Append("\r\n");
+                            sb.Append("\r\n");
 						    
-						    builder.Append(compileBody);
+						    sb.Append(compileBody);
 
                             if (boucle)
                             {
                                 if (debug)
                                 {
-                                    builder.Append(Fill(level, ' '));
-                                    builder.Append("// End : " + node.Text);
-                                    builder.Append("\r\n");
-                                    builder.Append(Fill(level, ' '));
+                                    sb.Append(Fill(level, ' '));
+                                    sb.Append("// End : " + node.Text);
+                                    sb.Append("\r\n");
+                                    sb.Append(Fill(level, ' '));
                                 }
 
-                                builder.Append("cjmp");
-                                builder.Append(" ").Append(nbElementBack);
+                                sb.Append("cjmp");
+                                sb.Append(" ").Append(nbElementBack);
                                 //builder.Append(" ");
-                                builder.Append("\r\n");
+                                sb.Append("\r\n");
                                 if (debug)
                                 {
-                                    builder.Append("\r\n");
+                                    sb.Append("\r\n");
                                 }
                             }
                             else
                             {
                                 if (debug)
                                 {
-                                    builder.Append(Fill(level, ' '));
-                                    builder.Append("// End : " + node.Text);
-                                    builder.Append("\r\n");
-                                    builder.Append("\r\n");
+                                    sb.Append(Fill(level, ' '));
+                                    sb.Append("// End : " + node.Text);
+                                    sb.Append("\r\n");
+                                    sb.Append("\r\n");
                                 }
                             }
 					    }
                         else
                         {
-                            builder.Append(Compile(node, level + 1, debug));
+                            sb.Append(Compile(node, level + 1, debug));
 
                             if (debug)
                             {
-                                builder.Append(Fill(level, ' '));
-                                builder.Append("// Function : \"" + UrlUtil.Decode(node.Text));
-                                builder.Append("\" with " + node.Children.Count);
-                                builder.Append(" parameter(s)");
-                                builder.Append("\r\n");
-                                builder.Append(Fill(level, ' '));
+                                sb.Append(Fill(level, ' '));
+                                sb.Append("// Function : \"" + StringEncoding.Decode(node.Text));
+                                sb.Append("\" with " + node.Children.Count);
+                                sb.Append(" parameter(s)");
+                                sb.Append("\r\n");
+                                sb.Append(Fill(level, ' '));
                             }
                             
-						    builder.Append("f");
-						    builder.Append(node.Text).Append(" ");
-						    builder.Append(node.Children.Count);
+						    sb.Append("f");
+						    sb.Append(node.Text).Append(" ");
+						    sb.Append(node.Children.Count);
 						    //builder.Append(" ");
-                            builder.Append("\r\n");
+                            sb.Append("\r\n");
 					    }
 				    }
                     else
                     {
-                        builder.Append(Compile(node, level + 1, debug));
+                        sb.Append(Compile(node, level + 1, debug));
 				    }
 			    }
 		    }
-		    return builder.ToString();
+		    return sb.ToString();
 	    }
     }
 }

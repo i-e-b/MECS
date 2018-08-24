@@ -16,14 +16,14 @@ namespace CompiledScript.Compiler
         private void Read(string source, Node root, int position)
         {
 		    int i = position;
-		    int taille = source.Length;
+		    int length = source.Length;
             Node current = root;
 
-            while (i < taille)
+            while (i < length)
             {
 			    i = Skip(source, i, new[]{' ', '\t', '\n', ';', '\r'} );
 
-			    if (i >= taille)
+			    if (i >= length)
                 {
 				    break;
 			    }
@@ -70,7 +70,7 @@ namespace CompiledScript.Compiler
                             i += word.Length;
 
                             i = Skip(source, i, new[] { ' ', '\t', '\n', '\r' });
-                            if (i >= taille)
+                            if (i >= length)
                             {
                                 // TODO ... handle ?
                                 break;
@@ -106,9 +106,9 @@ namespace CompiledScript.Compiler
         public static int Skip(string exp, int position, char[] cars)
         {
             int i = position;
-            int taille = exp.Length;
+            int length = exp.Length;
 
-            while (i < taille)
+            while (i < length)
             {
                 var car = exp.ElementAt(i);
                 var found = false;
@@ -133,10 +133,10 @@ namespace CompiledScript.Compiler
         public static string ReadString(string exp, ref int position, char end)
         {
             int i = position;
-            int taille = exp.Length;
-            var builder = new StringBuilder();
+            int length = exp.Length;
+            var sb = new StringBuilder();
 
-            while (i < taille)
+            while (i < length)
             {
                 var car = exp.ElementAt(i);
 
@@ -144,14 +144,14 @@ namespace CompiledScript.Compiler
                 {
                     var nb = 0;
                     i++;
-                    while (i < taille)
+                    while (i < length)
                     {
                         car = exp.ElementAt(i);
                         if (car == '\\')
                         {
                             if (nb % 2 == 0)
                             {
-                                builder.Append(car);
+                                sb.Append(car);
                             }
                         }
                         else if (car == end && nb % 2 == 1)
@@ -161,7 +161,7 @@ namespace CompiledScript.Compiler
                         }
                         else
                         {
-                            builder.Append(car);
+                            sb.Append(car);
                             break;
                         }
 
@@ -175,23 +175,23 @@ namespace CompiledScript.Compiler
                 }
                 else
                 {
-                    builder.Append(car);
+                    sb.Append(car);
                 }
 
                 i++;
             }
 
             position = i;
-            return builder.ToString();
+            return sb.ToString();
         }
 
         public static string ReadWord(string exp, int position)
         {
             int i = position;
-            int taille = exp.Length;
-            var builder = new StringBuilder();
+            int length = exp.Length;
+            var sb = new StringBuilder();
 
-            while (i < taille)
+            while (i < length)
             {
                 var car = exp.ElementAt(i);
 
@@ -201,11 +201,11 @@ namespace CompiledScript.Compiler
                     break;
                 }
 
-                builder.Append(car);
+                sb.Append(car);
 
                 i++;
             }
-            return builder.ToString();
+            return sb.ToString();
         }
     }
 }
