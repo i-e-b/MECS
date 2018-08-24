@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.IO;
 using CompiledScript.Utils;
 
 namespace CompiledScript.Compiler
@@ -12,7 +11,7 @@ namespace CompiledScript.Compiler
     {
         public static string Fill(int nb, char car)
         {
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
             for (int i = 0; i < nb * 4; i++)
             {
                 builder.Append(car);
@@ -22,7 +21,7 @@ namespace CompiledScript.Compiler
 
         public static string Compile(Node root, bool debug)
         {
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
 
             if (debug)
             {
@@ -40,7 +39,7 @@ namespace CompiledScript.Compiler
 
         public static string Compile(Node root, int level, bool debug)
         {
-		    StringBuilder builder = new StringBuilder();
+		    var builder = new StringBuilder();
 
 		    if (root.IsLeaf)
             {

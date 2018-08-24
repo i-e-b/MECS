@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 
 namespace CompiledScript.Compiler
 {
     public class StringReader
     {
-	    private string text;
+	    private readonly string text;
 	    private int cursorPosition;
 	
 	    public StringReader(string text)
@@ -18,13 +14,13 @@ namespace CompiledScript.Compiler
 
         public string ReadUntilCharFromList(string target)
         {
-		    int indexFound = text.IndexOf(target, cursorPosition);
+		    int indexFound = text.IndexOf(target, cursorPosition, StringComparison.Ordinal);
 		    if (indexFound == -1)
             {
 			    return null;
 		    }
 
-            string before = this.text.Substring(cursorPosition, indexFound - cursorPosition);
+            string before = text.Substring(cursorPosition, indexFound - cursorPosition);
 		    cursorPosition = indexFound + target.Length;
 		
 		    return before;

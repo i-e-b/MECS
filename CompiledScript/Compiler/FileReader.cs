@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
+﻿using System.Text;
 
 namespace CompiledScript.Compiler
 {
@@ -17,25 +13,19 @@ namespace CompiledScript.Compiler
 
         public static string RemoveInlineComment(string expression)
         {
-            StringReader reader = new StringReader(expression);
-            StringBuilder builder = new StringBuilder();
-            string part;
+            var reader = new StringReader(expression);
+            var builder = new StringBuilder();
 
             while (!reader.IsEndOfFile())
             {
-                part = reader.ReadUntilCharFromList("//");
+                var part = reader.ReadUntilCharFromList("//");
                 if (part != null)
                 {
                     builder.Append(part);
                     part = reader.ReadUntilCharFromList("\n");
-                    if (part != null)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        reader.ReadToEnd();
-                    }
+                    if (part != null) { continue; }
+
+                    reader.ReadToEnd();
                 }
                 else
                 {
@@ -48,25 +38,19 @@ namespace CompiledScript.Compiler
 
         public static string RemoveMultiLinesComment(string expression)
         {
-            StringReader reader = new StringReader(expression);
-            StringBuilder builder = new StringBuilder();
-            string part;
+            var reader = new StringReader(expression);
+            var builder = new StringBuilder();
 
             while (!reader.IsEndOfFile())
             {
-                part = reader.ReadUntilCharFromList("/*");
+                var part = reader.ReadUntilCharFromList("/*");
                 if (part != null)
                 {
                     builder.Append(part);
                     part = reader.ReadUntilCharFromList("*/");
-                    if (part != null)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        reader.ReadToEnd();
-                    }
+                    if (part != null) { continue; }
+
+                    reader.ReadToEnd();
                 }
                 else
                 {

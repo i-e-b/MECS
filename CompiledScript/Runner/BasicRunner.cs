@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.IO;
 using CompiledScript.Utils;
 using CompiledScript.Compiler;
 
@@ -13,7 +12,7 @@ namespace CompiledScript.Runner
     {
         private List<string> program;
         public Dictionary<string, string> Variables { get; set;}
-        private int words = 0;
+        private int words;
 
         public virtual void Init(string bin)
         {
@@ -36,11 +35,10 @@ namespace CompiledScript.Runner
             }
 
 		    LinkedList<string> stack = new LinkedList<string>();
-		    string resultat = null;
+		    string resultat;
 		    
             LinkedList<string> param = new LinkedList<string>();
-		    int nbParams;
-		    int position = 0;
+            int position = 0;
 		    int taille = program.Count;
 		    
 		    while (position < taille)
@@ -74,9 +72,10 @@ namespace CompiledScript.Runner
 			        case 'v': // Value.
 				        stack.AddLast(word);
 				        break;
+
 			        case 'f': // Function.
 				        position++;
-				        nbParams = TryParse(program[position].Replace("\n", ""));
+				        var nbParams = TryParse(program[position].Replace("\n", ""));
 				        param.Clear();
                         // Pop values from stack.
 				        for (int i = 0; i < nbParams; i++)
@@ -86,10 +85,11 @@ namespace CompiledScript.Runner
                                 param.AddFirst(stack.Last().Substring(1));
                                 stack.RemoveLast();
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
+                                Console.WriteLine("Runner error: " + ex);
                             }
-				        }
+                        }
 				        // Evaluate function.
 				        resultat = Eval(word.Substring(1), nbParams, param);
 
@@ -98,12 +98,9 @@ namespace CompiledScript.Runner
                         {
                             stack.AddLast("v" + resultat);
                         }
-                        else
-                        {
-                            //pile.AddLast("vfalse");
-                        }
 
 				        break;
+
 			        case 'c': // Compiler
 				        word = word.Substring(1);
                         action = word[0];
@@ -134,7 +131,7 @@ namespace CompiledScript.Runner
                                 int ignorer = bodyLength;
                                 position += ignorer;
 
-                                string test = program[position];
+                                //string test = program[position];
                             }
 				        }
                         else if (action == 'j') // jmp
@@ -145,7 +142,7 @@ namespace CompiledScript.Runner
 					        position -= 2;
 						    position -= jmpLength;
 
-                            string test = program[position];
+                            //string test = program[position];
 				        }
 				        break;
 			        case 'm': // Memory function
@@ -227,8 +224,8 @@ namespace CompiledScript.Runner
             if (nom == "eval")
             {
                 SourceCodeReader reader = new SourceCodeReader();
-                Node program = reader.Read(param.ElementAt(0));
-                string contenuBin = CompilerWriter.Compile(program, false);
+                Node programTmp = reader.Read(param.ElementAt(0));
+                string contenuBin = CompilerWriter.Compile(programTmp, false);
                 BasicRunner basicReader = new BasicRunner();
                 basicReader.Init(contenuBin);
                 basicReader.Execute(false, false);
@@ -256,10 +253,9 @@ namespace CompiledScript.Runner
                 bool continuer = nbParams > 0;
                 int i = 0;
                 string result = "false";
-                string condition;
                 while (continuer)
                 {
-                    condition = param.ElementAt(i);
+                    var condition = param.ElementAt(i);
                     condition = condition.ToLower();
 
                     if (condition != "false" && condition != "0")
@@ -278,10 +274,9 @@ namespace CompiledScript.Runner
                 bool continuer = nbParams > 0;
                 int i = 0;
                 string result = continuer + "";
-                string condition;
                 while (continuer)
                 {
-                    condition = param.ElementAt(i);
+                    var condition = param.ElementAt(i);
                     condition = condition.ToLower();
 
                     if (condition == "false" || condition == "0")
@@ -304,8 +299,6 @@ namespace CompiledScript.Runner
                         return null;
                     case "line":
                         return Console.ReadLine();
-                    default:
-                        break;
                 }
 
             }
@@ -333,8 +326,9 @@ namespace CompiledScript.Runner
                         string s = param.ElementAt(0).Substring(start, length);
                         return s;
                     }
-                    catch(Exception)
+                    catch(Exception ex)
                     {
+                        Console.WriteLine("Runner error: " + ex);
                     }
                 }
             }

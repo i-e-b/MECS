@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text;
 
 namespace CompiledScript.Compiler
@@ -36,19 +34,18 @@ namespace CompiledScript.Compiler
 
         public virtual string Show(int i)
         {
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
             for (int j = 0; j < i; j++)
             {
                 builder.Append("    ");
             }
             builder.Append(Text).Append('\n');
 
-            if (_children != null)
+            if (_children == null) return builder.ToString();
+
+            foreach (var node in _children)
             {
-                foreach (var node in _children)
-                {
-                    builder.Append(node.Show(i + 1));
-                }
+                builder.Append(node.Show(i + 1));
             }
             return builder.ToString();
         }

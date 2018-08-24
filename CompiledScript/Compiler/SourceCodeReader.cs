@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Text;
 
 namespace CompiledScript.Compiler
@@ -15,28 +13,25 @@ namespace CompiledScript.Compiler
             return root;
         }
 
-        private int Read(string source, Node root, int position)
+        private void Read(string source, Node root, int position)
         {
 		    int i = position;
 		    int taille = source.Length;
             Node current = root;
-            Node parent;
-		    Node tmp;
 
-		    char car;
-
-		    while (i < taille)
+            while (i < taille)
             {
-			    i = Skip(source, i, new char[]{' ', '\t', '\n', ';', '\r'} );
+			    i = Skip(source, i, new[]{' ', '\t', '\n', ';', '\r'} );
 
 			    if (i >= taille)
                 {
 				    break;
 			    }
 
-			    car = source.ElementAt(i);
+			    var car = source.ElementAt(i);
 
-			    if (car == '(')
+                Node parent;
+                if (car == '(')
                 {
 				    parent = current;
 				    current = new Node(false);
@@ -56,74 +51,75 @@ namespace CompiledScript.Compiler
                 {
 				    // Ignore.
 			    }
-                else if (car == '"' || car == '\'')
-                {
-                    i++;
-				    string words = ReadString(source, ref i, car);
-				    tmp = new Node(true);
-				    tmp.Text = words;
-				    current.Children.AddLast(tmp);
-			    }
                 else
                 {
-                    string word = ReadWord(source, i);
-				    if (word.Length != 0)
+                    Node tmp;
+                    if (car == '"' || car == '\'')
                     {
-					    i += word.Length;
+                        i++;
+                        string words = ReadString(source, ref i, car);
+                        tmp = new Node(true);
+                        tmp.Text = words;
+                        current.Children.AddLast(tmp);
+                    }
+                    else
+                    {
+                        string word = ReadWord(source, i);
+                        if (word.Length != 0)
+                        {
+                            i += word.Length;
 
-                        i = Skip(source, i, new char[] { ' ', '\t', '\n', '\r' });
-					    if (i >= taille)
-                        {
-						    // TODO ... handle ?
-						    break;
-					    }
-					    car = source.ElementAt(i);
-					    if (car == '(')
-                        {
-						    parent = current;
-						    current = new Node(false);
-						    current.Text = word;
+                            i = Skip(source, i, new[] { ' ', '\t', '\n', '\r' });
+                            if (i >= taille)
+                            {
+                                // TODO ... handle ?
+                                break;
+                            }
+                            car = source.ElementAt(i);
+                            if (car == '(')
+                            {
+                                parent = current;
+                                current = new Node(false);
+                                current.Text = word;
 
-						    current.Parent = parent;
-						    parent.Children.AddLast(current);
-					    }
-                        else
-                        {
-                            //if (car == ')')
-                            //{
-							    i--;
-						    //}
-						    tmp = new Node(true);
-						    tmp.Text = word;
-						    current.Children.AddLast(tmp);
-					    }
-				    }
-			    }
-			    i++;
+                                current.Parent = parent;
+                                parent.Children.AddLast(current);
+                            }
+                            else
+                            {
+                                //if (car == ')')
+                                //{
+                                i--;
+                                //}
+                                tmp = new Node(true);
+                                tmp.Text = word;
+                                current.Children.AddLast(tmp);
+                            }
+                        }
+                    }
+                }
+
+                i++;
 		    }
-		    return i;
-	    }
+        }
 
         public static int Skip(string exp, int position, char[] cars)
         {
             int i = position;
             int taille = exp.Length;
-            char car;
-            bool found;
 
             while (i < taille)
             {
-                car = exp.ElementAt(i);
-                found = false;
+                var car = exp.ElementAt(i);
+                var found = false;
 
                 foreach (char c in cars)
                 {
-                    if (c == car)
-                    {
-                        i++;
-                        found = true;
-                        break;
-                    }
+                    if (c != car) continue;
+
+                    i++;
+                    found = true;
+                    break;
                 }
                 if (!found)
                 {
@@ -138,17 +134,15 @@ namespace CompiledScript.Compiler
         {
             int i = position;
             int taille = exp.Length;
-            char car;
-            StringBuilder builder = new StringBuilder();
-            int nb = 0;
+            var builder = new StringBuilder();
 
             while (i < taille)
             {
-                car = exp.ElementAt(i);
+                var car = exp.ElementAt(i);
 
                 if (car == '\\')
                 {
-                    nb = 0;
+                    var nb = 0;
                     i++;
                     while (i < taille)
                     {
@@ -195,12 +189,11 @@ namespace CompiledScript.Compiler
         {
             int i = position;
             int taille = exp.Length;
-            char car;
-            StringBuilder builder = new StringBuilder();
+            var builder = new StringBuilder();
 
             while (i < taille)
             {
-                car = exp.ElementAt(i);
+                var car = exp.ElementAt(i);
 
                 if (car == ' ' || car == '\n' || car == '\t' || car == ')'
                         || car == '(' || car == ',' || car == '\r')

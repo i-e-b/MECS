@@ -9,7 +9,7 @@ namespace CompiledScript
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             var content = File.ReadAllText("program.txt");
             Execute(content, false, new Dictionary<string, string>());
