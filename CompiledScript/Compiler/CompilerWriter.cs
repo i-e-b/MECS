@@ -42,11 +42,12 @@ namespace CompiledScript.Compiler
         /// <summary>
         /// Function/Program compiler. This is called recursively when subroutines are found
         /// </summary>
-        public static string Compile(Node root, int indent, bool debug, Scope parameterNames)
+        public static ProgramFragment Compile(Node root, int indent, bool debug, Scope parameterNames)
         {
 		    var sb = new StringBuilder();
+            var result = new ProgramFragment { ReturnsValues = false };
 
-		    if (root.IsLeaf)
+            if (root.IsLeaf)
             {
                 var valueName = root.Text;
                 if (parameterNames.CanResolve(valueName)) valueName = parameterNames.Resolve(valueName);
@@ -84,7 +85,7 @@ namespace CompiledScript.Compiler
 					    }
                         else if (IsFlowControl(node))
 					    {
-					        CompileConditionOrLoop(indent, debug, container, node, sb, parameterNames);
+					        result.ReturnsValues |= CompileConditionOrLoop(indent, debug, container, node, sb, parameterNames);
 					    }
                         else if (IsFunctionDefinition(node))
                         {
@@ -92,7 +93,7 @@ namespace CompiledScript.Compiler
                         }
                         else
 					    {
-					        CompileFunctionCall(indent, debug, sb, node, parameterNames);
+					        result.ReturnsValues |= CompileFunctionCall(indent, debug, sb, node, parameterNames);
 					    }
 				    }
                     else
@@ -101,7 +102,9 @@ namespace CompiledScript.Compiler
 				    }
 			    }
 		    }
-		    return sb.ToString();
+
+            result.ByteCode = sb.ToString();
+		    return result;
 	    }
 
         private static string EscapeEncodedTextForDebug(Node root)
@@ -197,8 +200,9 @@ namespace CompiledScript.Compiler
             sb.Append("\r\n");
         }
 
-        private static void CompileConditionOrLoop(int level, bool debug, Node container, Node node, StringBuilder sb, Scope parameterNames)
+        private static bool CompileConditionOrLoop(int level, bool debug, Node container, Node node, StringBuilder sb, Scope parameterNames)
         {
+            bool returns = false;
             if (container.Children.Count < 1)
             {
                 throw new ArgumentException(node.Text + " required parameter(s)");
@@ -209,7 +213,9 @@ namespace CompiledScript.Compiler
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
-            string compiledCondition = Compile(condition, level + 1, debug, parameterNames);
+            var compilerOutput = Compile(condition, level + 1, debug, parameterNames);
+            returns |= compilerOutput.ReturnsValues;
+            string compiledCondition = compilerOutput.ByteCode;
 
             if (debug)
             {
@@ -227,9 +233,10 @@ namespace CompiledScript.Compiler
             }
 
             body.Text = "()";
-            string compileBody = Compile(body, level + 1, debug, parameterNames);
+            var compiledBody = Compile(body, level + 1, debug, parameterNames);
+            returns |= compiledBody.ReturnsValues;
 
-            string clean = FileReader.RemoveInlineComment(compileBody);
+            string clean = FileReader.RemoveInlineComment(compiledBody.ByteCode);
 
 
             List<string> elementsBody = new List<string>();
@@ -290,7 +297,7 @@ namespace CompiledScript.Compiler
             //builder.Append(" ");
             sb.Append("\r\n");
 
-            sb.Append(compileBody);
+            sb.Append(compiledBody.ByteCode);
 
             if (boucle)
             {
@@ -321,9 +328,13 @@ namespace CompiledScript.Compiler
                     sb.Append("\r\n");
                 }
             }
+            return returns;
         }
 
-        private static void CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node, Scope parameterNames)
+        /// <summary>
+        /// Compile a function call. Returns true if it's a call to return a value
+        /// </summary>
+        private static bool CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node, Scope parameterNames)
         {
             sb.Append(Compile(node, level + 1, debug, parameterNames));
 
@@ -341,6 +352,8 @@ namespace CompiledScript.Compiler
             sb.Append(node.Text).Append(" ");
             sb.Append(node.Children.Count); // parameter count
             sb.Append("\r\n");
+
+            return node.Text == "return";
         }
 
         private static void CompileFunctionDefinition(int level, bool debug, Node node, StringBuilder sb, Scope parameterNames)
@@ -367,7 +380,7 @@ namespace CompiledScript.Compiler
             ParameterPositions(parameterNames, definitionNode.Children.Select(c => c.Text));
 
             var subroutine = Compile(bodyNode, level, debug, parameterNames);
-            var tokenCount = subroutine.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            var tokenCount = subroutine.ByteCode.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
             if (debug)
             {
@@ -391,9 +404,16 @@ namespace CompiledScript.Compiler
             sb.Append(subroutine);
             sb.Append("\r\n");
 
-            // Add the 'return' call
-            sb.Append("cret\r\n");
-
+            if (subroutine.ReturnsValues)
+            {
+                // Add an invalid return opcode. This will show an error message.
+                sb.Append("ct" + functionName + "\r\n");
+            }
+            else
+            {
+                // Add the 'return' call
+                sb.Append("cret\r\n");
+            }
 
             // Then the runner will need to interpret both the new op-codes
             // This would include a return-stack-push for calling functions,
@@ -416,6 +436,17 @@ namespace CompiledScript.Compiler
                 parameterNames.SetValue(paramName, Scope.NameFor(i)); // Pattern for positional vars.
                 i++;
             }
+        }
+    }
+
+    internal struct ProgramFragment
+    {
+        public string ByteCode;
+        public bool ReturnsValues;
+
+        public override string ToString()
+        {
+            return ByteCode;
         }
     }
 }

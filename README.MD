@@ -3,11 +3,11 @@ Parse and compile a prefix expression (source code) to a postfix expression (com
 
 ## TODO
 
-* [-] Add custom subroutines
-* [ ] Add value returns
+* [x] Add custom subroutines
+* [x] Add value returns (I want to catch failure to return early, without having to define too much)
 * [ ] Add language specs to readme
 * [ ] Import files
-* [ ] Syntax sugar
+* [ ] Syntax sugar (treat `variableName` as `get(variableName)`, etc)
 * [ ] Memory model (heap, arrays)
 * [ ] Move value definitions into memory
 * [ ] change assm definition to be less stringy

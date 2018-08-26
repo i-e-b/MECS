@@ -1,14 +1,17 @@
 ﻿set(i 0)
 
-// TODO: Define a custom function
+// Define a custom function
 def (
-    myFunc (param1 param2) ( // the parameters are just a helper for decomposing the generic param list
+    CustomSubroutine (param1 param2) ( // parameters can be modified, but don't affect the caller
         set(localVar, 1)
         
         print("this is a custom subroutine.")
-        print(get(param1) ", ", ()) // this should get the param1 value passed in
-        print(get(param2) ", ", ()) // and this the second one.
+        print(get(param1) ", " ()) // this should get the param1 value passed in. A `()` at the end of the param list prevents the newline
+        print(get(param2) ", " ()) // and this the second one.
         print(get(param1)) // should get the first one again
+        
+        set(param2, "done!")
+        print(get(param2)) // and this the second one.
         
         if (isset(localVar)
             print("The local variable is defined as " get(localVar))
@@ -16,20 +19,43 @@ def (
     ) // 'localVar', 'param1' and 'param2' go out of scope here
 )
 
+def (
+    FunctionThatReturns (pred) (
+        if (get(pred)
+            print("You said 'true', I will return 10")
+            return(10)
+        )
+        print("You said 'false', I will return 20")
+        return(20) // if you comment this line out, you will see the failure to return behaviour
+    )
+)
+    
+
 /* while i < 10 */
-while ( not (=(10 get(  i   )) ) // handles variable spacing
+while ( not (=(10 get(  i   )) ) // handles any quantity of white-space
 	print("Counter: " get(i))
 
 	if(=(get(i), 3)
 		// If i = 3, show this message.
 		print("this is 3.")
-        myFunc("one" "two") // call a custom function
+        CustomSubroutine("one" "two") // call a custom function
 	)
 
 	// Increment i.
-	set(i,+(get(i) 1))
+	set(i, +(get(i) 1))
 )
 
+// Demonstrate value returning functions:
+print("Calling with 'true'" ())
+set(i FunctionThatReturns(true))
+
+// This should *not* store a value, and should not push onto the stack (as it would be leaked)
+print("Calling with 'false'" ())
+FunctionThatReturns(false)
+
+print("'i' is now " get(i))
+
+// Check scopes:
 if (isset(localVar)
     print("The local variable is still set. That's wrong!")
 ) // TODO: figure out an nice way of doing if/else? Maybe `pick(idx, (), (), ...)` where idx==true would pick the first, etc?

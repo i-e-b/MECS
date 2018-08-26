@@ -159,6 +159,7 @@ namespace CompiledScript.Runner
 
                     break;
                 case 's': // set
+                    if (valueStack.Count < 1) throw new Exception("There were no values to save. Did you forget a `return` in a function?");
                     value = valueStack.Last();
                     valueStack.RemoveLast();
                     value = value.Substring(1);
@@ -206,8 +207,14 @@ namespace CompiledScript.Runner
                     position -= jmpLength;
                     break;
 
+                // term - a function that returns values ended without returning
+                case 't':
+                    throw new Exception("A function returned without setting a value. Did you miss a 'return' in '"+word.Substring(1)+"'");
+
                 // ret - pop return stack and jump to absolute position
                 case 'r':
+                    // set a special value for "void return" here, in case someone tries to use the result of a void function
+                    valueStack.AddLast("v");
                     if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
                     Variables.DropScope();
                     position = returnStack.Pop();
@@ -238,7 +245,7 @@ namespace CompiledScript.Runner
             }
 
             // Evaluate function.
-            var evalResult = Eval(ref position, word.Substring(1), nbParams, param, returnStack);
+            var evalResult = Eval(ref position, word.Substring(1), nbParams, param, returnStack, valueStack);
 
             // Add result on stack as a value.
             if (evalResult != null)
@@ -250,7 +257,7 @@ namespace CompiledScript.Runner
         }
 
         // Evaluate a function call
-	    public string Eval(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack)
+	    public string Eval(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack, LinkedList<string> valueStack)
         {
             string condition;
 
@@ -279,7 +286,7 @@ namespace CompiledScript.Runner
                     functionName = param.ElementAt(0);
                     nbParams--;
                     param.RemoveFirst();
-                    return Eval(ref position, functionName, nbParams, param, returnStack);
+                    return Eval(ref position, functionName, nbParams, param, returnStack, valueStack);
 
                 case "not" when nbParams == 1:
                     condition = param.ElementAt(0);
@@ -384,6 +391,18 @@ namespace CompiledScript.Runner
                         builder.Append(s);
                     }
                     return builder.ToString();
+
+                case "return":
+                    // need to stop flow, check we have a return stack, check value need?
+                    foreach (string s in param)
+                    {
+                        valueStack.AddLast("v" + s);
+                    }
+                    
+                    if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
+                    Variables.DropScope();
+                    position = returnStack.Pop();
+                    break;
 
 
                 default:
