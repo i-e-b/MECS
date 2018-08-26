@@ -3,9 +3,17 @@
 // TODO: Define a custom function
 def (
     myFunc (param1 param2) ( // the parameters are just a helper for decomposing the generic param list
-        print("this is a custom subroutine")
-        print(get(param1)) // this should get the param1 value passed in
-    )
+        set(localVar, 1)
+        
+        print("this is a custom subroutine.")
+        print(get(param1) ", ", ()) // this should get the param1 value passed in
+        print(get(param2) ", ", ()) // and this the second one.
+        print(get(param1)) // should get the first one again
+        
+        if (isset(localVar)
+            print("The local variable is defined as " get(localVar))
+        )
+    ) // 'localVar', 'param1' and 'param2' go out of scope here
 )
 
 /* while i < 10 */
@@ -20,6 +28,13 @@ while ( not (=(10 get(  i   )) ) // handles variable spacing
 
 	// Increment i.
 	set(i,+(get(i) 1))
+)
+
+if (isset(localVar)
+    print("The local variable is still set. That's wrong!")
+) // TODO: figure out an nice way of doing if/else? Maybe `pick(idx, (), (), ...)` where idx==true would pick the first, etc?
+if (not(isset(localVar))
+    print("The local variable from the custom function is gone. That's correct!")
 )
 
 // Optional. Remove memory definition

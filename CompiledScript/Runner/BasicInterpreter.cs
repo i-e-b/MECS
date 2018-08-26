@@ -209,6 +209,7 @@ namespace CompiledScript.Runner
                 // ret - pop return stack and jump to absolute position
                 case 'r':
                     if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
+                    Variables.DropScope();
                     position = returnStack.Pop();
                     break;
             }
@@ -341,7 +342,7 @@ namespace CompiledScript.Runner
                     {
                         Console.Write(s);
                     }
-                    Console.WriteLine();
+                    if (param.Last.Value != "") Console.WriteLine();
                     break;
 
                 case "substring" when nbParams == 2:
@@ -386,7 +387,10 @@ namespace CompiledScript.Runner
 
 
                 default:
-                    if (IsMathFunc(functionName) && nbParams == 2)
+                    if (functionName == "()") { // empty object. TODO: when we have better values, have an empty list
+                        return "";
+                    }
+                    else if (IsMathFunc(functionName) && nbParams == 2)
                     {
                         // handle math functions
                         try

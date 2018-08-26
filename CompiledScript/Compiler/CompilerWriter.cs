@@ -58,7 +58,7 @@ namespace CompiledScript.Compiler
                     sb.Append("// Value : \"");
                     sb.Append(EscapeEncodedTextForDebug(root));
                     sb.Append("\"\r\n");
-                    if (parameterNames.CanResolve(valueName)) {
+                    if (parameterNames.CanResolve(root.Text)) {
                         sb.Append("// Parameter reference redefined as '"+valueName+"'\r\n");
                     }
                     sb.Append(Fill(indent - 1, ' '));
@@ -77,7 +77,6 @@ namespace CompiledScript.Compiler
 				    node.Text = StringEncoding.Encode(node.Text);
 				    if (!node.IsLeaf)
                     {
-                        //node.Text = node.Text.ToLower();
 					    var container = node;
 					    if (IsMemoryFunction(node) )
 					    {
@@ -369,8 +368,6 @@ namespace CompiledScript.Compiler
 
             var subroutine = Compile(bodyNode, level, debug, parameterNames);
             var tokenCount = subroutine.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
-
-            Console.WriteLine(tokenCount + " subroutine opcodes for " + functionName + ":\r\n" + subroutine);
 
             if (debug)
             {
