@@ -32,9 +32,9 @@ namespace CompiledScript
 
             Console.WriteLine("\nCOMPILED SCRIPT (debug)");
             Console.WriteLine("-----------------------------------------------");
-            Console.WriteLine(CompilerWriter.Compile(reader.Read(contents), debug: true));
+            Console.WriteLine(CompilerWriter.CompileRoot(reader.Read(contents), debug: true));
 
-            string bin = CompilerWriter.Compile(program, debug: false);
+            string bin = CompilerWriter.CompileRoot(program, debug: false);
             Console.WriteLine("\nCOMPILED SCRIPT (release)");
             Console.WriteLine("-----------------------------------------------");
             Console.WriteLine(bin);
@@ -51,7 +51,7 @@ namespace CompiledScript
 
                 foreach (var pair in argsVariables.ToArray())
                 {
-                    readerBin.GlobalVariables.Add(pair.Key, pair.Value);
+                    readerBin.Variables.SetValue(pair.Key, pair.Value);
                 }
 
                 // EXECUTE

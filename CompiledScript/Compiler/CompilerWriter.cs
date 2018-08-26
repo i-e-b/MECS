@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using CompiledScript.Runner;
 using CompiledScript.Utils;
 
 namespace CompiledScript.Compiler
@@ -18,7 +19,7 @@ namespace CompiledScript.Compiler
             return sb.ToString();
         }
 
-        public static string Compile(Node root, bool debug)
+        public static string CompileRoot(Node root, bool debug)
         {
             var sb = new StringBuilder();
 
@@ -31,7 +32,9 @@ namespace CompiledScript.Compiler
                 sb.Append("*/\r\n\r\n");
             }
 
-            sb.Append(Compile(root, 0, debug));
+            var parameterNames = new Scope(); // renaming for local parameters
+
+            sb.Append(Compile(root, 0, debug, parameterNames));
 
             return sb.ToString();
         }
@@ -39,27 +42,31 @@ namespace CompiledScript.Compiler
         /// <summary>
         /// Function/Program compiler. This is called recursively when subroutines are found
         /// </summary>
-        public static string Compile(Node root, int indent, bool debug)
+        public static string Compile(Node root, int indent, bool debug, Scope parameterNames)
         {
 		    var sb = new StringBuilder();
 
 		    if (root.IsLeaf)
             {
+                var valueName = root.Text;
+                if (parameterNames.CanResolve(valueName)) valueName = parameterNames.Resolve(valueName);
+
+
                 if (debug)
                 {
                     sb.Append(Fill(indent - 1, ' '));
                     sb.Append("// Value : \"");
-                    sb.Append(
-                        StringEncoding.Decode(root.Text)
-                            .Replace("\\", "\\\\")
-                            .Replace("\t", "\\t")
-                            .Replace("\n", "\\n")
-                            .Replace("\r", ""));
+                    sb.Append(EscapeEncodedTextForDebug(root));
                     sb.Append("\"\r\n");
+                    if (parameterNames.CanResolve(valueName)) {
+                        sb.Append("// Parameter reference redefined as '"+valueName+"'\r\n");
+                    }
                     sb.Append(Fill(indent - 1, ' '));
                 }
 
-			    sb.Append("v").Append(root.Text);
+
+			    sb.Append("v");
+                sb.Append(valueName);
                 sb.Append("\r\n");
 		    }
             else
@@ -74,30 +81,39 @@ namespace CompiledScript.Compiler
 					    var container = node;
 					    if (IsMemoryFunction(node) )
 					    {
-					        CompileMemoryFunction(indent, debug, node, container, sb);
+					        CompileMemoryFunction(indent, debug, node, container, sb, parameterNames);
 					    }
                         else if (IsFlowControl(node))
 					    {
-					        CompileConditionOrLoop(indent, debug, container, node, sb);
+					        CompileConditionOrLoop(indent, debug, container, node, sb, parameterNames);
 					    }
                         else if (IsFunctionDefinition(node))
                         {
-                            CompileFunctionDefinition(indent, debug, node, sb);
+                            CompileFunctionDefinition(indent, debug, node, sb, parameterNames);
                         }
                         else
 					    {
-					        CompileFunctionCall(indent, debug, sb, node);
+					        CompileFunctionCall(indent, debug, sb, node, parameterNames);
 					    }
 				    }
                     else
                     {
-                        sb.Append(Compile(node, indent + 1, debug));
+                        sb.Append(Compile(node, indent + 1, debug, parameterNames));
 				    }
 			    }
 		    }
 		    return sb.ToString();
 	    }
-        
+
+        private static string EscapeEncodedTextForDebug(Node root)
+        {
+            return StringEncoding.Decode(root.Text)
+                .Replace("\\", "\\\\")
+                .Replace("\t", "\\t")
+                .Replace("\n", "\\n")
+                .Replace("\r", "");
+        }
+
         private static bool IsFunctionDefinition(Node node)
         {
             switch (node.Text)
@@ -138,7 +154,7 @@ namespace CompiledScript.Compiler
             }
         }
 
-        private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, StringBuilder sb)
+        private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, StringBuilder sb, Scope parameterNames)
         {
             switch (node.Text)
             {
@@ -166,7 +182,7 @@ namespace CompiledScript.Compiler
                 child.Children.AddLast(container.Children.ElementAt(i));
             }
 
-            sb.Append(Compile(child, level + 1, debug));
+            sb.Append(Compile(child, level + 1, debug, parameterNames));
 
             if (debug)
             {
@@ -182,7 +198,7 @@ namespace CompiledScript.Compiler
             sb.Append("\r\n");
         }
 
-        private static void CompileConditionOrLoop(int level, bool debug, Node container, Node node, StringBuilder sb)
+        private static void CompileConditionOrLoop(int level, bool debug, Node container, Node node, StringBuilder sb, Scope parameterNames)
         {
             if (container.Children.Count < 1)
             {
@@ -194,7 +210,7 @@ namespace CompiledScript.Compiler
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
-            string compiledCondition = Compile(condition, level + 1, debug);
+            string compiledCondition = Compile(condition, level + 1, debug, parameterNames);
 
             if (debug)
             {
@@ -212,7 +228,7 @@ namespace CompiledScript.Compiler
             }
 
             body.Text = "()";
-            string compileBody = Compile(body, level + 1, debug);
+            string compileBody = Compile(body, level + 1, debug, parameterNames);
 
             string clean = FileReader.RemoveInlineComment(compileBody);
 
@@ -308,9 +324,9 @@ namespace CompiledScript.Compiler
             }
         }
 
-        private static void CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node)
+        private static void CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node, Scope parameterNames)
         {
-            sb.Append(Compile(node, level + 1, debug));
+            sb.Append(Compile(node, level + 1, debug, parameterNames));
 
             if (debug)
             {
@@ -328,7 +344,7 @@ namespace CompiledScript.Compiler
             sb.Append("\r\n");
         }
 
-        private static void CompileFunctionDefinition(int level, bool debug, Node node, StringBuilder sb)
+        private static void CompileFunctionDefinition(int level, bool debug, Node node, StringBuilder sb, Scope parameterNames)
         {
             // 1) Compile the func to a temporary string
             // 2) Inject a new 'def' op-code, that names the function and does an unconditional jump over it.
@@ -338,11 +354,20 @@ namespace CompiledScript.Compiler
             if (node.Children.Count != 2) throw new Exception("Function definition must have 3 parts: the name, the parameter list, and the definition.\r\n" +
                                                               "Call like `def (   myFunc ( param1 param2 ) ( ... statements ... )   )`");
 
-            if (node.Children.Last.Value.Text != "()") throw new Exception("Bare functions not supported");
+            var bodyNode = node.Children.Last.Value;
+            var definitionNode = node.Children.First.Value;
 
-            var functionName = node.Children.First.Value.Text;
-            var argCount = node.Children.First.Value.Children.Count;
-            var subroutine = Compile(node.Children.Last.Value, level, debug);
+            if (definitionNode.Children.Any(c=>c.IsLeaf == false)) throw new Exception("Function parameters must be simple names.\r\n" +
+                                                                                       "`def ( myFunc (  param1  ) ( ... ) )` is OK,\r\n" +
+                                                                                       "`def ( myFunc ( (param1) ) ( ... ) )` is not OK");
+            if (bodyNode.Text != "()") throw new Exception("Bare functions not supported. Wrap you function body in (parenthesis)");
+
+            var functionName = definitionNode.Text;
+            var argCount = definitionNode.Children.Count;
+
+            ParameterPositions(parameterNames, definitionNode.Children.Select(c => c.Text));
+
+            var subroutine = Compile(bodyNode, level, debug, parameterNames);
             var tokenCount = subroutine.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
             Console.WriteLine(tokenCount + " subroutine opcodes for " + functionName + ":\r\n" + subroutine);
@@ -377,6 +402,23 @@ namespace CompiledScript.Compiler
             // This would include a return-stack-push for calling functions,
             //   a jump-to-absolute-position by name
             //   a jump-to-absolute-position by return stack & pop
+        }
+
+        /// <summary>
+        /// Map parameter names to positional names. This must match the expectations of the interpreter
+        /// </summary>
+        private static void ParameterPositions(Scope parameterNames,IEnumerable<string> paramNames)
+        {
+            parameterNames.PushScope();
+            var i = 0;
+            foreach (var paramName in paramNames)
+            {
+                if (parameterNames.InScope(paramName)) throw new Exception("Duplicate parameter '"+paramName+"'.\r\n" +
+                                                                           "All parameter names must be unique in a single function definition.");
+
+                parameterNames.SetValue(paramName, Scope.NameFor(i)); // Pattern for positional vars.
+                i++;
+            }
         }
     }
 }

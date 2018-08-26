@@ -1,8 +1,8 @@
 ﻿namespace CompiledScript.Runner
 {
-    internal struct FDef
+    internal struct FunctionDefinition
     {
         public int ParamCount;
-        public int TokenCount;
+        public int StartPosition;
     }
 }

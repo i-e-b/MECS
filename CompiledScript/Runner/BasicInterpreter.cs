@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using CompiledScript.Utils;
 using CompiledScript.Compiler;
 
@@ -11,9 +10,8 @@ namespace CompiledScript.Runner
     class BasicInterpreter
     {
         private List<string> program;
-        public Dictionary<string, string> GlobalVariables; // TODO: remove and use only scope
-        public Dictionary<string, FDef>  Functions;
-        public Scope LocalVariables;
+        public Dictionary<string, FunctionDefinition>  Functions;
+        public Scope Variables;
        
         private int words;
 
@@ -28,15 +26,15 @@ namespace CompiledScript.Runner
 
                 program.Add(StringEncoding.Decode(token));
             }
-            GlobalVariables = new Dictionary<string, string>();
-            Functions = new Dictionary<string, FDef>();
+            Variables = new Scope();
+            Functions = new Dictionary<string, FunctionDefinition>();
         }
 
         public string Execute(bool resetVars, bool verbose)
         {
 		    string evalResult;
 
-            if (resetVars) { GlobalVariables.Clear(); }
+            if (resetVars) { Variables.Clear(); }
 
 		    var valueStack = new LinkedList<string>();
             var returnStack = new Stack<int>(); // absolute position for call and return TODO: implement 
@@ -78,7 +76,7 @@ namespace CompiledScript.Runner
 				        break;
 
 			        case 'f': // Function *CALLS*
-				        position = HandleFunctionCall(position, param, valueStack, word);
+				        position = HandleFunctionCall(position, param, valueStack, word, returnStack);
 			            break;
 
 			        case 'c': // flow Control -- conditions, jumps etc
@@ -126,8 +124,8 @@ namespace CompiledScript.Runner
             var paramCount = TryParseInt(program[position + 1]);
             var offset = TryParseInt(program[position + 2]);
 
-            Functions.Add(funcName, new FDef{
-                TokenCount = position + 2,
+            Functions.Add(funcName, new FunctionDefinition{
+                StartPosition = position + 2,
                 ParamCount = paramCount
             });
 
@@ -140,6 +138,7 @@ namespace CompiledScript.Runner
             var action = word[0];
 
             string varName = valueStack.Last();
+            string value;
             valueStack.RemoveLast();
             varName = varName.Substring(1);
 
@@ -147,9 +146,10 @@ namespace CompiledScript.Runner
             {
                 case 'g': // get (adds a value to the stack, false if not set)
                     // TODO: need to scopes for function calls
-                    if (GlobalVariables.ContainsKey(varName))
+                    value = Variables.Resolve(varName);
+                    if (value != null)
                     {
-                        valueStack.AddLast("v" + GlobalVariables[varName]);
+                        valueStack.AddLast("v" + value);
                     }
                     else
                     {
@@ -159,20 +159,16 @@ namespace CompiledScript.Runner
 
                     break;
                 case 's': // set
-                    string value = valueStack.Last();
+                    value = valueStack.Last();
                     valueStack.RemoveLast();
-                    //value = StringEncoding.decode(valeur).Substring(1);
                     value = value.Substring(1);
-                    {
-                        GlobalVariables.Remove(varName);
-                    }
-                    GlobalVariables[varName] = value;
+                    Variables.SetValue(varName, value);
                     break;
                 case 'i': // is set? (adds a bool to the stack)
-                    valueStack.AddLast("v" + GlobalVariables.ContainsKey(varName));
+                    valueStack.AddLast("v" + Variables.CanResolve(varName));
                     break;
                 case 'u': // unset
-                    GlobalVariables.Remove(varName);
+                    Variables.Remove(varName);
                     break;
             }
         }
@@ -220,11 +216,12 @@ namespace CompiledScript.Runner
             return position;
         }
 
-        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word)
+        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word, Stack<int> returnStack)
         {
             position++;
             var nbParams = TryParseInt(program[position].Trim());
             param.Clear();
+
             // Pop values from stack.
             for (int i = 0; i < nbParams; i++)
             {
@@ -235,12 +232,12 @@ namespace CompiledScript.Runner
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Runner error: " + ex);
+                    Console.WriteLine("Stack underflow. Ran out of values before function call at " + position + ": " + ex);
                 }
             }
 
             // Evaluate function.
-            var evalResult = Eval(word.Substring(1), nbParams, param);
+            var evalResult = Eval(ref position, word.Substring(1), nbParams, param, returnStack);
 
             // Add result on stack as a value.
             if (evalResult != null)
@@ -252,9 +249,8 @@ namespace CompiledScript.Runner
         }
 
         // Evaluate a function call
-	    public string Eval(string functionName, int nbParams, LinkedList<string> param)
+	    public string Eval(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack)
         {
-            //functionName = functionName.ToLower(); // uncomment to make case insensitive
             string condition;
 
 		    if (functionName == "()" && nbParams != 0)
@@ -272,7 +268,7 @@ namespace CompiledScript.Runner
                 case "eval":
                     SourceCodeReader reader = new SourceCodeReader();
                     Node programTmp = reader.Read(param.ElementAt(0));
-                    string contenuBin = CompilerWriter.Compile(programTmp, false);
+                    string contenuBin = CompilerWriter.CompileRoot(programTmp, false);
                     BasicInterpreter basicReader = new BasicInterpreter();
                     basicReader.Init(contenuBin);
                     basicReader.Execute(false, false);
@@ -282,7 +278,7 @@ namespace CompiledScript.Runner
                     functionName = param.ElementAt(0);
                     nbParams--;
                     param.RemoveFirst();
-                    return Eval(functionName, nbParams, param);
+                    return Eval(ref position, functionName, nbParams, param, returnStack);
 
                 case "not" when nbParams == 1:
                     condition = param.ElementAt(0);
@@ -392,6 +388,7 @@ namespace CompiledScript.Runner
                 default:
                     if (IsMathFunc(functionName) && nbParams == 2)
                     {
+                        // handle math functions
                         try
                         {
                             return EvalMath(functionName[0], TryParseInt(param.ElementAt(0)),
@@ -401,20 +398,23 @@ namespace CompiledScript.Runner
                         {
                             return "Math Error : " + e.Message;
                         }
-                    } else if (Functions.ContainsKey(functionName)) {
-                        // TODO: call the function
-                        LocalVariables.PushScope(param);
-                        throw new  Exception("Known function '"+functionName+"'; Expects 2 parameters, loaded: "+string.Join(", ",param));
-                        // Not entirely sure how to pass parameters, and pick them up on the other side
-
-                    } else {
-                        throw new Exception("Tried to call an undefined function '" + functionName + "'\r\nKnown functions: "+string.Join(", ", Functions.Keys));
                     }
+                    else if (Functions.ContainsKey(functionName))
+                    {
+                        // handle functions that are defined in the program
 
-                    break;
+                        Variables.PushScope(param); // write parameters into new scope
+                        returnStack.Push(position); // set position for 'cret' call
+                        position = Functions[functionName].StartPosition; // move pointer to start of function
+                        return null; // return no value, continue execution elsewhere
+                    }
+                    else
+                    {
+                        throw new Exception("Tried to call an undefined function '" + functionName + "'\r\nKnown functions: " + string.Join(", ", Functions.Keys));
+                    }
             }
 
-		    return null; // Void.
+            return null; // Void.
 	    }
 
         private bool IsMathFunc(string functionName)
