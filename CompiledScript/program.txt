@@ -1,9 +1,12 @@
 ﻿set(i 0)
 
 // TODO: Define a custom function
-/*myFunc () ( 
-    print("this is a custom subroutine")
-)*/
+def (
+    myFunc (param1 param2) ( // the parameters are just a helper for decomposing the generic param list
+        print("this is a custom subroutine")
+        print(get(param1)) // this should get the param1 value passed in
+    )
+)
 
 /* while i < 10 */
 while ( not (=(10 get(  i   )) ) // handles variable spacing
@@ -12,6 +15,7 @@ while ( not (=(10 get(  i   )) ) // handles variable spacing
 	if(=(get(i), 3)
 		// If i = 3, show this message.
 		print("this is 3.")
+        myFunc("one" "two") // call a custom function
 	)
 
 	// Increment i.

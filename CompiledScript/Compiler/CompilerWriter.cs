@@ -60,7 +60,6 @@ namespace CompiledScript.Compiler
                 }
 
 			    sb.Append("v").Append(root.Text);
-			    //builder.Append(" ");
                 sb.Append("\r\n");
 		    }
             else
@@ -83,7 +82,7 @@ namespace CompiledScript.Compiler
 					    }
                         else if (IsFunctionDefinition(node))
                         {
-                            CompileFunctionDefinition(indent, debug, container, node, sb);
+                            CompileFunctionDefinition(indent, debug, node, sb);
                         }
                         else
 					    {
@@ -326,20 +325,53 @@ namespace CompiledScript.Compiler
             sb.Append("f");
             sb.Append(node.Text).Append(" ");
             sb.Append(node.Children.Count); // parameter count
-            //builder.Append(" ");
             sb.Append("\r\n");
         }
 
-        private static void CompileFunctionDefinition(int level, bool debug, Node container, Node node, StringBuilder sb)
+        private static void CompileFunctionDefinition(int level, bool debug, Node node, StringBuilder sb)
         {
-            // TODO: implement.
-            // The first pass will probably go something like:
             // 1) Compile the func to a temporary string
             // 2) Inject a new 'def' op-code, that names the function and does an unconditional jump over it.
             // 3) Inject the compiled func
             // 4) Inject a new 'return' op-code
 
-            Console.WriteLine("I see a function call: " + node.Text);
+            if (node.Children.Count != 2) throw new Exception("Function definition must have 3 parts: the name, the parameter list, and the definition.\r\n" +
+                                                              "Call like `def (   myFunc ( param1 param2 ) ( ... statements ... )   )`");
+
+            if (node.Children.Last.Value.Text != "()") throw new Exception("Bare functions not supported");
+
+            var functionName = node.Children.First.Value.Text;
+            var argCount = node.Children.First.Value.Children.Count;
+            var subroutine = Compile(node.Children.Last.Value, level, debug);
+            var tokenCount = subroutine.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
+
+            Console.WriteLine(tokenCount + " subroutine opcodes for " + functionName + ":\r\n" + subroutine);
+
+            if (debug)
+            {
+                sb.Append(Fill(level, ' '));
+                sb.Append("// Function definition : \"" + functionName);
+                sb.Append("\" with " + argCount);
+                sb.Append(" parameter(s)");
+                sb.Append("\r\n");
+                sb.Append(Fill(level, ' '));
+            }
+            
+            sb.Append("d");
+            sb.Append(functionName);
+            sb.Append(" ");
+            sb.Append(argCount);
+            sb.Append(" ");
+            sb.Append(tokenCount); // relative jump to skip the function opcodes
+            sb.Append("\r\n");
+
+            // Write the actual function
+            sb.Append(subroutine);
+            sb.Append("\r\n");
+
+            // Add the 'return' call
+            sb.Append("cret\r\n");
+
 
             // Then the runner will need to interpret both the new op-codes
             // This would include a return-stack-push for calling functions,

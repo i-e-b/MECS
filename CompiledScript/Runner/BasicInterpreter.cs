@@ -8,36 +8,41 @@ using CompiledScript.Compiler;
 
 namespace CompiledScript.Runner
 {
-    class BasicRunner
+    class BasicInterpreter
     {
         private List<string> program;
-        public Dictionary<string, string> Variables { get; set;}
+        public Dictionary<string, string> GlobalVariables; // TODO: remove and use only scope
+        public Dictionary<string, FDef>  Functions;
+        public Scope LocalVariables;
+       
         private int words;
 
         public virtual void Init(string bin)
         {
             program = new List<string>();
-            foreach (string s in bin.Replace("\t", " ").Replace("\n", " ").Replace("\r", " ").Split(' '))
+
+            var tokens = bin.Split('\t', '\n', '\r', ' ');
+            foreach (var token in tokens)
             {
-                if (s.Length != 0)
-                {
-                    program.Add(StringEncoding.Decode(s));
-                }
+                if (token.Length == 0) continue;
+
+                program.Add(StringEncoding.Decode(token));
             }
-            Variables = new Dictionary<string, string>();
+            GlobalVariables = new Dictionary<string, string>();
+            Functions = new Dictionary<string, FDef>();
         }
 
         public string Execute(bool resetVars, bool verbose)
         {
 		    string evalResult;
 
-            if (resetVars) { Variables.Clear(); }
+            if (resetVars) { GlobalVariables.Clear(); }
 
 		    var valueStack = new LinkedList<string>();
             var returnStack = new Stack<int>(); // absolute position for call and return TODO: implement 
 		    
             var param = new LinkedList<string>();
-            int position = 0;
+            int position = 0; // the PC. This is in TOKEN positions, not bytes
 		    int programCount = program.Count;
 		    
 		    while (position < programCount)
@@ -72,23 +77,29 @@ namespace CompiledScript.Runner
 				        valueStack.AddLast(word);
 				        break;
 
-			        case 'f': // Function CALL
+			        case 'f': // Function *CALLS*
 				        position = HandleFunctionCall(position, param, valueStack, word);
 			            break;
 
-			        case 'c': // Controls -- conditions, jumps etc
-				        position = HandleControlSignal(word, valueStack, position);
+			        case 'c': // flow Control -- conditions, jumps etc
+				        position = HandleControlSignal(word, valueStack, returnStack, position);
 			            break;
 
 			        case 'm': // Memory access - get|set|isset|unset
 				        HandleMemoryAccess(word, valueStack);
 			            break;
 
-			        case 's':
-				        // Reserved for system operation.
+			        case 's': // reserved for System operation.
 				        break;
-			    }
-			    position++;
+
+                    case 'd': // function Definition
+                        position = HandleFunctionDefinition(word, position);
+                        break;
+
+                    default:
+                        throw new Exception("Unexpected op code at " + position + " : " + word);
+                }
+                position++;
 		    }
 
 		    if (valueStack.Count != 0)
@@ -106,6 +117,23 @@ namespace CompiledScript.Runner
 		    return evalResult;
 	    }
 
+        private int HandleFunctionDefinition(string word, int position)
+        {
+            // [d, FunctionName] [parameter count] [skip length]
+
+            var funcName = word.Substring(1);
+            if (Functions.ContainsKey(funcName)) throw new Exception("Function '"+funcName+"' redefined at "+position+". Original at "+Functions[funcName]);
+            var paramCount = TryParseInt(program[position + 1]);
+            var offset = TryParseInt(program[position + 2]);
+
+            Functions.Add(funcName, new FDef{
+                TokenCount = position + 2,
+                ParamCount = paramCount
+            });
+
+            return position + offset + 3; // + definition length + args
+        }
+
         private void HandleMemoryAccess(string word, LinkedList<string> valueStack)
         {
             word = word.Substring(1);
@@ -118,9 +146,10 @@ namespace CompiledScript.Runner
             switch (action)
             {
                 case 'g': // get (adds a value to the stack, false if not set)
-                    if (Variables.ContainsKey(varName))
+                    // TODO: need to scopes for function calls
+                    if (GlobalVariables.ContainsKey(varName))
                     {
-                        valueStack.AddLast("v" + Variables[varName]);
+                        valueStack.AddLast("v" + GlobalVariables[varName]);
                     }
                     else
                     {
@@ -135,20 +164,20 @@ namespace CompiledScript.Runner
                     //value = StringEncoding.decode(valeur).Substring(1);
                     value = value.Substring(1);
                     {
-                        Variables.Remove(varName);
+                        GlobalVariables.Remove(varName);
                     }
-                    Variables[varName] = value;
+                    GlobalVariables[varName] = value;
                     break;
-                case 'i': // is set (adds a bool to the stack)
-                    valueStack.AddLast("v" + Variables.ContainsKey(varName));
+                case 'i': // is set? (adds a bool to the stack)
+                    valueStack.AddLast("v" + GlobalVariables.ContainsKey(varName));
                     break;
                 case 'u': // unset
-                    Variables.Remove(varName);
+                    GlobalVariables.Remove(varName);
                     break;
             }
         }
 
-        private int HandleControlSignal(string word, LinkedList<string> valueStack, int position)
+        private int HandleControlSignal(string word, LinkedList<string> valueStack, Stack<int> returnStack,  int position)
         {
             word = word.Substring(1);
             var action = word[0];
@@ -170,8 +199,8 @@ namespace CompiledScript.Runner
                     {
                         position += bodyLength;
                     }
-
                     break;
+
                 // jmp - unconditional relative jump *UP*
                 case 'j':
                     position++;
@@ -179,8 +208,12 @@ namespace CompiledScript.Runner
                     int jmpLength = TryParseInt(jmpLengthString);
                     position -= 2;
                     position -= jmpLength;
+                    break;
 
-                    //string test = program[position];
+                // ret - pop return stack and jump to absolute position
+                case 'r':
+                    if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
+                    position = returnStack.Pop();
                     break;
             }
 
@@ -221,7 +254,7 @@ namespace CompiledScript.Runner
         // Evaluate a function call
 	    public string Eval(string functionName, int nbParams, LinkedList<string> param)
         {
-            functionName = functionName.ToLower();
+            //functionName = functionName.ToLower(); // uncomment to make case insensitive
             string condition;
 
 		    if (functionName == "()" && nbParams != 0)
@@ -240,7 +273,7 @@ namespace CompiledScript.Runner
                     SourceCodeReader reader = new SourceCodeReader();
                     Node programTmp = reader.Read(param.ElementAt(0));
                     string contenuBin = CompilerWriter.Compile(programTmp, false);
-                    BasicRunner basicReader = new BasicRunner();
+                    BasicInterpreter basicReader = new BasicInterpreter();
                     basicReader.Init(contenuBin);
                     basicReader.Execute(false, false);
                     break;
@@ -357,7 +390,7 @@ namespace CompiledScript.Runner
 
 
                 default:
-                    if (Regex.IsMatch(functionName, "^[\\+|\\-|\\*|\\/|\\%]$") && nbParams == 2)
+                    if (IsMathFunc(functionName) && nbParams == 2)
                     {
                         try
                         {
@@ -368,6 +401,14 @@ namespace CompiledScript.Runner
                         {
                             return "Math Error : " + e.Message;
                         }
+                    } else if (Functions.ContainsKey(functionName)) {
+                        // TODO: call the function
+                        LocalVariables.PushScope(param);
+                        throw new  Exception("Known function '"+functionName+"'; Expects 2 parameters, loaded: "+string.Join(", ",param));
+                        // Not entirely sure how to pass parameters, and pick them up on the other side
+
+                    } else {
+                        throw new Exception("Tried to call an undefined function '" + functionName + "'\r\nKnown functions: "+string.Join(", ", Functions.Keys));
                     }
 
                     break;
@@ -376,7 +417,23 @@ namespace CompiledScript.Runner
 		    return null; // Void.
 	    }
 
-	    private static int TryParseInt(string s)
+        private bool IsMathFunc(string functionName)
+        {
+            if (functionName.Length != 1) return false;
+            switch (functionName[0])
+            {
+                case '+':
+                case '-':
+                case '*':
+                case '/':
+                case '%':
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static int TryParseInt(string s)
         {
             int.TryParse(s, out int result);
             return result;

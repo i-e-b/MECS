@@ -1,6 +1,17 @@
 # Compiled Script
 Parse and compile a prefix expression (source code) to a postfix expression (compiled source code).
 
+## TODO
+
+* [-] Add custom subroutines
+* [ ] Add value returns
+* [ ] Add language specs to readme
+* [ ] Import files
+* [ ] Syntax sugar
+* [ ] Memory model (heap, arrays)
+* [ ] Move value definitions into memory
+* [ ] change assm definition to be less stringy
+
 ## First, compose the script.
 ```
 set(i 0)

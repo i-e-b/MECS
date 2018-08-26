@@ -44,14 +44,14 @@ namespace CompiledScript
             string contenuBinRead = FileReader.ReadContent(File.ReadAllText("bin.txt"), true);
             try
             {
-                var readerBin = new BasicRunner();
+                var readerBin = new BasicInterpreter();
 
                 // Init the interpreter.
                 readerBin.Init(contenuBinRead);
 
                 foreach (var pair in argsVariables.ToArray())
                 {
-                    readerBin.Variables.Add(pair.Key, pair.Value);
+                    readerBin.GlobalVariables.Add(pair.Key, pair.Value);
                 }
 
                 // EXECUTE
