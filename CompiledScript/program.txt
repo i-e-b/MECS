@@ -29,7 +29,15 @@ def (
         return(20) // if you comment this line out, you will see the failure to return behaviour
     )
 )
-    
+
+def (
+    weird-names-are-ok? () (
+        print("Complex names are \"fine\"")
+        print('string quoting?')
+    )
+)
+
+weird-names-are-ok? ()
 
 /* while i < 10 */
 while ( not (=(10 get(  i   )) ) // handles any quantity of white-space

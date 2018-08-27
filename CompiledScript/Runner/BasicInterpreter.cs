@@ -207,7 +207,7 @@ namespace CompiledScript.Runner
                     position -= jmpLength;
                     break;
 
-                // term - a function that returns values ended without returning
+                // ct - call term - a function that returns values ended without returning
                 case 't':
                     throw new Exception("A function returned without setting a value. Did you miss a 'return' in '"+word.Substring(1)+"'");
 
@@ -261,7 +261,7 @@ namespace CompiledScript.Runner
         {
             string condition;
 
-		    if (functionName == "()" && nbParams != 0)
+		    if (functionName == "()" && nbParams != 0) // todo: better listing behaviour
             {
 			    return param.ElementAt(nbParams - 1);
 		    }
@@ -276,9 +276,9 @@ namespace CompiledScript.Runner
                 case "eval":
                     SourceCodeReader reader = new SourceCodeReader();
                     Node programTmp = reader.Read(param.ElementAt(0));
-                    string contenuBin = CompilerWriter.CompileRoot(programTmp, false);
+                    string bin = CompilerWriter.CompileRoot(programTmp, false);
                     BasicInterpreter basicReader = new BasicInterpreter();
-                    basicReader.Init(contenuBin);
+                    basicReader.Init(bin);
                     basicReader.Execute(false, false);
                     break;
 
@@ -297,10 +297,10 @@ namespace CompiledScript.Runner
 
                 case "or":
                 {
-                    bool continuer = nbParams > 0;
+                    bool more = nbParams > 0;
                     int i = 0;
                     string result = "false";
-                    while (continuer)
+                    while (more)
                     {
                         condition = param.ElementAt(i);
                         condition = condition.ToLower();
@@ -311,19 +311,19 @@ namespace CompiledScript.Runner
                             break;
                         }
                         i++;
-                        continuer = i < nbParams;
+                        more = i < nbParams;
                     }
                     return result;
                 }
 
                 case "and":
                 {
-                    bool continuer = nbParams > 0;
+                    bool more = nbParams > 0;
                     int i = 0;
-                    string result = continuer + "";
-                    while (continuer)
+                    string result = more + "";
+                    while (more)
                     {
-                         condition = param.ElementAt(i);
+                        condition = param.ElementAt(i);
                         condition = condition.ToLower();
 
                         if (condition == "false" || condition == "0")
@@ -332,14 +332,13 @@ namespace CompiledScript.Runner
                             break;
                         }
                         i++;
-                        continuer = i < nbParams;
+                        more = i < nbParams;
                     }
                     return result;
                 }
 
                 case "readkey":
-                    Console.ReadKey();
-                    return null;
+                    return Console.ReadKey().KeyChar.ToString();
 
                 case "readline":
                     return Console.ReadLine();
@@ -409,7 +408,7 @@ namespace CompiledScript.Runner
                     if (functionName == "()") { // empty object. TODO: when we have better values, have an empty list
                         return "";
                     }
-                    else if (IsMathFunc(functionName) && nbParams == 2)
+                    else if (IsMathFunc(functionName) && nbParams == 2) // TODO: allow list math
                     {
                         // handle math functions
                         try
@@ -485,7 +484,7 @@ namespace CompiledScript.Runner
 			        }
 			        return (opa % opb) + "";
 		    }
-		    return "Error Math : unknow op : " + op;
+		    return "Error Math : unknown op : " + op;
 	    }
     }
 }

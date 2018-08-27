@@ -1,0 +1,37 @@
+// Simple example of evaluation
+
+set(i 10)
+while ( not(=(get(i) 0))
+    if ( %(get(i) 2)
+        print(get(i))
+    )
+    set(i -(get(i) 1))
+) // 10 9 8 7 6 5 4 3 2 1
+
+eval("print('Hello, world') print('This is a program inside a program')")
+
+
+// 'Call' functionality
+
+set(i "print")
+call(get(i) "Hello, world") // call print by name
+unset(i)
+
+
+// function defs
+def (
+    timesTwo (x) (
+        return( *(2 get(x)) )
+    )
+)
+def (
+    meaning? () (
+        print("42")
+    )
+)
+
+print(timesTwo(4)) // "8"
+meaning?()         // "42"
+
+print('Press enter to continue...')
+readline()

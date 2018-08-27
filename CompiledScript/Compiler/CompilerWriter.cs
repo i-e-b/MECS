@@ -208,7 +208,7 @@ namespace CompiledScript.Compiler
                 throw new ArgumentException(node.Text + " required parameter(s)");
             }
 
-            bool boucle = node.Text == "while";
+            bool isLoop = node.Text == "while";
             Node condition = new Node(false);
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
@@ -255,7 +255,7 @@ namespace CompiledScript.Compiler
             }
 
             int nbElementBack = nbElementBody;
-            if (boucle)
+            if (isLoop)
             {
                 clean = FileReader.RemoveInlineComment(compiledCondition);
 
@@ -272,7 +272,7 @@ namespace CompiledScript.Compiler
                         nbElementBack++;
                     }
                 }
-
+                
                 nbElementBack += 2; // CMP + len body
                 nbElementBody += 2;
             }
@@ -299,7 +299,7 @@ namespace CompiledScript.Compiler
 
             sb.Append(compiledBody.ByteCode);
 
-            if (boucle)
+            if (isLoop)
             {
                 if (debug)
                 {
