@@ -356,6 +356,9 @@ namespace CompiledScript.Compiler
             return node.Text == "return";
         }
 
+        /// <summary>
+        /// Compile a custom function definition
+        /// </summary>
         private static void CompileFunctionDefinition(int level, bool debug, Node node, StringBuilder sb, Scope parameterNames)
         {
             // 1) Compile the func to a temporary string
@@ -402,7 +405,6 @@ namespace CompiledScript.Compiler
 
             // Write the actual function
             sb.Append(subroutine);
-            sb.Append("\r\n");
 
             if (subroutine.ReturnsValues)
             {
@@ -436,17 +438,6 @@ namespace CompiledScript.Compiler
                 parameterNames.SetValue(paramName, Scope.NameFor(i)); // Pattern for positional vars.
                 i++;
             }
-        }
-    }
-
-    internal struct ProgramFragment
-    {
-        public string ByteCode;
-        public bool ReturnsValues;
-
-        public override string ToString()
-        {
-            return ByteCode;
         }
     }
 }

@@ -1,13 +1,15 @@
-// Simple example of evaluation
 
+// Loop and compare
 set(i 10)
 while ( not(=(get(i) 0))
     if ( %(get(i) 2)
         print(get(i))
     )
     set(i -(get(i) 1))
-) // 10 9 8 7 6 5 4 3 2 1
+)
 
+
+// Simple example of evaluation
 eval("print('Hello, world') print('This is a program inside a program')")
 
 

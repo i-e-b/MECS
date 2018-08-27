@@ -1,0 +1,22 @@
+// The ever present Fibonacci sequence
+
+def (
+    next-fib (a b) (
+        return( +( get(a) get(b) ) )
+    )
+)
+
+set(x 0)
+set(y 0)
+set(z 1)
+while ( >(get(z) 0) // wait for overflow
+    print( get(z) )
+    
+    set(x get(y))
+    set(y get(z))
+    set(z next-fib(get(x) get(y)))
+)
+
+
+print('Press enter to continue...')
+readline()

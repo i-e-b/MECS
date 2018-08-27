@@ -11,7 +11,7 @@ namespace CompiledScript
     {
         static void Main()
         {
-            var content = File.ReadAllText("program2.txt");
+            var content = File.ReadAllText("fib.ecs");
             Execute(content, verbose: false, argsVariables: new Dictionary<string, string>());
         }
 

@@ -5,8 +5,8 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 * [x] Add custom subroutines
 * [x] Add value returns (I want to catch failure to return early, without having to define too much)
+* [x] More inequality/comparisons (`<`, `>` `<>` etc)
 * [ ] Add rough language specs to readme
-* [ ] More inequality/comparisons (`<`, `>` `<>` etc)
 * [ ] Import files
 * [ ] Syntax sugar (treat `variableName` as `get(variableName)`, etc)
 * [ ] Memory model (heap, arrays)
@@ -40,12 +40,20 @@ Set the value of a variable
 ```javascript
 set(myVar "hello")
 set(var2 "world")
-print(get(myVar ", " get(var2)) // "hello, world"
+print(get(myVar) ", " get(var2)) // "hello, world"
 ```
 
-### = (2 params)
-### equals (2 params)
+### `=` or `equals` (2 params)
 Returns true if two values are the same
+
+### `<>` (2 params)
+Returns false if two numbers are the same
+
+### `>` (2 params)
+Returns true if the second param is a smaller number than the first
+
+### `<` (2 params)
+Returns true if the second param is a bigger number than the first
 
 ### isset (1 param)
 Returns true if the name has a value assigned

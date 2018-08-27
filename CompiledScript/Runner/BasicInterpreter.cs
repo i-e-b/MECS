@@ -270,6 +270,21 @@ namespace CompiledScript.Runner
             {
 			    return ( param.ElementAt(0) == (param.ElementAt(1)) ) + "";
 		    }
+            
+            if ((functionName == ">") && nbParams == 2)
+            {
+                return ( TryParseInt(param.ElementAt(0)) > TryParseInt(param.ElementAt(1))) + "";
+            }
+
+            if ((functionName == "<") && nbParams == 2)
+            {
+                return ( TryParseInt(param.ElementAt(0)) < TryParseInt(param.ElementAt(1))) + "";
+            }
+
+            if ((functionName == "<>") && nbParams == 2)
+            {
+                return ( TryParseInt(param.ElementAt(0)) != TryParseInt(param.ElementAt(1))) + "";
+            }
 
             switch (functionName)
             {
