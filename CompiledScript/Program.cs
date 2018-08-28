@@ -2,6 +2,7 @@
 using CompiledScript.Runner;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -41,23 +42,30 @@ namespace CompiledScript
             File.WriteAllText("bin.txt", bin);
 
             // PREPARE RUN.
-            string contenuBinRead = FileReader.ReadContent(File.ReadAllText("bin.txt"), true);
+            string byteCodeReader = FileReader.ReadContent(File.ReadAllText("bin.txt"), true);
             try
             {
-                var readerBin = new BasicInterpreter();
+                var interpreter = new BasicInterpreter();
 
                 // Init the interpreter.
-                readerBin.Init(contenuBinRead);
+                interpreter.Init(byteCodeReader);
 
                 foreach (var pair in argsVariables.ToArray())
                 {
-                    readerBin.Variables.SetValue(pair.Key, pair.Value);
+                    interpreter.Variables.SetValue(pair.Key, pair.Value);
                 }
 
                 // EXECUTE
                 Console.WriteLine("\nSCRIPT EXECUTION");
                 Console.WriteLine("-----------------------------------------------");
-                readerBin.Execute(false, verbose);
+
+                var sw = new Stopwatch();
+                sw.Start();
+                interpreter.Execute(false, verbose);
+                sw.Stop();
+
+                Console.WriteLine("\r\nFinished. Execution took "+sw.Elapsed);
+                Console.ReadLine();
             }
             catch (Exception e)
             {

@@ -17,6 +17,3 @@ while ( >(get(z) 0) // wait for overflow
     set(z next-fib(get(x) get(y)))
 )
 
-
-print('Press enter to continue...')
-readline()

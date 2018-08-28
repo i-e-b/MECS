@@ -6,8 +6,9 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Add custom subroutines
 * [x] Add value returns (I want to catch failure to return early, without having to define too much)
 * [x] More inequality/comparisons (`<`, `>` `<>` etc)
-* [ ] Add rough language specs to readme
+* [x] Add rough language specs to readme
 * [ ] Import files
+* [ ] Source lines in byte code, so help with diagnosis. Or map file.
 * [ ] Syntax sugar (treat `variableName` as `get(variableName)`, etc)
 * [ ] Memory model (heap, arrays)
 * [ ] Built-ins to handle variadic functions (expose naming?)
@@ -206,6 +207,123 @@ call(get(i) "Hello, world")
 
 
 ## Byte code
+
+The byte code is white-space delimited and string-based. Each operation has an op-code prefix, and potentially some values.
+The runtime has a value-stack, from where parameters are pulled, and return values added.
+There is also a return-stack for tracking function calls.
+The byte code may be commented using line comments (`//`)
+In the op-code descriptions, `[]` are used to make the parts obvious. They are not included in bytecode.
+
+### `[v][value]`
+Adds a value to the value-stack. Strings MUST be URL-encoded if they contain any whitespace, and may be URL-encoded in any case.
+```
+v0              // push a zero to the value-stack
+vHello%20world  // push the string "Hello world" to the value-stack
+```
+
+### `[f][function name]  [param count]`
+Call a function. The param count MUST be given, but can be zero.
+Parameters will be popped from the value-stack in order (so the last pushed value will be the first parameter)
+Any values returned by the function will be pushed to the value-stack
+If this is a custom function (not reserved by the runtime) the exit position will be pushed to the return-stack.
+```
+vWorld         // push 'World' to value-stack
+vHello%20      // push 'Hello ' to value-stack
+fprint 2       // call 'print' with params ("Hello ", "World")
+```
+
+### `[ccmp]  [token count]`
+Pops a value from the value-stack. Makes a relative jump **forward** if that value is zero or false.
+Token count is the number of white-space delimited tokens in the byte code to skip.
+```
+. . .       // calculate some result
+ccmp 1      // was the result true?
+vWorld      // if it was true, put "World" on the value-stack
+vHello%20   // in either case, put "Hello " on the value-stack
+fprint 2    // print...
+```
+
+### `[cjmp]  [token count]`
+Make an unconditional jump **backward**.
+```
+...         // loop body
+ccmp 1      // if false, skip the jump-back and exit the loop
+cjmp 10     // else jump back 10 tokens
+...         // outside of loop
+```
+
+### `[cret]`
+Return from a function call. A absolute token position value is popped from the return-stack and program flow continues from there.
+```
+dmyProc 0 4         // define a function
+vHello%20world      //     push a string value
+fprint 2            //     print it
+cret                // return from the function
+...                 // rest of the code
+```
+
+### `[ct][function name]`
+Runtime error: Function exit without value.
+This is emitted by the compiler to trap functions where some but not all paths in a function return values
+```
+dmyFunc 2 8         // define a function
+v__p0 mg            //     get first parameter
+v__p1 mg            //     get second parameter
+f%2B  2             //     add two numbers (result goes on stack)
+freturn 1           //     return from function, taking top 1 stack values
+ctmyFunc            // if flow gets here, the function was bad, and the runtime will error
+```
+
+### `[mg]` or `[mget]`
+Memory get. Pops a name from the value-stack. Looks up a variable with that name, pushes its value to the value-stack
+```
+vi            // push "i"
+mg            // find value of variable named "i"
+fprint 1      // print the value of variable named "i"
+```
+
+### `[ms]` or `[mset]`
+Memory set. Pops two values from the value-stack. First is the name of a variable, second is a value. That value is stored against the variable name
+```
+v123        // push 123
+vx          // push "x"
+ms          // set x = 123. Value-stack no longer contains either.
+```
+
+### `[mi]` or `[misset]`
+Test varible scope. Pops a name from the value-stack.
+If there is a variable in scope with that name,
+`true` is pushed to the value-stack (regardless of the *actual* value of the variable)
+```
+v0 vx ms    // set x = 0
+vx          // push "x"
+mi          // is "x" set? Pushes "true"
+vy          // push "y"
+mi          // is "y" set? Pushes "false"
+```
+
+### `[mu]` or `[munset]`
+Remove a variable from scope. Pops a name from the value-stack. If there is a variable in scope with that name, it is removed.
+This only works for the most local scope, or the global scope.
+```
+v0 vx ms    // set x = 0
+vx mi       // is "x" set? Pushes "true"
+vx          // push "x"
+mu          // unset "x"
+vx mi       // is "x" set? Pushes "false"
+```
+
+### `[d][FunctionName]  [parameter count]  [skip length]`
+Define a function.
+Adds a function name to the function table, at the present location. Sets the expected number of parameters and the number of tokens of the function.
+```
+dmyFunc 2 8         // define a function. Expects 2 parameters (renamed as __p0 and __p1). Contains 8 opcodes (not including `cret` or `ct`)
+v__p0 mg            //     get first parameter
+v__p1 mg            //     get second parameter
+f%2B  2             //     add two numbers (result goes on stack)
+fprint 1            //     print the result
+cret                // return from function.
+```
 
 # Examples
 

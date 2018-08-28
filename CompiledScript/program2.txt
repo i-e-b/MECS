@@ -34,6 +34,3 @@ def (
 
 print(timesTwo(4)) // "8"
 meaning?()         // "42"
-
-print('Press enter to continue...')
-readline()
