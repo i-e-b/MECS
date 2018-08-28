@@ -1,0 +1,11 @@
+
+// Import another file:
+import("./ImportMeUnit.ecs")
+
+// All code in the unit file will be run directly.
+// If that includes function definitions, they will now be available.
+// Any code that set globals will have been run.
+
+print("The unit supplied \"" get(definedInUnit) "\"")
+
+sayHelloUnit()

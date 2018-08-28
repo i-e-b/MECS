@@ -9,9 +9,13 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Add rough language specs to readme
 * [ ] Import files
 * [ ] Source lines in byte code, so help with diagnosis. Or map file.
-* [ ] Syntax sugar (treat `variableName` as `get(variableName)`, etc)
+* [ ] Syntax sugar
+      - treat `variableName` as `get(variableName)`
+      - switch-like statement (for if-else chains)
 * [ ] Memory model (heap, arrays)
-* [ ] Built-ins to handle variadic functions (expose naming?)
+* [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
+* [ ] Object-literal form? Functions-as-data, or special syntax?
+* [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
 * [ ] Move value definitions into memory
 * [ ] Change assm definition to be less stringy
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`? All var names treated as 'get')
@@ -56,10 +60,10 @@ Returns true if the second param is a smaller number than the first
 ### `<` (2 params)
 Returns true if the second param is a bigger number than the first
 
-### isset (1 param)
+### `isset` (1 param)
 Returns true if the name has a value assigned
 
-### unset (1 param)
+### `unset` (1 param)
 Remove a name definition
 
 ```javascript
@@ -70,7 +74,7 @@ unset(x)
 print(isset(x)) // false
 ```
 
-### def (2 params)
+### `def` (2 params)
 Define a subroutine / custom function
 ```javascript
 def (
@@ -88,7 +92,7 @@ print(timesTwo(4)) // "8"
 meaning?()         // "42"
 ```
 
-### while (1+ params)
+### `while` (1+ params)
 Loops through a set of calls while the first parameter returns true
 ```javascript
 set(i 10)
@@ -98,7 +102,7 @@ while ( not(=(get(i) 0))
 ) // 10 9 8 7 6 5 4 3 2 1
 ```
 
-### if (1+ params)
+### `if` (1+ params)
 Run a set of calls once if the first parameter returns true
 ```javascript
 set(i 10)
@@ -110,42 +114,42 @@ while ( not(=(get(i) 0))
 ) // 9 7 5 3 1
 ```
 
-### not (1 param)
+### `not` (1 param)
 Invert boolean. Given 0, "0", "false" or false, returns true. Otherwise returns true.
 
-### or (0+ params)
+### `or` (0+ params)
 Returns true if any of the parameters are not false or zero.
 
-### and (0+ params)
+### `and` (0+ params)
 Returns true only if all the parameters are not false or zero.
 
-### readkey (0 params)
+### `readkey` (0 params)
 Pause and wait for a key to be pressed. Returns a string representation of the character pressed
 
-### readline (0 params)
+### `readline` (0 params)
 Pause and wait for `return` key to be pressed. Returns a string of everything typed until enter.
 
-### print (0+ params)
+### `print` (0+ params)
 Write all params to the console, then start a new line. If the last param is empty, new line is suppressed
 
-### substring (2 params)
+### `substring` (2 params)
 Return a shortened string
 ```javascript
 set(long "hello, world")
 print(substring(get(long) 7)) // "world"
 ```
 
-### substring (3 params)
+### `substring` (3 params)
 Return a shortened string
 ```javascript
 set(long "hello, world")
 print(substring(get(long) 3 2)) // "lo"
 ```
 
-### length (1 param)
+### `length` (1 param)
 Return number of characters in a string
 
-### replace (3 params)
+### `replace` (3 params)
 Replace substrings
 ```javascript
 print(
@@ -157,7 +161,7 @@ print(
 )
 ```
 
-### concat (0+ params)
+### `concat` (0+ params)
 Join strings together
 ```javascript
 set(str
@@ -169,36 +173,36 @@ set(str
 )
 ```
 
-### return (0+ params)
+### `return` (0+ params)
 Exit a subroutine and add values to the value stack.
 If *any* path in a subroutine uses `return`, they all must.
 
 
 TODO - change math to sum lists
-### + (2 params)
+### `+` (2 params)
 Add numbers
 
-### - (2 params)
+### `-` (2 params)
 Subtract numbers
 
-### * (2 params)
+### `*` (2 params)
 Multiply numbers
 
-### / (2 params)
+### `/` (2 params)
 Divide numbers
 
-### % (2 params)
+### `%` (2 params)
 Get remainder from integer division
 
 
-### eval (1 param)
+### `eval` (1 param)
 (Advanced) Compile and run a program string.
 ```javascript
 eval("print('what')")
 ```
 The evaluated program is run with the current variable scope left in place.
 
-### call (1+ params)
+### `call` (1+ params)
 (Advanced) Execute a function by name. Used to switch function by a variable.
 ```javascript
 set(i "print")
