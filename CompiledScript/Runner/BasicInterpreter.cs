@@ -291,7 +291,7 @@ namespace CompiledScript.Runner
                 case "eval":
                     SourceCodeReader reader = new SourceCodeReader();
                     Node programTmp = reader.Read(param.ElementAt(0));
-                    string bin = CompilerWriter.CompileRoot(programTmp, false);
+                    string bin = Compiler.Compiler.CompileRoot(programTmp, false);
                     BasicInterpreter basicReader = new BasicInterpreter();
                     basicReader.Init(bin);
                     basicReader.Execute(false, false);

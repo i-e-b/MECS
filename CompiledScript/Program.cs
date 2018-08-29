@@ -12,20 +12,21 @@ namespace CompiledScript
     {
         static void Main()
         {
-            var content = File.ReadAllText("fib.ecs");
+            var content = File.ReadAllText("Importer.ecs");
             Execute(content, verbose: false, argsVariables: new Dictionary<string, string>());
         }
 
         public static void Execute(string inSRC, bool verbose, Dictionary<string, string> argsVariables)
         {
-            string contents = FileReader.ReadContent(inSRC, true);
+            var contents = FileReader.ReadContent(inSRC, true);
+
             Console.WriteLine("\nSOURCE CODE");
             Console.WriteLine("-----------------------------------------------");
             Console.WriteLine(contents);
 
             // COMPILE.
-            SourceCodeReader reader = new SourceCodeReader();
-            Node program = reader.Read(contents);
+            var reader = new SourceCodeReader();
+            var program = reader.Read(contents);
 
             Console.WriteLine("\nTREE VIEW");
             Console.WriteLine("-----------------------------------------------");
@@ -33,16 +34,20 @@ namespace CompiledScript
 
             Console.WriteLine("\nCOMPILED SCRIPT (debug)");
             Console.WriteLine("-----------------------------------------------");
-            Console.WriteLine(CompilerWriter.CompileRoot(reader.Read(contents), debug: true));
+            Console.WriteLine(Compiler.Compiler.CompileRoot(reader.Read(contents), debug: true));
+            
+            var swc = new Stopwatch();
+            swc.Start();
+            var bin = Compiler.Compiler.CompileRoot(program, debug: false);
+            swc.Stop();
 
-            string bin = CompilerWriter.CompileRoot(program, debug: false);
-            Console.WriteLine("\nCOMPILED SCRIPT (release)");
+            Console.WriteLine("\nCOMPILED SCRIPT (release) -- took " + swc.Elapsed);
             Console.WriteLine("-----------------------------------------------");
             Console.WriteLine(bin);
             File.WriteAllText("bin.txt", bin);
 
             // PREPARE RUN.
-            string byteCodeReader = FileReader.ReadContent(File.ReadAllText("bin.txt"), true);
+            var byteCodeReader = FileReader.ReadContent(File.ReadAllText("bin.txt"), true);
             try
             {
                 var interpreter = new BasicInterpreter();
@@ -69,8 +74,8 @@ namespace CompiledScript
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.StackTrace);
                 Console.WriteLine("Exception : " + e.Message);
+                Console.WriteLine("\r\n\r\n" + e.StackTrace);
                 Console.ReadLine();
             }
         }

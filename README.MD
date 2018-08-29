@@ -7,12 +7,14 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Add value returns (I want to catch failure to return early, without having to define too much)
 * [x] More inequality/comparisons (`<`, `>` `<>` etc)
 * [x] Add rough language specs to readme
-* [ ] Import files
-* [ ] Source lines in byte code, so help with diagnosis. Or map file.
+* [x] Import files (in compiler, compile and include generated, like functions. Have an include chain, warn and skip if file has been seen before)
+* [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Syntax sugar
       - treat `variableName` as `get(variableName)`
+      - *maybe* `variableName = value` as `set(variableName value)`? Not sure.
       - switch-like statement (for if-else chains)
 * [ ] Memory model (heap, arrays)
+* [ ] Make sure (de)serialisation is available
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] Object-literal form? Functions-as-data, or special syntax?
 * [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)

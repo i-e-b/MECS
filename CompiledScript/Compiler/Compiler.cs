@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using CompiledScript.Runner;
@@ -7,18 +8,8 @@ using CompiledScript.Utils;
 
 namespace CompiledScript.Compiler
 {
-    class CompilerWriter
+    class Compiler
     {
-        public static string Fill(int nb, char car)
-        {
-            var sb = new StringBuilder();
-            for (int i = 0; i < nb * 4; i++)
-            {
-                sb.Append(car);
-            }
-            return sb.ToString();
-        }
-
         public static string CompileRoot(Node root, bool debug)
         {
             var sb = new StringBuilder();
@@ -33,8 +24,9 @@ namespace CompiledScript.Compiler
             }
 
             var parameterNames = new Scope(); // renaming for local parameters
+            var includedFiles = new HashSet<string>();
 
-            sb.Append(Compile(root, 0, debug, parameterNames));
+            sb.Append(Compile(root, 0, debug, parameterNames, includedFiles));
 
             return sb.ToString();
         }
@@ -42,7 +34,7 @@ namespace CompiledScript.Compiler
         /// <summary>
         /// Function/Program compiler. This is called recursively when subroutines are found
         /// </summary>
-        public static ProgramFragment Compile(Node root, int indent, bool debug, Scope parameterNames)
+        public static ProgramFragment Compile(Node root, int indent, bool debug, Scope parameterNames, HashSet<string> includedFiles)
         {
 		    var sb = new StringBuilder();
             var result = new ProgramFragment { ReturnsValues = false };
@@ -59,8 +51,9 @@ namespace CompiledScript.Compiler
                     sb.Append("// Value : \"");
                     sb.Append(EscapeEncodedTextForDebug(root));
                     sb.Append("\"\r\n");
-                    if (parameterNames.CanResolve(root.Text)) {
-                        sb.Append("// Parameter reference redefined as '"+valueName+"'\r\n");
+                    if (parameterNames.CanResolve(root.Text))
+                    {
+                        sb.Append("// Parameter reference redefined as '" + valueName + "'\r\n");
                     }
                     sb.Append(Fill(indent - 1, ' '));
                 }
@@ -83,6 +76,10 @@ namespace CompiledScript.Compiler
 					    {
 					        CompileMemoryFunction(indent, debug, node, container, sb, parameterNames);
 					    }
+                        else if (IsInclude(node))
+                        {
+                            CompileExternalFile(indent, debug, node, sb, parameterNames, includedFiles);
+                        }
                         else if (IsFlowControl(node))
 					    {
 					        result.ReturnsValues |= CompileConditionOrLoop(indent, debug, container, node, sb, parameterNames);
@@ -98,7 +95,7 @@ namespace CompiledScript.Compiler
 				    }
                     else
                     {
-                        sb.Append(Compile(node, indent + 1, debug, parameterNames));
+                        sb.Append(Compile(node, indent + 1, debug, parameterNames, includedFiles));
 				    }
 			    }
 		    }
@@ -107,13 +104,16 @@ namespace CompiledScript.Compiler
 		    return result;
 	    }
 
-        private static string EscapeEncodedTextForDebug(Node root)
+        private static bool IsInclude(Node node)
         {
-            return StringEncoding.Decode(root.Text)
-                .Replace("\\", "\\\\")
-                .Replace("\t", "\\t")
-                .Replace("\n", "\\n")
-                .Replace("\r", "");
+            switch (node.Text)
+            {
+                case "import":
+                    return true;
+
+                default:
+                    return false;
+            }
         }
 
         private static bool IsFunctionDefinition(Node node)
@@ -177,14 +177,14 @@ namespace CompiledScript.Compiler
             }
 
             int nb = node.Text == "set" ? 1 : 0;
-            Node child = new Node(false);
+            var child = new Node(false);
             child.Text = container.Children.ElementAt(0).Text;
             for (int i = nb; i >= 0; i--)
             {
                 child.Children.AddLast(container.Children.ElementAt(i));
             }
 
-            sb.Append(Compile(child, level + 1, debug, parameterNames));
+            sb.Append(Compile(child, level + 1, debug, parameterNames, null));
 
             if (debug)
             {
@@ -195,9 +195,55 @@ namespace CompiledScript.Compiler
             }
 
             sb.Append("m" + node.Text[0]);
-
-            //builder.Append(" ");
             sb.Append("\r\n");
+        }
+
+        
+        private static void CompileExternalFile(int level, bool debug, Node node, StringBuilder sb, Scope parameterNames, HashSet<string> includedFiles)
+        {
+            //     1) Check against import list. If already done, warn and skip.
+            //     2) Read file. Fail = terminate with error
+            //     3) Compile to opcodes
+            //     4) Inject opcodes in `sb`
+
+            if (includedFiles == null) throw new Exception("Files can only be included at the root level");
+
+            var targetFile = node.Children.First.Value.Text;
+
+            if (includedFiles.Contains(targetFile)) {
+                sb.Append(Fill(level, ' '));
+                sb.Append("// Ignored import: " + targetFile);
+                return;
+            }
+
+            // TODO: replace with a file resolver?
+            if (!File.Exists(targetFile)) throw new Exception("Import failed. Can't read file '" + targetFile + "'");
+
+            var text = File.ReadAllText(targetFile);
+            includedFiles.Add(targetFile);
+            
+            var reader = new SourceCodeReader();
+            var parsed = reader.Read(FileReader.ReadContent(text, true));
+            var programFragment = Compile(parsed, level, debug, parameterNames, includedFiles);
+
+
+            if (debug)
+            {
+                sb.Append(Fill(level, ' '));
+                sb.Append("// File import: \"" + targetFile);
+                sb.Append("\r\n");
+                sb.Append(Fill(level, ' '));
+            }
+
+            sb.Append(programFragment.ByteCode);
+
+            if (debug)
+            {
+                sb.Append(Fill(level, ' '));
+                sb.Append("// <-- End of file import: \"" + targetFile);
+                sb.Append("\r\n");
+                sb.Append(Fill(level, ' '));
+            }
         }
 
         private static bool CompileConditionOrLoop(int level, bool debug, Node container, Node node, StringBuilder sb, Scope parameterNames)
@@ -213,7 +259,7 @@ namespace CompiledScript.Compiler
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
-            var compilerOutput = Compile(condition, level + 1, debug, parameterNames);
+            var compilerOutput = Compile(condition, level + 1, debug, parameterNames, null);
             returns |= compilerOutput.ReturnsValues;
             string compiledCondition = compilerOutput.ByteCode;
 
@@ -233,7 +279,7 @@ namespace CompiledScript.Compiler
             }
 
             body.Text = "()";
-            var compiledBody = Compile(body, level + 1, debug, parameterNames);
+            var compiledBody = Compile(body, level + 1, debug, parameterNames, null);
             returns |= compiledBody.ReturnsValues;
 
             string clean = FileReader.RemoveInlineComment(compiledBody.ByteCode);
@@ -336,7 +382,7 @@ namespace CompiledScript.Compiler
         /// </summary>
         private static bool CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node, Scope parameterNames)
         {
-            sb.Append(Compile(node, level + 1, debug, parameterNames));
+            sb.Append(Compile(node, level + 1, debug, parameterNames, null));
 
             if (debug)
             {
@@ -353,7 +399,7 @@ namespace CompiledScript.Compiler
             sb.Append(node.Children.Count); // parameter count
             sb.Append("\r\n");
 
-            return node.Text == "return";
+            return (node.Text == "return") && (node.Children.Count > 0);
         }
 
         /// <summary>
@@ -382,7 +428,7 @@ namespace CompiledScript.Compiler
 
             ParameterPositions(parameterNames, definitionNode.Children.Select(c => c.Text));
 
-            var subroutine = Compile(bodyNode, level, debug, parameterNames);
+            var subroutine = Compile(bodyNode, level, debug, parameterNames, null);
             var tokenCount = subroutine.ByteCode.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
             if (debug)
@@ -439,5 +485,25 @@ namespace CompiledScript.Compiler
                 i++;
             }
         }
+        
+        private static string EscapeEncodedTextForDebug(Node root)
+        {
+            return StringEncoding.Decode(root.Text)
+                .Replace("\\", "\\\\")
+                .Replace("\t", "\\t")
+                .Replace("\n", "\\n")
+                .Replace("\r", "");
+        }
+        
+        public static string Fill(int nb, char car)
+        {
+            var sb = new StringBuilder();
+            for (int i = 0; i < nb * 4; i++)
+            {
+                sb.Append(car);
+            }
+            return sb.ToString();
+        }
+
     }
 }

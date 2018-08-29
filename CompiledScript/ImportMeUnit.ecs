@@ -6,6 +6,7 @@ set(definedInUnit "I am from the imported unit")
 // Define a function to use anywhere we imported it:
 def (
     sayHelloUnit () (
-        print("Hello!\r\n\tFrom the imported unit!")
+        print("Hello!")
+        print("    From the imported unit!")
     )
 )
