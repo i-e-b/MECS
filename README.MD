@@ -94,6 +94,17 @@ print(timesTwo(4)) // "8"
 meaning?()         // "42"
 ```
 
+### `import` (1 param)
+Includes another source file at compile time.
+This function can only be called from the root level of files (not inside functions, parameters or evals).
+Recursive imports will be ignored.
+Root level statements will be run, and defined functions will be available after the import call.
+```javascript
+import("./my-other-file.ecs")
+
+OtherFileFunction("hello")
+```
+
 ### `while` (1+ params)
 Loops through a set of calls while the first parameter returns true
 ```javascript
