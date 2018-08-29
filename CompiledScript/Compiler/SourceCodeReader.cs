@@ -161,7 +161,7 @@ namespace CompiledScript.Compiler
                         }
                         else
                         {
-                            sb.Append(car);
+                            sb.Append(Unescape(car));
                             break;
                         }
 
@@ -183,6 +183,22 @@ namespace CompiledScript.Compiler
 
             position = i;
             return sb.ToString();
+        }
+
+        private static char Unescape(char car)
+        {
+            switch (car) {
+                case '\\': return '\\';
+                case 't' : return '\t';
+                case 'r' : return '\r';
+                case 'n' : return '\n';
+                case 'e' : return '\x1B'; // ASCII escape
+                case '0' : return '\0';
+                
+                // TODO: unicode escapes
+
+                default: return car;
+            }
         }
 
         public static string ReadWord(string exp, int position)

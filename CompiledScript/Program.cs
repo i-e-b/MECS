@@ -12,7 +12,7 @@ namespace CompiledScript
     {
         static void Main()
         {
-            var content = File.ReadAllText("Importer.ecs");
+            var content = File.ReadAllText("listMath.ecs"); 
             Execute(content, verbose: false, argsVariables: new Dictionary<string, string>());
         }
 
@@ -50,7 +50,7 @@ namespace CompiledScript
             var byteCodeReader = FileReader.ReadContent(File.ReadAllText("bin.txt"), true);
             try
             {
-                var interpreter = new BasicInterpreter();
+                var interpreter = new ByteCodeInterpreter();
 
                 // Init the interpreter.
                 interpreter.Init(byteCodeReader);

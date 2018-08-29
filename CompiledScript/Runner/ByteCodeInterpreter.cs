@@ -7,7 +7,7 @@ using CompiledScript.Compiler;
 
 namespace CompiledScript.Runner
 {
-    class BasicInterpreter
+    class ByteCodeInterpreter
     {
         private List<string> program;
         public Dictionary<string, FunctionDefinition>  Functions;
@@ -281,7 +281,7 @@ namespace CompiledScript.Runner
                 return ( TryParseInt(param.ElementAt(0)) < TryParseInt(param.ElementAt(1))) + "";
             }
 
-            if ((functionName == "<>") && nbParams == 2)
+            if ((functionName == "<>" || functionName == "not-equal") && nbParams == 2)
             {
                 return ( TryParseInt(param.ElementAt(0)) != TryParseInt(param.ElementAt(1))) + "";
             }
@@ -292,9 +292,9 @@ namespace CompiledScript.Runner
                     SourceCodeReader reader = new SourceCodeReader();
                     Node programTmp = reader.Read(param.ElementAt(0));
                     string bin = Compiler.Compiler.CompileRoot(programTmp, false);
-                    BasicInterpreter basicReader = new BasicInterpreter();
-                    basicReader.Init(bin);
-                    basicReader.Execute(false, false);
+                    ByteCodeInterpreter byteCodeReader = new ByteCodeInterpreter();
+                    byteCodeReader.Init(bin);
+                    byteCodeReader.Execute(false, false);
                     break;
 
                 case "call":
@@ -423,13 +423,12 @@ namespace CompiledScript.Runner
                     if (functionName == "()") { // empty object. TODO: when we have better values, have an empty list
                         return "";
                     }
-                    else if (IsMathFunc(functionName) && nbParams == 2) // TODO: allow list math
+                    else if (IsMathFunc(functionName)) // TODO: allow list math
                     {
                         // handle math functions
                         try
                         {
-                            return EvalMath(functionName[0], TryParseInt(param.ElementAt(0)),
-                                TryParseInt(param.ElementAt(1)));
+                            return EvalMath(functionName[0], param);
                         }
                         catch (Exception e)
                         {
@@ -476,30 +475,49 @@ namespace CompiledScript.Runner
             return result;
 	    }
 
-	    private static string EvalMath(char op, int opa, int opb)
+	    private static string EvalMath(char op, LinkedList<string> args)
         {
+            var argCount = args.Count;
+
+            if (argCount == 0) throw new Exception("Math funtion called with no arguments");
+
+            var arg0 = TryParseInt(args.First());
+
+            if (argCount == 1) {
+                switch (op) {
+                    case '+': // uniary plus: no-op
+                        return arg0 + "";
+
+                    case '-': // uniary minus: value negation
+                        return (-arg0) + "";
+
+                    case '%': // uniary remainder: common case, odd/even
+                        return (arg0 % 2) + "";
+
+                    default:
+                        throw new Exception("Uniary '"+op+"' is not supported");
+                }
+            }
+
 		    switch (op)
             {
 		        case '+':
-			        return (opa + opb) + "";
+			        return "" + args.Sum(TryParseInt);
+
 		        case '-':
-			        return (opa - opb) + "";
+			        return "" + args.ChainDifference(TryParseInt);
+
 		        case '*':
-			        return (opa * opb) + "";
+		            return "" + args.ChainProduct(TryParseInt);
+
 		        case '/':
-			        if (opb == 0)
-                    {
-				        return "Error Math : Divide by 0";
-			        }
-			        return (opa / opb) + "";
+		            return "" + args.ChainDivide(TryParseInt);
+
 		        case '%':
-			        if (opb == 0)
-                    {
-				        return "Error Math : Divide by 0";
-			        }
-			        return (opa % opb) + "";
+		            return "" + args.ChainRemainder(TryParseInt);
 		    }
-		    return "Error Math : unknown op : " + op;
+
+            throw new Exception("Error Math : unknown op : " + op); // this should never happen. It would be an error in the interpreter
 	    }
     }
 }

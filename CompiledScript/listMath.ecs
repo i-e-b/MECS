@@ -1,0 +1,22 @@
+// Some simple demos of non-binary math
+
+set(x 5)
+
+print("Uniary math (one number) -- ")
+print("--------------------------- ")
+print("The negative of " get(x) " is " -(get(x)) ) // -5
+print("The positive of " get(x) " is " +(get(x)) ) //  5
+print("The odd-ness of " get(x) " is " %(get(x)) ) //  1
+
+print("\r\n")
+
+print("List math (more than two numbers) -- ")
+print("--------------------------- ")
+print("The sum of integers: " +(1 2 3 4 5) ) // should be 15
+print("Reduction from an accumulator: " -(100 10 1))   // should be 89
+print("Chain product: "                 *(5 1 2 4))    // should be 40
+print("Chain partition: "               /(100 2 5))    // should be 10
+print("Chain remainder: "               %(18 10 3))    // should be 2
+
+
+

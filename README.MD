@@ -8,11 +8,15 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] More inequality/comparisons (`<`, `>` `<>` etc)
 * [x] Add rough language specs to readme
 * [x] Import files (in compiler, compile and include generated, like functions. Have an include chain, warn and skip if file has been seen before)
-* [ ] Map files for byte code, to help with error messages and diagnosis.
+* [x] Uniary minus (negation), list math.
+* [ ] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
+* [ ] Switch-like statement (for if-else chains)
+* [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
+* [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] Syntax sugar
       - treat `variableName` as `get(variableName)`
       - *maybe* `variableName = value` as `set(variableName value)`? Not sure.
-      - switch-like statement (for if-else chains)
+* [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Memory model (heap, arrays)
 * [ ] Make sure (de)serialisation is available
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
@@ -22,22 +26,47 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Change assm definition to be less stringy
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`? All var names treated as 'get')
 
+### Data types
+
+* String
+* Int
+* Bool
+* Float/Number
+* Set/flags
+* Dictionary/map/hashtable
+* Array (of type?)
+* List (heterogenous)
+* Grid (2+D array, sparse)
+
+### Ideas
+
+Extend get/set over many types? Like `set(myDict "keyStr" "valueStr")` and `get(myGrid 3 5)`
+
 # Language definitions
 
 ## Core language
 
-A list-like language. Atoms are treated as string values, delimited strings are treated as a single value.
+A lisp-look-alike language. Atoms are treated as string values, delimited strings are treated as a single value.
 Values go on the value stack. Variables and functions are case sensitive.
-Function and variable names can contain any non-whitespace characters.
+Function and variable names can contain any non-whitespace characters, but must not start with numbers.
 
 Strings are quoted with either `"` or `'`. String escapes with `\`
 
 Whitespace is significant as an atom separator, but all whitespace is treated equally (newlines, tabs, any number of spaces).
+The `,` character is considered whitespace.
 Everything else is function calls. Function calls start with the function name, then have parenthesis surrounding parameters.
 Function calls may be parameters.
 
 Language built-in functions are tried first, then custom defined functions.
 The `def` function defines custom functions
+
+### Keywords:
+
+`true`, `false` (technically these are just string atoms at the moment)
+
+### Reserved functions
+
+get, set,
 
 ### get (1 param)
 Get the value of a variable by name.
@@ -77,7 +106,7 @@ print(isset(x)) // false
 ```
 
 ### `def` (2 params)
-Define a subroutine / custom function
+Define a subroutine / custom function. First param is the new function's parameter list (may be empty). Second param is the function definition.
 ```javascript
 def (
     timesTwo (x) (
@@ -190,21 +219,25 @@ set(str
 Exit a subroutine and add values to the value stack.
 If *any* path in a subroutine uses `return`, they all must.
 
+### `+` (1 param)
+Return a number as-is (uniary plus)
 
-TODO - change math to sum lists
-### `+` (2 params)
+### `+` (2+ params)
 Add numbers
 
-### `-` (2 params)
-Subtract numbers
+### `-` (1 param)
+Negate a number (uniary minus)
 
-### `*` (2 params)
+### `-` (2+ params)
+Subtract numbers. If more than two params given, a running subtraction will be made (e.g. `-(12 2 4)` is equivalent to the infix: `(12 - 2) - 4`)
+
+### `*` (2+ params)
 Multiply numbers
 
-### `/` (2 params)
-Divide numbers
+### `/` (2+ params)
+Divide numbers. If more than two params given, a running division will be made (e.g. `/(12 2 4)` is equivalent to the infix: `(12 / 2) / 4`)
 
-### `%` (2 params)
+### `%` (2+ params)
 Get remainder from integer division
 
 
