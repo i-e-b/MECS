@@ -1,11 +1,11 @@
 
 // Loop and compare
 set(i 10)
-while ( not-equal(get(i) 0)
-    if ( %(get(i) 2)
-        print(get(i))
+while ( not-equal(i 0)
+    if ( %(i)
+        print(i)
     )
-    set(i -(get(i) 1))
+    set(i -(i 1))
 )
 
 
@@ -16,14 +16,14 @@ eval("print('Hello, world') print('This is a program inside a program')")
 // 'Call' functionality
 
 set(i "print")
-call(get(i) "Hello, world") // call print by name
+call(i "Hello, world") // call print by name
 unset(i)
 
 
 // function defs
 def (
     timesTwo (x) (
-        return( *(2 get(x)) )
+        return( *(2 x) )
     )
 )
 def (
@@ -35,7 +35,7 @@ def (
 // showing that return restrictions only count if you return *a value*
 def (
     ok!(x) (
-        if ( get(x)
+        if ( x
             print("You said true")
             return()                // no value returned, so it's ok that not all paths have a return.
         )

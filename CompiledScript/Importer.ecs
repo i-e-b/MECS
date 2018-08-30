@@ -6,6 +6,6 @@ import("./ImportMeUnit.ecs")
 // If that includes function definitions, they will now be available.
 // Any code that set globals will have been run.
 
-print("The unit supplied \"" get(definedInUnit) "\"")
+print("The unit supplied \"" definedInUnit "\"")
 
 sayHelloUnit()

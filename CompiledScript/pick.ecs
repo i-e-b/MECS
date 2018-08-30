@@ -3,21 +3,21 @@
 
 set( val random(1 11) ) // runtime value
 
-print("..." get(val) "...")
+print("..." val "...")
 
 pick (
     // pick expects a list of `if` statements
     // the first one that matches will run,
     // and all subsequent ones will be ignored
-    if ( equals(1 get(val))
+    if ( equals(1 val)
         print("The random number was UNO! You win!")
     )
     
-    if ( equals(10 get(val))
+    if ( equals(10 val)
         print("The random number was DIEZ! You lose!")
     )
     
-    if ( >(5 get(val))
+    if ( >(5 val)
         print("The random number was less than five. Are you half way there?")
     )
     
@@ -30,7 +30,7 @@ pick (
 /*
 def(
     __TEMP_NAME () (
-        if ( equals(1 get(val)
+        if ( equals(1 val)
             print("The random number was UNO! You win!")
             return() // injected to the end of the `if`'s children.
         )

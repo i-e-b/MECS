@@ -59,7 +59,7 @@ namespace CompiledScript.Compiler
                         {
                             i++;
                             var words = ReadString(source, ref i, car);
-                            tmp = new Node(true) {Text = words};
+                            tmp = new Node(true) {Text = words, NodeType = NodeType.StringLiteral};
                             current.Children.AddLast(tmp);
                             break;
                         }
@@ -81,11 +81,13 @@ namespace CompiledScript.Compiler
                                 car = source.ElementAt(i);
                                 if (car == '(')
                                 {
+                                    if (IsNumeric(word)) throw new Exception("Parser error: '" + word + "' looks like a function name, but starts with a number");
                                     parent = current;
                                     current = new Node(false)
                                     {
                                         Text = word,
-                                        Parent = parent
+                                        Parent = parent,
+                                        NodeType = NodeType.Atom
                                     };
 
                                     parent.Children.AddLast(current);
@@ -93,7 +95,8 @@ namespace CompiledScript.Compiler
                                 else
                                 {
                                     i--;
-                                    tmp = new Node(true) { Text = word };
+                                    tmp = new Node(true) { Text = word, NodeType = NodeType.Atom};
+                                    if (IsNumeric(word)) tmp.NodeType = NodeType.Numeric;
                                     current.Children.AddLast(tmp);
                                 }
                             }
@@ -104,6 +107,11 @@ namespace CompiledScript.Compiler
 
                 i++;
             }
+        }
+
+        private bool IsNumeric(string word)
+        {
+            return char.IsDigit(word, 0);
         }
 
         public static int Skip(string exp, int position, char[] cars)
@@ -201,23 +209,23 @@ namespace CompiledScript.Compiler
             }
         }
 
-        public static string ReadWord(string exp, int position)
+        public static string ReadWord(string expression, int position)
         {
             int i = position;
-            int length = exp.Length;
+            int length = expression.Length;
             var sb = new StringBuilder();
 
             while (i < length)
             {
-                var car = exp.ElementAt(i);
+                var c = expression[i];
 
-                if (car == ' ' || car == '\n' || car == '\t' || car == ')'
-                        || car == '(' || car == ',' || car == '\r')
+                if (c == ' ' || c == '\n' || c == '\t' || c == ')'
+                        || c == '(' || c == ',' || c == '\r')
                 {
                     break;
                 }
 
-                sb.Append(car);
+                sb.Append(c);
 
                 i++;
             }

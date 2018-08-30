@@ -5,16 +5,16 @@ set(x 5)
 def (
     show (str) (
         return(
-            concat(get(str) " = " eval(get(str)))
+            concat(str " = " eval(str))
         )
     )
 )
 
 print("Uniary math (one number)")
 print("------------------------")
-print("The negative of " get(x) " is " show("-(get(x))") ) // -5
-print("The positive of " get(x) " is " show("+(get(x))") ) //  5
-print("The odd-ness of " get(x) " is " show("%(get(x))") ) //  1
+print("The negative of " x " is " show("-(x)") ) // -5
+print("The positive of " x " is " show("+(x)") ) //  5
+print("The odd-ness of " x " is " show("%(x)") ) //  1
 
 print("\r\n")
 

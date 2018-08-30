@@ -2,18 +2,18 @@
 
 def (
     next-fib (a b) (
-        return( +( get(a) get(b) ) )
+        return( +( a b ) )
     )
 )
 
 set(x 0)
 set(y 0)
 set(z 1)
-while ( >(get(z) 0) // wait for overflow
-    print( get(z) )
+while ( >(z 0) // wait for overflow
+    print( z )
     
     set(x get(y))
     set(y get(z))
-    set(z next-fib(get(x) get(y)))
+    set(z next-fib(x y))
 )
 

@@ -21,9 +21,11 @@ namespace CompiledScript.Compiler
         public Node Parent { get; set; }
         public string Text { get; set; }
         public bool IsLeaf { get; set; }
+        public NodeType NodeType { get; set; }
 
         public Node(bool isLeaf)
         {
+            NodeType = NodeType.Default;
             IsLeaf = isLeaf;
         }
 

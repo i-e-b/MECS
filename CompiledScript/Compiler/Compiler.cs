@@ -26,7 +26,7 @@ namespace CompiledScript.Compiler
             var parameterNames = new Scope(); // renaming for local parameters
             var includedFiles = new HashSet<string>();
 
-            sb.Append(Compile(root, 0, debug, parameterNames, includedFiles));
+            sb.Append(Compile(root, 0, debug, parameterNames, includedFiles, Context.Default));
 
             return sb.ToString();
         }
@@ -34,35 +34,15 @@ namespace CompiledScript.Compiler
         /// <summary>
         /// Function/Program compiler. This is called recursively when subroutines are found
         /// </summary>
-        public static ProgramFragment Compile(Node root, int indent, bool debug, Scope parameterNames, HashSet<string> includedFiles)
+        public static ProgramFragment Compile(Node root, int indent, bool debug, Scope parameterNames, HashSet<string> includedFiles, Context compileContext)
         {
 		    var sb = new StringBuilder();
             var result = new ProgramFragment { ReturnsValues = false };
 
             if (root.IsLeaf)
             {
-                var valueName = root.Text;
-                if (parameterNames.CanResolve(valueName)) valueName = parameterNames.Resolve(valueName);
-
-
-                if (debug)
-                {
-                    sb.Append(Fill(indent - 1, ' '));
-                    sb.Append("// Value : \"");
-                    sb.Append(EscapeEncodedTextForDebug(root));
-                    sb.Append("\"\r\n");
-                    if (parameterNames.CanResolve(root.Text))
-                    {
-                        sb.Append("// Parameter reference redefined as '" + valueName + "'\r\n");
-                    }
-                    sb.Append(Fill(indent - 1, ' '));
-                }
-
-
-			    sb.Append("v");
-                sb.Append(valueName);
-                sb.Append("\r\n");
-		    }
+                EmitLeafNode(root, indent, debug, parameterNames, compileContext, sb);
+            }
             else
             {
                 Node rootContainer = root;
@@ -95,7 +75,7 @@ namespace CompiledScript.Compiler
 				    }
                     else
                     {
-                        sb.Append(Compile(node, indent + 1, debug, parameterNames, includedFiles));
+                        sb.Append(Compile(node, indent + 1, debug, parameterNames, includedFiles, compileContext));
 				    }
 			    }
 		    }
@@ -103,6 +83,57 @@ namespace CompiledScript.Compiler
             result.ByteCode = sb.ToString();
 		    return result;
 	    }
+
+        private static void EmitLeafNode(Node root, int indent, bool debug, Scope parameterNames, Context compileContext, StringBuilder sb)
+        {
+            var valueName = root.Text;
+            if (parameterNames.CanResolve(valueName)) valueName = parameterNames.Resolve(valueName);
+
+            // An unwrapped variable name?
+            if (IsUnwrappedIdentifier(valueName, root, compileContext))
+            {
+                if (debug) {
+                    sb.AppendLine(Fill(indent - 1, ' ') + "// treating '"+valueName+"' as an implicit get()");
+                } 
+                sb.AppendLine("v"+valueName+"  mg");
+                return;
+            }
+
+
+            if (debug)
+            {
+                sb.Append(Fill(indent - 1, ' '));
+                sb.Append("// Value : \"");
+                sb.Append(EscapeEncodedTextForDebug(root));
+                sb.Append("\"\r\n");
+                if (parameterNames.CanResolve(root.Text))
+                {
+                    sb.Append("// Parameter reference redefined as '" + valueName + "'\r\n");
+                }
+
+                sb.Append(Fill(indent - 1, ' '));
+            }
+
+
+            sb.Append("v");
+            sb.Append(valueName);
+            sb.Append("\r\n");
+        }
+
+        private static bool IsUnwrappedIdentifier(string valueName, Node root, Context compileContext)
+        {
+            if ( root.NodeType != NodeType.Atom || compileContext == Context.MemoryAccess) return false;
+
+            switch (valueName) {
+                // reserved identifiers
+                case "false":
+                case "true":
+                    return false;
+
+                default:
+                    return true;
+            }
+        }
 
         private static bool IsInclude(Node node)
         {
@@ -184,7 +215,7 @@ namespace CompiledScript.Compiler
                 child.Children.AddLast(container.Children.ElementAt(i));
             }
 
-            sb.Append(Compile(child, level + 1, debug, parameterNames, null));
+            sb.Append(Compile(child, level + 1, debug, parameterNames, null, Context.MemoryAccess));
 
             if (debug)
             {
@@ -224,7 +255,7 @@ namespace CompiledScript.Compiler
             
             var reader = new SourceCodeReader();
             var parsed = reader.Read(FileReader.ReadContent(text, true));
-            var programFragment = Compile(parsed, level, debug, parameterNames, includedFiles);
+            var programFragment = Compile(parsed, level, debug, parameterNames, includedFiles, Context.External);
 
 
             if (debug)
@@ -255,11 +286,12 @@ namespace CompiledScript.Compiler
             }
 
             bool isLoop = node.Text == "while";
+            var context = isLoop ? Context.Loop : Context.Condition;
             Node condition = new Node(false);
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
-            var compilerOutput = Compile(condition, level + 1, debug, parameterNames, null);
+            var compilerOutput = Compile(condition, level + 1, debug, parameterNames, null, context);
             returns |= compilerOutput.ReturnsValues;
             string compiledCondition = compilerOutput.ByteCode;
 
@@ -280,7 +312,7 @@ namespace CompiledScript.Compiler
             }
 
             body.Text = "()";
-            var compiledBody = Compile(body, level + 1, debug, parameterNames, null);
+            var compiledBody = Compile(body, level + 1, debug, parameterNames, null, context);
             returns |= compiledBody.ReturnsValues;
 
             string clean = FileReader.RemoveInlineComment(compiledBody.ByteCode);
@@ -388,12 +420,12 @@ namespace CompiledScript.Compiler
             var funcName = StringEncoding.Decode(node.Text);
             if (Desugar.NeedsDesugaring(funcName)) {
                 node = Desugar.ProcessNode(funcName, parameterNames, node);
-                var frag = Compile(node, level + 1, debug, parameterNames, null);
+                var frag = Compile(node, level + 1, debug, parameterNames, null, Context.Default);
                 sb.Append(frag.ByteCode);
                 return frag.ReturnsValues;
             }
 
-            sb.Append(Compile(node, level + 1, debug, parameterNames, null));
+            sb.Append(Compile(node, level + 1, debug, parameterNames, null, Context.Default));
 
 
             if (debug)
@@ -442,7 +474,7 @@ namespace CompiledScript.Compiler
 
             ParameterPositions(parameterNames, definitionNode.Children.Select(c => c.Text));
 
-            var subroutine = Compile(bodyNode, level, debug, parameterNames, null);
+            var subroutine = Compile(bodyNode, level, debug, parameterNames, null, Context.Default);
             var tokenCount = subroutine.ByteCode.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
             if (debug)

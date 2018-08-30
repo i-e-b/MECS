@@ -12,11 +12,11 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
 * [x] Assert function
 * [x] Switch-like statement (for if-else chains)
+* [x] Treat `variableName` as `get(variableName)`
 * [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
+
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
-* [ ] Syntax sugar
-      - treat `variableName` as `get(variableName)`
 * [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Memory model (heap, arrays)
 * [ ] Make sure (de)serialisation is available
@@ -25,7 +25,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
 * [ ] Move value definitions into memory
 * [ ] Change assm definition to be less stringy
-* [ ] Infix blocks? (like `set(x [y + (4 * z)])`? All var names treated as 'get')
+* [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
 * [ ] Iterators/Generators?
 
 ### Data types
@@ -68,10 +68,14 @@ The `def` function defines custom functions
 
 ### Reserved functions
 
-get, set,
-
 ### get (1 param)
-Get the value of a variable by name.
+Get the value of a variable by name. If a variable is used *outside* of the params of a `get` or `set`, it is treated as a get.
+```javascript
+print("My value is " get(val))
+print("My value is "     val )  // this is the same as above
+
+set(dst get(src)) // copy src into dst (can't use implicit get here)
+```
 
 ### set (2 params)
 Set the value of a variable
