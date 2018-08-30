@@ -9,8 +9,10 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Add rough language specs to readme
 * [x] Import files (in compiler, compile and include generated, like functions. Have an include chain, warn and skip if file has been seen before)
 * [x] Uniary minus (negation), list math.
-* [ ] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
+* [x] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
+* [ ] Assert function for testing
 * [ ] Switch-like statement (for if-else chains)
+* [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
 * [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] Syntax sugar
@@ -25,6 +27,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Move value definitions into memory
 * [ ] Change assm definition to be less stringy
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`? All var names treated as 'get')
+* [ ] Iterators/Generators?
 
 ### Data types
 

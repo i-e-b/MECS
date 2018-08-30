@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace CompiledScript.Runner
@@ -11,12 +12,53 @@ namespace CompiledScript.Runner
     {
         readonly LinkedList<Dictionary<string, string>> scopes;
 
+        /// <summary>
+        /// Create a new empty value scope
+        /// </summary>
         public Scope()
         {
             scopes = new LinkedList<Dictionary<string, string>>();
             scopes.AddLast(new Dictionary<string, string>()); // global scope
         }
-        
+
+        /// <summary>
+        /// Create a new scope, copying values (read-only) from another scope stack.
+        /// If there are name conflicts in the scope, only the visible values will be copied
+        /// </summary>
+        /// <param name="importVariables">Variables to copy. All will be added to the global level.</param>
+        public Scope(Scope importVariables)
+        {
+            scopes = new LinkedList<Dictionary<string, string>>();
+            var global = new Dictionary<string, string>();
+
+            if (importVariables != null) {
+                foreach (var value in importVariables.ListAllVisible()){
+                    global.Add(value.Key, value.Value);
+                }
+            }
+
+            scopes.AddLast(global);
+        }
+
+        /// <summary>
+        /// List all values in the scope
+        /// </summary>
+        private IEnumerable<KeyValuePair<string,string>> ListAllVisible()
+        {
+            var seen = new HashSet<string>();
+            var scope = scopes.Last;
+            while (scope != null)
+            {
+                foreach (var pair in scope.Value)
+                {
+                    if (seen.Contains(pair.Key)) continue;
+                    seen.Add(pair.Key);
+                    yield return pair;
+                }
+                scope = scope.Previous;
+            }
+        }
+
         /// <summary>
         /// Start a new inner-most scope.
         /// Parameters are specially named by index (like "__p0", "__p1"). The compiler must match this.

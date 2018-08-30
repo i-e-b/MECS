@@ -15,7 +15,7 @@ namespace CompiledScript.Runner
        
         private int words;
 
-        public virtual void Init(string bin)
+        public virtual void Init(string bin, Scope importVariables = null)
         {
             program = new List<string>();
 
@@ -26,7 +26,7 @@ namespace CompiledScript.Runner
 
                 program.Add(StringEncoding.Decode(token));
             }
-            Variables = new Scope();
+            Variables = new Scope(importVariables);
             Functions = new Dictionary<string, FunctionDefinition>();
         }
 
@@ -76,7 +76,7 @@ namespace CompiledScript.Runner
 				        break;
 
 			        case 'f': // Function *CALLS*
-				        position = HandleFunctionCall(position, param, valueStack, word, returnStack);
+				        position = HandleFunctionCall(position, param, valueStack, word, returnStack, Variables);
 			            break;
 
 			        case 'c': // flow Control -- conditions, jumps etc
@@ -224,7 +224,7 @@ namespace CompiledScript.Runner
             return position;
         }
 
-        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word, Stack<int> returnStack)
+        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word, Stack<int> returnStack, Scope parameterNames)
         {
             position++;
             var nbParams = TryParseInt(program[position].Trim());
@@ -266,36 +266,48 @@ namespace CompiledScript.Runner
 			    return param.ElementAt(nbParams - 1);
 		    }
 
-		    if ((functionName == "=" || functionName == "equals") && nbParams == 2)
+            // each element equal to the last
+		    if (functionName == "=" || functionName == "equals")
             {
-			    return ( param.ElementAt(0) == (param.ElementAt(1)) ) + "";
-		    }
-            
-            if ((functionName == ">") && nbParams == 2)
-            {
-                return ( TryParseInt(param.ElementAt(0)) > TryParseInt(param.ElementAt(1))) + "";
+                if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
+                return "" + FoldInequality(param, (a, b) => a == b);
             }
 
-            if ((functionName == "<") && nbParams == 2)
+            // Each element smaller than the last
+            if (functionName == ">")
             {
-                return ( TryParseInt(param.ElementAt(0)) < TryParseInt(param.ElementAt(1))) + "";
+                if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
+                return "" + FoldInequality(param, (a, b) => TryParseInt(a) > TryParseInt(b));
             }
 
-            if ((functionName == "<>" || functionName == "not-equal") && nbParams == 2)
+            // Each element larger than the last
+            if (functionName == "<")
             {
-                return ( TryParseInt(param.ElementAt(0)) != TryParseInt(param.ElementAt(1))) + "";
+                if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
+                return "" + FoldInequality(param, (a, b) => TryParseInt(a) < TryParseInt(b));
             }
 
+            // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
+            if (functionName == "<>" || functionName == "not-equal")
+            {
+                if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
+                return "" + FoldInequality(param, (a, b) => a != b);
+            }
+
+            string result;
             switch (functionName)
             {
                 case "eval":
-                    SourceCodeReader reader = new SourceCodeReader();
-                    Node programTmp = reader.Read(param.ElementAt(0));
-                    string bin = Compiler.Compiler.CompileRoot(programTmp, false);
-                    ByteCodeInterpreter byteCodeReader = new ByteCodeInterpreter();
-                    byteCodeReader.Init(bin);
-                    byteCodeReader.Execute(false, false);
-                    break;
+                    var reader = new SourceCodeReader();
+                    var statements = param.ElementAt(0);
+                    var programTmp = reader.Read(statements);
+                    var bin = Compiler.Compiler.CompileRoot(programTmp, false);
+                    //var bin = Compiler.Compiler.Compile(programTmp, 0, false, null, null).ByteCode;
+                    var interpreter = new ByteCodeInterpreter();
+                    interpreter.Init(bin, Variables);
+                    result = interpreter.Execute(false, false);
+                    if (result != null && result.Length > 1) result = result.Substring(1);
+                    return result;
 
                 case "call":
                     functionName = param.ElementAt(0);
@@ -314,7 +326,7 @@ namespace CompiledScript.Runner
                 {
                     bool more = nbParams > 0;
                     int i = 0;
-                    string result = "false";
+                    result = "false";
                     while (more)
                     {
                         condition = param.ElementAt(i);
@@ -335,7 +347,7 @@ namespace CompiledScript.Runner
                 {
                     bool more = nbParams > 0;
                     int i = 0;
-                    string result = more + "";
+                    result = more + "";
                     while (more)
                     {
                         condition = param.ElementAt(i);
@@ -452,6 +464,23 @@ namespace CompiledScript.Runner
 
             return null; // Void.
 	    }
+
+        private bool FoldInequality(IEnumerable<string> list, Func<string, string, bool> comparitor)
+        {
+            bool first = true;
+            string prev = null;
+            foreach (var str in list)
+            {
+                if (first) {
+                    prev = str;
+                    first = false;
+                    continue;
+                }
+                if ( ! comparitor(prev, str)) return false;
+                prev = str;
+            }
+            return true;
+        }
 
         private bool IsMathFunc(string functionName)
         {

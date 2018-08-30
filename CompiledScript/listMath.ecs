@@ -1,22 +1,50 @@
-// Some simple demos of non-binary math
+// Some simple demos of non-binary math and logic
 
 set(x 5)
 
-print("Uniary math (one number) -- ")
-print("--------------------------- ")
-print("The negative of " get(x) " is " -(get(x)) ) // -5
-print("The positive of " get(x) " is " +(get(x)) ) //  5
-print("The odd-ness of " get(x) " is " %(get(x)) ) //  1
+def (
+    show (str) (
+        return(
+            concat(get(str) " = " eval(get(str)))
+        )
+    )
+)
+
+print("Uniary math (one number)")
+print("------------------------")
+print("The negative of " get(x) " is " show("-(get(x))") ) // -5
+print("The positive of " get(x) " is " show("+(get(x))") ) //  5
+print("The odd-ness of " get(x) " is " show("%(get(x))") ) //  1
 
 print("\r\n")
 
-print("List math (more than two numbers) -- ")
-print("--------------------------- ")
+print("List math (more than two numbers)")
+print("---------------------------------")
 print("The sum of integers: " +(1 2 3 4 5) ) // should be 15
-print("Reduction from an accumulator: " -(100 10 1))   // should be 89
-print("Chain product: "                 *(5 1 2 4))    // should be 40
-print("Chain partition: "               /(100 2 5))    // should be 10
-print("Chain remainder: "               %(18 10 3))    // should be 2
+print("Reduction from an accumulator: " show("-(100 10 1)") )   // should be 89
+print("Chain product:                 " show("*(5 1 2 4)") )    // should be 40
+print("Chain partition:               " show("/(100 2 5)") )    // should be 10
+print("Chain remainder:               " show("%(18 10 3)") )    // should be 2
 
 
+print("\r\n")
 
+print("List logic (more than two values)")
+print("all operations short-circuit")
+print("---------------------------------")
+print("List < :    " show("<(5 15 100)")) // should be true
+print("List < :    " show("<(5 1 100)")) // should be false
+print("List < :    " show("<(100 50 0)")) // should be false
+
+print("List > :    " show(">(5 15 100)")) // should be false
+print("List > :    " show(">(5 1 100)")) // should be false
+print("List > :    " show(">(100 50 0)")) // should be true
+
+print("List = :    " show("=(5 15 100)")) // should be false
+print("List = :    " show("=(1 1 1)")) // should be true
+print("List = :    " show("=(1 1 1 0)")) // should be false
+
+print("List <> :   " show("<>(5 15 100)")) // should be true
+print("List <> :   " show("<>(1 1 1)")) // should be false
+print("List <> :   " show("<>(1 1 1 0)")) // should be false
+print("List <> :   " show("<>(1 0 1 0)")) // should be TRUE (checks sequential inequality, not set uniqueness)

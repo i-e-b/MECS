@@ -12,7 +12,7 @@ namespace CompiledScript
     {
         static void Main()
         {
-            var content = File.ReadAllText("listMath.ecs"); 
+            var content = File.ReadAllText("listMath.ecs");
             Execute(content, verbose: false, argsVariables: new Dictionary<string, string>());
         }
 
@@ -70,12 +70,14 @@ namespace CompiledScript
                 sw.Stop();
 
                 Console.WriteLine("\r\nFinished. Execution took "+sw.Elapsed);
+                Console.WriteLine("Press [Enter]");
                 Console.ReadLine();
             }
             catch (Exception e)
             {
                 Console.WriteLine("Exception : " + e.Message);
                 Console.WriteLine("\r\n\r\n" + e.StackTrace);
+                Console.WriteLine("\r\n\r\nPress [Enter]");
                 Console.ReadLine();
             }
         }
