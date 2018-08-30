@@ -19,13 +19,13 @@ namespace CompiledScript.Compiler
         public static Node ProcessNode(string funcName, Scope parameterNames, Node node) {
             
             switch (funcName) {
-                case "pick": return ConvertToPickList(funcName, parameterNames, node); // switch / if-else chain
+                case "pick": return ConvertToPickList(funcName, node); // switch / if-else chain
 
                 default: throw new Exception("Desugar for '" + funcName + "' is declared but not implemented");
             }
         }
 
-        private static Node ConvertToPickList(string funcName, Scope parameterNames, Node sourceNode)
+        private static Node ConvertToPickList(string funcName, Node sourceNode)
         {
             if (sourceNode.IsLeaf) throw new Exception("Empty pick list");
 

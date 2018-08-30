@@ -48,8 +48,9 @@ Extend get/set over many types? Like `set(myDict "keyStr" "valueStr")` and `get(
 
 ## Core language
 
-A lisp-look-alike language. Atoms are treated as string values, delimited strings are treated as a single value.
-Values go on the value stack. Variables and functions are case sensitive.
+A lisp-look-alike language. Atoms are treated as variable reads, except in the direct parameters of `get`, `set`, `isset`, `unset`.
+Delimited strings are treated as a single value.
+Values go on the value-stack. Variables and functions are case sensitive.
 Function and variable names can contain any non-whitespace characters, but must not start with numbers.
 
 Strings are quoted with either `"` or `'`. String escapes with `\`
@@ -82,7 +83,7 @@ Set the value of a variable
 ```javascript
 set(myVar "hello")
 set(var2 "world")
-print(get(myVar) ", " get(var2)) // "hello, world"
+print(myVar ", " var2) // "hello, world"
 ```
 
 ### `=` or `equals` (2+ params)
@@ -101,7 +102,7 @@ Returns true if each number is less than the one before
 ```javascript
 >(100 0)  // true
 >(3 2 1)  // true -- like the infix  3 > 2 > 1
->(50 get(x) 0) // is 'x' between 49 and 1
+>(50 x 0) // is 'x' between 49 and 1
 ```
 
 ### `<` (2+ params)
@@ -126,7 +127,7 @@ Define a subroutine / custom function. First param is the new function's paramet
 ```javascript
 def (
     timesTwo (x) (
-        return( *(2 get(x)) )
+        return( *(2 x) )
     )
 )
 def (
@@ -154,9 +155,9 @@ OtherFileFunction("hello")
 Loops through a set of calls while the first parameter returns true
 ```javascript
 set(i 10)
-while ( not(=(get(i) 0))
-    print(get(i))
-    set(i -(get(i) 1))
+while ( not(=(i 0))
+    print(i)
+    set(i -(i 1))
 ) // 10 9 8 7 6 5 4 3 2 1
 ```
 
@@ -164,11 +165,11 @@ while ( not(=(get(i) 0))
 Run a set of calls once if the first parameter returns true
 ```javascript
 set(i 10)
-while ( not(=(get(i) 0))
-    if ( %(get(i) 2)
-        print(get(i))
+while ( not(=(i 0))
+    if ( %(i 2)
+        print(i)
     )
-    set(i -(get(i) 1))
+    set(i -(i 1))
 ) // 9 7 5 3 1
 ```
 
@@ -176,11 +177,11 @@ while ( not(=(get(i) 0))
 Run the first `if` statement that matches, ignore all the others
 ```javascript
 pick (
-    if ( get(a)
+    if ( a
         print("A was truthy")
     )
 
-    if ( get(b)
+    if ( b
         print("B was truthy, and A was not")
     )
 
@@ -213,14 +214,14 @@ Write all params to the console, then start a new line. If the last param is emp
 Return a shortened string
 ```javascript
 set(long "hello, world")
-print(substring(get(long) 7)) // "world"
+print(substring(long 7)) // "world"
 ```
 
 ### `substring` (3 params)
 Return a shortened string
 ```javascript
 set(long "hello, world")
-print(substring(get(long) 3 2)) // "lo"
+print(substring(long 3 2)) // "lo"
 ```
 
 ### `length` (1 param)
@@ -231,9 +232,9 @@ Replace substrings
 ```javascript
 print(
     replace(
-        "this is the source"
-        "th"
-        "d"
+        "this is the source" // string to change
+        "th"                 // substring to search for
+        "d"                  // replacement string
         ) // "dis is de source"
 )
 ```
@@ -296,7 +297,7 @@ outside of the `eval`. The last value on the value-stack will be returned from t
 (Advanced) Execute a function by name. Used to switch function by a variable.
 ```javascript
 set(i "print")
-call(get(i) "Hello, world")
+call(i "Hello, world")
 ```
 
 
