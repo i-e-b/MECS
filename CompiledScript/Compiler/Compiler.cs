@@ -268,6 +268,7 @@ namespace CompiledScript.Compiler
                 sb.Append(Fill(level, ' '));
                 sb.Append("// Condition for : " + node.Text);
                 sb.Append("\r\n");
+                sb.Append(Fill(level, ' '));
             }
 
             sb.Append(compiledCondition);
@@ -340,7 +341,6 @@ namespace CompiledScript.Compiler
                 sb.Append(" // If false, skip " + nbElementBody + " element(s)");
             }
 
-            //builder.Append(" ");
             sb.Append("\r\n");
 
             sb.Append(compiledBody.ByteCode);
@@ -357,11 +357,12 @@ namespace CompiledScript.Compiler
 
                 sb.Append("cjmp");
                 sb.Append(" ").Append(nbElementBack);
-                //builder.Append(" ");
                 sb.Append("\r\n");
+
                 if (debug)
                 {
                     sb.Append("\r\n");
+                    sb.Append(Fill(level, ' '));
                 }
             }
             else
@@ -372,6 +373,7 @@ namespace CompiledScript.Compiler
                     sb.Append("// End : " + node.Text);
                     sb.Append("\r\n");
                     sb.Append("\r\n");
+                    sb.Append(Fill(level, ' '));
                 }
             }
             return returns;
@@ -382,12 +384,22 @@ namespace CompiledScript.Compiler
         /// </summary>
         private static bool CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node, Scope parameterNames)
         {
+
+            var funcName = StringEncoding.Decode(node.Text);
+            if (Desugar.NeedsDesugaring(funcName)) {
+                node = Desugar.ProcessNode(funcName, parameterNames, node);
+                var frag = Compile(node, level + 1, debug, parameterNames, null);
+                sb.Append(frag.ByteCode);
+                return frag.ReturnsValues;
+            }
+
             sb.Append(Compile(node, level + 1, debug, parameterNames, null));
+
 
             if (debug)
             {
                 sb.Append(Fill(level, ' '));
-                sb.Append("// Function : \"" + StringEncoding.Decode(node.Text));
+                sb.Append("// Function : \"" + funcName);
                 sb.Append("\" with " + node.Children.Count);
                 sb.Append(" parameter(s)");
                 sb.Append("\r\n");
@@ -399,8 +411,10 @@ namespace CompiledScript.Compiler
             sb.Append(node.Children.Count); // parameter count
             sb.Append("\r\n");
 
-            return (node.Text == "return") && (node.Children.Count > 0);
+            return (funcName == "return") && (node.Children.Count > 0); // is there a value return?
         }
+
+
 
         /// <summary>
         /// Compile a custom function definition
@@ -421,7 +435,7 @@ namespace CompiledScript.Compiler
             if (definitionNode.Children.Any(c=>c.IsLeaf == false)) throw new Exception("Function parameters must be simple names.\r\n" +
                                                                                        "`def ( myFunc (  param1  ) ( ... ) )` is OK,\r\n" +
                                                                                        "`def ( myFunc ( (param1) ) ( ... ) )` is not OK");
-            if (bodyNode.Text != "()") throw new Exception("Bare functions not supported. Wrap you function body in (parenthesis)");
+            if (bodyNode.Text != "()") throw new Exception("Bare functions not supported. Wrap your function body in (parenthesis)");
 
             var functionName = definitionNode.Text;
             var argCount = definitionNode.Children.Count;

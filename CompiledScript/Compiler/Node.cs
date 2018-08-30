@@ -3,7 +3,7 @@ using System.Text;
 
 namespace CompiledScript.Compiler
 {
-    class Node
+    public class Node
     {
         private LinkedList<Node> _children { get; set; }
         public LinkedList<Node> Children

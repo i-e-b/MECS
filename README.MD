@@ -11,13 +11,12 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Uniary minus (negation), list math.
 * [x] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
 * [x] Assert function
-* [ ] Switch-like statement (for if-else chains)
+* [x] Switch-like statement (for if-else chains)
 * [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] Syntax sugar
       - treat `variableName` as `get(variableName)`
-      - *maybe* `variableName = value` as `set(variableName value)`? Not sure.
 * [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Memory model (heap, arrays)
 * [ ] Make sure (de)serialisation is available
@@ -169,6 +168,25 @@ while ( not(=(get(i) 0))
 ) // 9 7 5 3 1
 ```
 
+### `pick` (special)
+Run the first `if` statement that matches, ignore all the others
+```javascript
+pick (
+    if ( get(a)
+        print("A was truthy")
+    )
+
+    if ( get(b)
+        print("B was truthy, and A was not")
+    )
+
+    if ( true // this is how to do a 'default' case
+        print("Neither A nor B were truthy")
+    )
+)
+```
+This gets converted to a new function definition by the compiler, so `return` will only escape from the `pick` and not any surrounding function.
+
 ### `not` (1 param)
 Invert boolean. Given 0, "0", "false" or false, returns true. Otherwise returns true.
 
@@ -253,13 +271,22 @@ Divide numbers. If more than two params given, a running division will be made (
 ### `%` (2+ params)
 Get remainder from integer division
 
+### `random` (0+ params)
+Get a random value
+
+* 0 params - any size
+* 1 param  - max size
+* 2 params - range
+
+## Advanced built-in functions
 
 ### `eval` (1 param)
 (Advanced) Compile and run a program string.
 ```javascript
 eval("print('what')")
 ```
-The evaluated program is run with the current variable scope left in place.
+The evaluated program is run with a copy of current variable scope. Programs run in `eval` can read values, but `set` will have no effect
+outside of the `eval`. The last value on the value-stack will be returned from the call to `eval`.
 
 ### `call` (1+ params)
 (Advanced) Execute a function by name. Used to switch function by a variable.

@@ -8,7 +8,7 @@ namespace CompiledScript.Runner
     /// Simple variable scope storage and resolver.
     /// Values are found in the most recently defined scope first
     /// </summary>
-    internal class Scope
+    public class Scope
     {
         readonly LinkedList<Dictionary<string, string>> scopes;
 

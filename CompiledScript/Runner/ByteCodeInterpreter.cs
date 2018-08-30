@@ -7,15 +7,16 @@ using CompiledScript.Compiler;
 
 namespace CompiledScript.Runner
 {
-    class ByteCodeInterpreter
+    public class ByteCodeInterpreter
     {
         private List<string> program;
         public Dictionary<string, FunctionDefinition>  Functions;
         public Scope Variables;
+        public static Random rnd = new Random();
        
         private int stepsTaken;
 
-        public virtual void Init(string bin, Scope importVariables = null)
+        public void Init(string bin, Scope importVariables = null)
         {
             program = new List<string>();
 
@@ -73,7 +74,7 @@ namespace CompiledScript.Runner
 				        break;
 
 			        case 'f': // Function *CALLS*
-				        position = HandleFunctionCall(position, param, valueStack, word, returnStack);
+				        position = PrepareFunctionCall(position, param, valueStack, word, returnStack);
 			            break;
 
 			        case 'c': // flow Control -- conditions, jumps etc
@@ -219,7 +220,7 @@ namespace CompiledScript.Runner
             return position;
         }
 
-        private int HandleFunctionCall(int position, LinkedList<string> param, Stack<string> valueStack, string word, Stack<int> returnStack)
+        private int PrepareFunctionCall(int position, LinkedList<string> param, Stack<string> valueStack, string word, Stack<int> returnStack)
         {
             position++;
             var nbParams = TryParseInt(program[position].Trim());
@@ -239,7 +240,7 @@ namespace CompiledScript.Runner
             }
 
             // Evaluate function.
-            var evalResult = Eval(ref position, word.Substring(1), nbParams, param, returnStack, valueStack);
+            var evalResult = EvaluateFunctionCall(ref position, word.Substring(1), nbParams, param, returnStack, valueStack);
 
             // Add result on stack as a value.
             if (evalResult != null)
@@ -251,7 +252,7 @@ namespace CompiledScript.Runner
         }
 
         // Evaluate a function call
-	    public string Eval(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack, Stack<string> valueStack)
+	    public string EvaluateFunctionCall(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack, Stack<string> valueStack)
         {
             if (string.IsNullOrWhiteSpace(functionName)) throw new Exception("Empty function name");
 
@@ -262,47 +263,46 @@ namespace CompiledScript.Runner
 			    return param.ElementAt(nbParams - 1);
 		    }
 
-            // each element equal to the last
-		    if (functionName == "=" || functionName == "equals")
-            {
-                if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
-                return "" + FoldInequality(param, (a, b) => a == b);
-            }
-
-            // Each element smaller than the last
-            if (functionName == ">")
-            {
-                if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
-                return "" + FoldInequality(param, (a, b) => TryParseInt(a) > TryParseInt(b));
-            }
-
-            // Each element larger than the last
-            if (functionName == "<")
-            {
-                if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
-                return "" + FoldInequality(param, (a, b) => TryParseInt(a) < TryParseInt(b));
-            }
-
-            // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
-            if (functionName == "<>" || functionName == "not-equal")
-            {
-                if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
-                return "" + FoldInequality(param, (a, b) => a != b);
-            }
-
             string result;
             switch (functionName)
             {
+                // each element equal to the last
+                case "=":
+                case "equals":
+                    if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
+                    return "" + FoldInequality(param, (a, b) => a == b);
+                
+                // Each element smaller than the last
+                case ">":
+                    if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
+                    return "" + FoldInequality(param, (a, b) => TryParseInt(a) > TryParseInt(b));
+
+                // Each element larger than the last
+                case "<":
+                    if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
+                    return "" + FoldInequality(param, (a, b) => TryParseInt(a) < TryParseInt(b));
+
+                // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
+                case "<>":
+                case "not-equal":
+                    if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
+                    return "" + FoldInequality(param, (a, b) => a != b);
+
                 case "assert":
                     if (nbParams < 1) return null; // assert nothing passes
                     condition = param.ElementAt(0);
                     if (condition == "false" || condition == "0")
                     {
-                        var msg = Concat(param.First.Next);
-                        throw new Exception("Assertion failed: "+msg);
+                        var msg = ConcatLinkedList(param.First.Next);
+                        throw new Exception("Assertion failed: " + msg);
                     }
 
                     break;
+
+                case "random":
+                    if (nbParams < 1) return "" + rnd.Next();                                               // 0 params - any size
+                    if (nbParams < 2) return "" + rnd.Next(TryParseInt(param.ElementAt(0)));                // 1 param  - max size
+                    return "" + rnd.Next(TryParseInt(param.ElementAt(0)), TryParseInt(param.ElementAt(1))); // 2 params - range
 
                 case "eval":
                     var reader = new SourceCodeReader();
@@ -320,7 +320,7 @@ namespace CompiledScript.Runner
                     functionName = param.ElementAt(0);
                     nbParams--;
                     param.RemoveFirst();
-                    return Eval(ref position, functionName, nbParams, param, returnStack, valueStack);
+                    return EvaluateFunctionCall(ref position, functionName, nbParams, param, returnStack, valueStack);
 
                 case "not" when nbParams == 1:
                     condition = param.ElementAt(0);
@@ -472,7 +472,7 @@ namespace CompiledScript.Runner
             return null; // Void.
 	    }
 
-        private string Concat(LinkedListNode<string> list)
+        private string ConcatLinkedList(LinkedListNode<string> list)
         {
             var sb = new StringBuilder();
             while (list != null) {
