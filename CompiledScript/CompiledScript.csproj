@@ -20,10 +20,10 @@
     <None Update="listMath.ecs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="program.txt">
+    <None Update="demo_program.ecs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="program2.txt">
+    <None Update="demo_program2.ecs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

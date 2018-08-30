@@ -1,0 +1,14 @@
+﻿
+set(a_variable " So, ")
+
+// Assertions
+
+assert(true)  // this will be fine
+assert(1)     // as will this
+assert()      // assertions on nothing pass
+
+// A false or zero value in the first param will fail.
+// An assert can have additional params, which will be used
+// to create the exception message if the assert fails
+assert(false "My expectations were not met!" get(a_variable) "I will throw an exception in the runtime")
+

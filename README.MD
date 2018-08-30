@@ -10,7 +10,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Import files (in compiler, compile and include generated, like functions. Have an include chain, warn and skip if file has been seen before)
 * [x] Uniary minus (negation), list math.
 * [x] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
-* [ ] Assert function for testing
+* [x] Assert function
 * [ ] Switch-like statement (for if-else chains)
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
@@ -82,17 +82,27 @@ set(var2 "world")
 print(get(myVar) ", " get(var2)) // "hello, world"
 ```
 
-### `=` or `equals` (2 params)
-Returns true if two values are the same
+### `=` or `equals` (2+ params)
+Returns true if values are all the same
 
-### `<>` (2 params)
-Returns false if two numbers are the same
+### `<>` (2+ params)
+Returns true if each value is different to the last
+```javascript
+<>("Hello"  "world") // true
+<>(1 1 1)            // false
+<>(0 1 0)            // true
+```
 
-### `>` (2 params)
-Returns true if the second param is a smaller number than the first
+### `>` (2+ params)
+Returns true if each number is less than the one before
+```javascript
+>(100 0)  // true
+>(3 2 1)  // true -- like the infix  3 > 2 > 1
+>(50 get(x) 0) // is 'x' between 49 and 1
+```
 
-### `<` (2 params)
-Returns true if the second param is a bigger number than the first
+### `<` (2+ params)
+Returns true if each number is bigger than the one before
 
 ### `isset` (1 param)
 Returns true if the name has a value assigned

@@ -37,7 +37,7 @@ namespace CompiledScript.Runner
             if (resetVars) { Variables.Clear(); }
 
 		    var valueStack = new LinkedList<string>();
-            var returnStack = new Stack<int>(); // absolute position for call and return TODO: implement 
+            var returnStack = new Stack<int>(); // absolute position for call and return
 		    
             var param = new LinkedList<string>();
             int position = 0; // the PC. This is in TOKEN positions, not bytes
@@ -76,7 +76,7 @@ namespace CompiledScript.Runner
 				        break;
 
 			        case 'f': // Function *CALLS*
-				        position = HandleFunctionCall(position, param, valueStack, word, returnStack, Variables);
+				        position = HandleFunctionCall(position, param, valueStack, word, returnStack);
 			            break;
 
 			        case 'c': // flow Control -- conditions, jumps etc
@@ -145,7 +145,6 @@ namespace CompiledScript.Runner
             switch (action)
             {
                 case 'g': // get (adds a value to the stack, false if not set)
-                    // TODO: need to scopes for function calls
                     value = Variables.Resolve(varName);
                     if (value != null)
                     {
@@ -158,6 +157,7 @@ namespace CompiledScript.Runner
                     }
 
                     break;
+
                 case 's': // set
                     if (valueStack.Count < 1) throw new Exception("There were no values to save. Did you forget a `return` in a function?");
                     value = valueStack.Last();
@@ -165,9 +165,11 @@ namespace CompiledScript.Runner
                     value = value.Substring(1);
                     Variables.SetValue(varName, value);
                     break;
+
                 case 'i': // is set? (adds a bool to the stack)
                     valueStack.AddLast("v" + Variables.CanResolve(varName));
                     break;
+
                 case 'u': // unset
                     Variables.Remove(varName);
                     break;
@@ -224,7 +226,7 @@ namespace CompiledScript.Runner
             return position;
         }
 
-        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word, Stack<int> returnStack, Scope parameterNames)
+        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word, Stack<int> returnStack)
         {
             position++;
             var nbParams = TryParseInt(program[position].Trim());
@@ -259,6 +261,8 @@ namespace CompiledScript.Runner
         // Evaluate a function call
 	    public string Eval(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack, LinkedList<string> valueStack)
         {
+            if (string.IsNullOrWhiteSpace(functionName)) throw new Exception("Empty function name");
+
             string condition;
 
 		    if (functionName == "()" && nbParams != 0) // todo: better listing behaviour
@@ -297,6 +301,17 @@ namespace CompiledScript.Runner
             string result;
             switch (functionName)
             {
+                case "assert":
+                    if (nbParams < 1) return null; // assert nothing passes
+                    condition = param.ElementAt(0);
+                    if (condition == "false" || condition == "0")
+                    {
+                        var msg = Concat(param.First.Next);
+                        throw new Exception("Assertion failed: "+msg);
+                    }
+
+                    break;
+
                 case "eval":
                     var reader = new SourceCodeReader();
                     var statements = param.ElementAt(0);
@@ -435,7 +450,7 @@ namespace CompiledScript.Runner
                     if (functionName == "()") { // empty object. TODO: when we have better values, have an empty list
                         return "";
                     }
-                    else if (IsMathFunc(functionName)) // TODO: allow list math
+                    else if (IsMathFunc(functionName))
                     {
                         // handle math functions
                         try
@@ -465,7 +480,17 @@ namespace CompiledScript.Runner
             return null; // Void.
 	    }
 
-        private bool FoldInequality(IEnumerable<string> list, Func<string, string, bool> comparitor)
+        private string Concat(LinkedListNode<string> list)
+        {
+            var sb = new StringBuilder();
+            while (list != null) {
+                sb.Append(list.Value);
+                list = list.Next;
+            }
+            return sb.ToString();
+        }
+
+        private static bool FoldInequality(IEnumerable<string> list, Func<string, string, bool> comparitor)
         {
             bool first = true;
             string prev = null;
@@ -482,7 +507,7 @@ namespace CompiledScript.Runner
             return true;
         }
 
-        private bool IsMathFunc(string functionName)
+        private static bool IsMathFunc(string functionName)
         {
             if (functionName.Length != 1) return false;
             switch (functionName[0])
