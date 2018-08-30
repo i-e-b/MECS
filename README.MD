@@ -12,8 +12,8 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
 * [x] Assert function
 * [ ] Switch-like statement (for if-else chains)
-* [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
+* [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] Syntax sugar
       - treat `variableName` as `get(variableName)`

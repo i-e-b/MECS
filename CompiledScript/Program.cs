@@ -12,7 +12,7 @@ namespace CompiledScript
     {
         static void Main()
         {
-            var content = File.ReadAllText("../../../assertions.ecs");
+            var content = File.ReadAllText("../../../pick.ecs");
             Execute(content, verbose: false, argsVariables: new Dictionary<string, string>());
         }
 

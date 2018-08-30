@@ -13,7 +13,7 @@ namespace CompiledScript.Runner
         public Dictionary<string, FunctionDefinition>  Functions;
         public Scope Variables;
        
-        private int words;
+        private int stepsTaken;
 
         public virtual void Init(string bin, Scope importVariables = null)
         {
@@ -36,7 +36,7 @@ namespace CompiledScript.Runner
 
             if (resetVars) { Variables.Clear(); }
 
-		    var valueStack = new LinkedList<string>();
+		    var valueStack = new Stack<string>();
             var returnStack = new Stack<int>(); // absolute position for call and return
 		    
             var param = new LinkedList<string>();
@@ -45,34 +45,31 @@ namespace CompiledScript.Runner
 		    
 		    while (position < programCount)
             {
-			    words++;
+			    stepsTaken++;
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
-			    if ((words & 127) == 0)
+			    if ((stepsTaken & 127) == 0 && valueStack.Count > 100) // TODO: improve this mess
                 {
-					while (valueStack.Count > 200)
-                    {
-						valueStack.RemoveFirst();
-				    }
-			    }
+                    valueStack = new Stack<string>(valueStack.ToArray().TakeLast(100));
+                }
 
-			    string word = program[position];
+                string word = program[position];
 
                 if (verbose)
                 {
                     Console.WriteLine("---------------------------------------------");
-                    Console.WriteLine("Iteration #" + words);
-                    Console.WriteLine("pos = "+position + "/" + programCount);
+                    Console.WriteLine("Iteration #" + stepsTaken);
+                    Console.WriteLine("pos = " + position + "/" + programCount);
                     Console.WriteLine("word = " + word);
                 }
 
-			    char action = word[0];
+                char action = word[0];
 
 			    switch (action)
                 {
 			        case 'v': // Value.
-				        valueStack.AddLast(word);
+				        valueStack.Push(word);
 				        break;
 
 			        case 'f': // Function *CALLS*
@@ -102,8 +99,7 @@ namespace CompiledScript.Runner
 
 		    if (valueStack.Count != 0)
             {
-                evalResult = valueStack.Last();
-                valueStack.RemoveLast();
+                evalResult = valueStack.Pop();
 		    }
             else
             {
@@ -132,14 +128,13 @@ namespace CompiledScript.Runner
             return position + offset + 3; // + definition length + args
         }
 
-        private void HandleMemoryAccess(string word, LinkedList<string> valueStack)
+        private void HandleMemoryAccess(string word, Stack<string> valueStack)
         {
             word = word.Substring(1);
             var action = word[0];
 
-            string varName = valueStack.Last();
+            string varName = valueStack.Pop();
             string value;
-            valueStack.RemoveLast();
             varName = varName.Substring(1);
 
             switch (action)
@@ -148,26 +143,25 @@ namespace CompiledScript.Runner
                     value = Variables.Resolve(varName);
                     if (value != null)
                     {
-                        valueStack.AddLast("v" + value);
+                        valueStack.Push("v" + value);
                     }
                     else
                     {
                         // TODO: strict mode?
-                        valueStack.AddLast("vfalse");
+                        valueStack.Push("vfalse");
                     }
 
                     break;
 
                 case 's': // set
                     if (valueStack.Count < 1) throw new Exception("There were no values to save. Did you forget a `return` in a function?");
-                    value = valueStack.Last();
-                    valueStack.RemoveLast();
+                    value = valueStack.Pop();
                     value = value.Substring(1);
                     Variables.SetValue(varName, value);
                     break;
 
                 case 'i': // is set? (adds a bool to the stack)
-                    valueStack.AddLast("v" + Variables.CanResolve(varName));
+                    valueStack.Push("v" + Variables.CanResolve(varName));
                     break;
 
                 case 'u': // unset
@@ -176,7 +170,7 @@ namespace CompiledScript.Runner
             }
         }
 
-        private int HandleControlSignal(string word, LinkedList<string> valueStack, Stack<int> returnStack,  int position)
+        private int HandleControlSignal(string word, Stack<string> valueStack, Stack<int> returnStack,  int position)
         {
             word = word.Substring(1);
             var action = word[0];
@@ -184,8 +178,7 @@ namespace CompiledScript.Runner
             {
                 // cmp - relative jump *DOWN* if top of stack is false
                 case 'c':
-                    string condition = valueStack.Last();
-                    valueStack.RemoveLast();
+                    string condition = valueStack.Pop();
                     condition = condition.Length == 0 ? "false" : condition.Substring(1);
 
                     position++;
@@ -216,7 +209,7 @@ namespace CompiledScript.Runner
                 // ret - pop return stack and jump to absolute position
                 case 'r':
                     // set a special value for "void return" here, in case someone tries to use the result of a void function
-                    valueStack.AddLast("v");
+                    valueStack.Push("v");
                     if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
                     Variables.DropScope();
                     position = returnStack.Pop();
@@ -226,7 +219,7 @@ namespace CompiledScript.Runner
             return position;
         }
 
-        private int HandleFunctionCall(int position, LinkedList<string> param, LinkedList<string> valueStack, string word, Stack<int> returnStack)
+        private int HandleFunctionCall(int position, LinkedList<string> param, Stack<string> valueStack, string word, Stack<int> returnStack)
         {
             position++;
             var nbParams = TryParseInt(program[position].Trim());
@@ -237,8 +230,7 @@ namespace CompiledScript.Runner
             {
                 try
                 {
-                    param.AddFirst(valueStack.Last().Substring(1));
-                    valueStack.RemoveLast();
+                    param.AddFirst(valueStack.Pop().Substring(1));
                 }
                 catch (Exception ex)
                 {
@@ -252,14 +244,14 @@ namespace CompiledScript.Runner
             // Add result on stack as a value.
             if (evalResult != null)
             {
-                valueStack.AddLast("v" + evalResult);
+                valueStack.Push("v" + evalResult);
             }
 
             return position;
         }
 
         // Evaluate a function call
-	    public string Eval(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack, LinkedList<string> valueStack)
+	    public string Eval(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack, Stack<string> valueStack)
         {
             if (string.IsNullOrWhiteSpace(functionName)) throw new Exception("Empty function name");
 
@@ -437,7 +429,7 @@ namespace CompiledScript.Runner
                     // need to stop flow, check we have a return stack, check value need?
                     foreach (string s in param)
                     {
-                        valueStack.AddLast("v" + s);
+                        valueStack.Push("v" + s);
                     }
                     
                     if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
