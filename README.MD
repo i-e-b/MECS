@@ -13,18 +13,21 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Assert function
 * [x] Switch-like statement (for if-else chains)
 * [x] Treat `variableName` as `get(variableName)`
+
+* [ ] Split into library and apps
 * [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
+
+* [ ] Memory model (heap, arrays)
+* [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
+* [ ] Move value definitions into memory
+* [ ] Change assm definition to be less stringy
 
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] Map files for byte code, to help with error messages and diagnosis.
-* [ ] Memory model (heap, arrays)
 * [ ] Make sure (de)serialisation is available
-* [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] Object-literal form? Functions-as-data, or special syntax?
 * [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
-* [ ] Move value definitions into memory
-* [ ] Change assm definition to be less stringy
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
 * [ ] Iterators/Generators?
 
