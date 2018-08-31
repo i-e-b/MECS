@@ -40,12 +40,16 @@
             // 
             // scriptInputBox
             // 
+            this.scriptInputBox.AcceptsTab = true;
             this.scriptInputBox.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.scriptInputBox.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.scriptInputBox.DetectUrls = false;
             this.scriptInputBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.scriptInputBox.Font = new System.Drawing.Font("Dave", 18F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.scriptInputBox.Font = new System.Drawing.Font("Dave", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.scriptInputBox.HideSelection = false;
             this.scriptInputBox.Location = new System.Drawing.Point(0, 0);
             this.scriptInputBox.Name = "scriptInputBox";
+            this.scriptInputBox.ShowSelectionMargin = true;
             this.scriptInputBox.Size = new System.Drawing.Size(797, 180);
             this.scriptInputBox.TabIndex = 0;
             this.scriptInputBox.Text = "";
@@ -53,8 +57,10 @@
             // consoleTextBox
             // 
             this.consoleTextBox.AcceptsReturn = true;
+            this.consoleTextBox.AcceptsTab = true;
             this.consoleTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.consoleTextBox.Font = new System.Drawing.Font("Dave", 20.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.consoleTextBox.HideSelection = false;
             this.consoleTextBox.Location = new System.Drawing.Point(0, 0);
             this.consoleTextBox.Multiline = true;
             this.consoleTextBox.Name = "consoleTextBox";

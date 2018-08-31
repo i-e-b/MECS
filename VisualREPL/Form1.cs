@@ -8,7 +8,8 @@ namespace VisualREPL
 {
     public partial class Form1 : Form
     {
-        TextBoxStreamOutput streamOut;
+        readonly TextBoxStreamOutput streamOut;
+
         public Form1()
         {
             InitializeComponent();
@@ -23,11 +24,13 @@ namespace VisualREPL
         private void runButton_Click(object sender, EventArgs e)
         {
             var text = scriptInputBox.Text;
-            //var runner = new Thread(()=> {
-            Repl.BuildAndRun(text, new NewlineReader(), streamOut);
-            //}){ IsBackground = true};
+            var runner = new Thread(() =>
+            {
+                Repl.BuildAndRun(text, new NewlineReader(), streamOut);
+            })
+            { IsBackground = true };
 
-            //runner.Start();
+            runner.Start();
         }
     }
 
