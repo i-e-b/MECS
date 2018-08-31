@@ -26,7 +26,7 @@ pick (
     )
 )
 
-// This we be converted to something like:
+// This will be converted to something like:
 /*
 def(
     __TEMP_NAME () (
