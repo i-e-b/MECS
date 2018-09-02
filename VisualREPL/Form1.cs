@@ -63,5 +63,15 @@ namespace VisualREPL
         {
             consoleTextBox.Clear();
         }
+
+        private void saveFileButton_Click(object sender, EventArgs e)
+        {
+            switch (saveFileDialog1.ShowDialog()) {
+                case DialogResult.OK:
+                case DialogResult.Yes:
+                    File.WriteAllText(saveFileDialog1.FileName, scriptInputBox.Text);
+                    break;
+            }
+        }
     }
 }

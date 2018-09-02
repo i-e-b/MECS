@@ -14,8 +14,8 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Switch-like statement (for if-else chains)
 * [x] Treat `variableName` as `get(variableName)`
 
-* [ ] Split into library and apps
-* [ ] Add a REPL. Should be fine to run files with `import(...)` for now.
+* [x] Split into library and apps
+* [x] Add a REPL.
 
 * [ ] Memory model (heap, arrays)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
