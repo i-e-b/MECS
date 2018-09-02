@@ -32,6 +32,11 @@
             this.consoleTextBox = new System.Windows.Forms.TextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.runButton = new System.Windows.Forms.Button();
+            this.loadFileButton = new System.Windows.Forms.Button();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
+            this.statusLabel = new System.Windows.Forms.Label();
+            this.clearLogButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -67,7 +72,7 @@
             this.consoleTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
             this.consoleTextBox.Size = new System.Drawing.Size(797, 176);
             this.consoleTextBox.TabIndex = 1;
-            this.consoleTextBox.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.consoleTextBox_PreviewKeyDown);
+            this.consoleTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.consoleTextBox_KeyPress);
             // 
             // splitContainer1
             // 
@@ -101,11 +106,50 @@
             this.runButton.UseVisualStyleBackColor = true;
             this.runButton.Click += new System.EventHandler(this.runButton_Click);
             // 
+            // loadFileButton
+            // 
+            this.loadFileButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.loadFileButton.Location = new System.Drawing.Point(555, 415);
+            this.loadFileButton.Name = "loadFileButton";
+            this.loadFileButton.Size = new System.Drawing.Size(115, 23);
+            this.loadFileButton.TabIndex = 4;
+            this.loadFileButton.Text = "Load File...";
+            this.loadFileButton.UseVisualStyleBackColor = true;
+            this.loadFileButton.Click += new System.EventHandler(this.loadFileButton_Click);
+            // 
+            // openFileDialog1
+            // 
+            this.openFileDialog1.FileName = "openFileDialog1";
+            // 
+            // statusLabel
+            // 
+            this.statusLabel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.statusLabel.Location = new System.Drawing.Point(1, 369);
+            this.statusLabel.Name = "statusLabel";
+            this.statusLabel.Size = new System.Drawing.Size(706, 19);
+            this.statusLabel.TabIndex = 5;
+            this.statusLabel.Text = "Ready";
+            // 
+            // clearLogButton
+            // 
+            this.clearLogButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.clearLogButton.Location = new System.Drawing.Point(713, 374);
+            this.clearLogButton.Name = "clearLogButton";
+            this.clearLogButton.Size = new System.Drawing.Size(75, 23);
+            this.clearLogButton.TabIndex = 6;
+            this.clearLogButton.Text = "Clear Log";
+            this.clearLogButton.UseVisualStyleBackColor = true;
+            this.clearLogButton.Click += new System.EventHandler(this.clearLogButton_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.clearLogButton);
+            this.Controls.Add(this.statusLabel);
+            this.Controls.Add(this.loadFileButton);
             this.Controls.Add(this.runButton);
             this.Controls.Add(this.splitContainer1);
             this.Name = "Form1";
@@ -125,6 +169,11 @@
         private System.Windows.Forms.TextBox consoleTextBox;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Button runButton;
+        private System.Windows.Forms.Button loadFileButton;
+        private System.Windows.Forms.OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.SaveFileDialog saveFileDialog1;
+        private System.Windows.Forms.Label statusLabel;
+        private System.Windows.Forms.Button clearLogButton;
     }
 }
 

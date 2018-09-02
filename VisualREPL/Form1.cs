@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
@@ -9,37 +10,58 @@ namespace VisualREPL
     public partial class Form1 : Form
     {
         readonly TextBoxStreamOutput streamOut;
+        readonly QueueKeyReader streamIn;
 
         public Form1()
         {
             InitializeComponent();
             streamOut = new TextBoxStreamOutput(consoleTextBox);
-        }
-
-        private void consoleTextBox_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
-        {
-            // TODO: drive the input reader
+            streamIn = new QueueKeyReader();
         }
 
         private void runButton_Click(object sender, EventArgs e)
         {
             var text = scriptInputBox.Text;
+            var sw = new Stopwatch();
             var runner = new Thread(() =>
             {
-                Repl.BuildAndRun(text, new NewlineReader(), streamOut);
+                SetStatus("Running");
+                sw.Start();
+                Repl.BuildAndRun(text, streamIn, streamOut);
+                sw.Stop();
+                SetStatus("Complete: "+sw.Elapsed);
             })
             { IsBackground = true };
 
             runner.Start();
         }
-    }
 
-    // spits out endless newlines
-    internal class NewlineReader : TextReader
-    {
-        public override int Read()
+        private void SetStatus(string msg)
         {
-            return '\n';
+            Invoke(new Action(() =>
+            {
+               statusLabel.Text = msg; 
+            }));
+        }
+
+        private void consoleTextBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            streamIn.Q(e.KeyChar);
+        }
+
+        private void loadFileButton_Click(object sender, EventArgs e)
+        {
+            switch(openFileDialog1.ShowDialog()) {
+                case DialogResult.OK:
+                case DialogResult.Yes:
+                    scriptInputBox.Text = File.ReadAllText(openFileDialog1.FileName);
+                    break;
+            }
+        }
+
+        private void clearLogButton_Click(object sender, EventArgs e)
+        {
+            consoleTextBox.Clear();
         }
     }
 }
