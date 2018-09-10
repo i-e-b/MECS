@@ -11,41 +11,42 @@ namespace EvieCompilerSystem.InputOutput
         PtrArray_Int32, PtrArray_UInt32, PtrArray_String, PtrArray_Double,
         PtrSet_String, PtrSet_Int32,
         PtrLinkedList,
-        PtrDiagnosticString, Reserved,
+        PtrDiagnosticString,
+        NoValue,
         ValInt32, ValUInt32
     }
 
     public static class NanTags
     {
-        public const ulong NAN_FLAG = 0x7FF8000000000000; // Bits to make a quiet NaN
-        public const ulong ALL_DATA = 0x8007FFFFFFFFFFFF; // 51 bits (all non NaN flags)
-        public const ulong UPPER_FOUR = 0x8007000000000000; // mask for top 4 available bits
-        public const ulong LOWER_32 = 0x00000000FFFFFFFF; // low 32 bits
-        public const ulong LOWER_48 = 0x0000FFFFFFFFFFFF; // 48 bits for pointers, all non TAG data
+        const ulong NAN_FLAG = 0x7FF8000000000000;      // Bits to make a quiet NaN
+        const ulong ALL_DATA = 0x8007FFFFFFFFFFFF;      // 51 bits (all non NaN flags)
+        const ulong UPPER_FOUR = 0x8007000000000000;    // mask for top 4 available bits
+        const ulong LOWER_32 = 0x00000000FFFFFFFF;      // low 32 bits
+        const ulong LOWER_48 = 0x0000FFFFFFFFFFFF;      // 48 bits for pointers, all non TAG data
 
-        // Mask with "UPPER_FOUR" then check against these:     // Possible assignments:
-        public const ulong TAG_1 = 0x8000000000000000;         // Variable ref (2 char + 32 bit hash?)
-        public const ulong TAG_2 = 0x8001000000000000;         // Opcode (3 x 16bit: code, first param, second param)
+        // Mask with "UPPER_FOUR" then check against these:    // Possible assignments:
+        const ulong TAG_1 = 0x8000000000000000;         // Variable ref (2 char + 32 bit hash?)
+        const ulong TAG_2 = 0x8001000000000000;         // Opcode (3 x 16bit: code, first param, second param)
 
-        public const ulong TAG_3 = 0x8002000000000000;         // Memory pointer to string header
-        public const ulong TAG_4 = 0x8003000000000000;         // Memory pointer to hashtable
-        public const ulong TAG_5 = 0x8004000000000000;         // Memory pointer to grid (hash table keyed by ints)
+        const ulong TAG_3 = 0x8002000000000000;         // Memory pointer to STRING header
+        const ulong TAG_4 = 0x8003000000000000;         // Memory pointer to HASHTABLE
+        const ulong TAG_5 = 0x8004000000000000;         // Memory pointer to GRID (hash table keyed by ints)
 
-        public const ulong TAG_6 = 0x8005000000000000;         // Memory pointer to array of int32
-        public const ulong TAG_7 = 0x8006000000000000;         // Memory pointer to array of uint32
-        public const ulong TAG_8 = 0x8007000000000000;         // Memory pointer to array of string
-        public const ulong TAG_9 = 0x0000000000000000;         // Memory pointer to array of double
+        const ulong TAG_6 = 0x8005000000000000;         // Memory pointer to ARRAY of int32
+        const ulong TAG_7 = 0x8006000000000000;         // Memory pointer to ARRAY of uint32
+        const ulong TAG_8 = 0x8007000000000000;         // Memory pointer to ARRAY of string
+        const ulong TAG_9 = 0x0000000000000000;         // Memory pointer to ARRAY of double
 
-        public const ulong TAG_10 = 0x0001000000000000;        // Memory pointer to set of string header
-        public const ulong TAG_11 = 0x0002000000000000;        // Memory pointer to set of 32 signed integer
+        const ulong TAG_10 = 0x0001000000000000;        // Memory pointer to SET of string header
+        const ulong TAG_11 = 0x0002000000000000;        // Memory pointer to SET of 32 signed integer
 
-        public const ulong TAG_12 = 0x0003000000000000;        // Memory pointer to double-linked list node
+        const ulong TAG_12 = 0x0003000000000000;        // Memory pointer to double-linked list node
 
-        public const ulong TAG_13 = 0x0004000000000000;        // Memory pointer to Diagnostic string
-        public const ulong TAG_14 = 0x0005000000000000;        // Reserved
+        const ulong TAG_13 = 0x0004000000000000;        // Memory pointer to Diagnostic string
+        const ulong TAG_14 = 0x0005000000000000;        // NoValue - specifically not-a-value / not-a-result. Like NULL or VOID
 
-        public const ulong TAG_15 = 0x0006000000000000;        // Signed 32 bit integer / single boolean
-        public const ulong TAG_16 = 0x0007000000000000;        // Unsigned integer 32
+        const ulong TAG_15 = 0x0006000000000000;        // Signed 32 bit integer / single boolean
+        const ulong TAG_16 = 0x0007000000000000;        // Unsigned integer 32
 
         /// <summary>
         /// Read tagged type
@@ -71,7 +72,7 @@ namespace EvieCompilerSystem.InputOutput
                 case TAG_11: return DataType.PtrSet_Int32;
                 case TAG_12: return DataType.PtrLinkedList;
                 case TAG_13: return DataType.PtrDiagnosticString;
-                case TAG_14: return DataType.Reserved;
+                case TAG_14: return DataType.NoValue;
                 case TAG_15: return DataType.ValInt32;
                 case TAG_16: return DataType.ValUInt32;
 
@@ -100,12 +101,24 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.PtrSet_Int32: return TAG_11;
                 case DataType.PtrLinkedList: return TAG_12;
                 case DataType.PtrDiagnosticString: return TAG_13;
-                case DataType.Reserved: return TAG_14;
+                case DataType.NoValue: return TAG_14;
                 case DataType.ValInt32: return TAG_15;
                 case DataType.ValUInt32: return TAG_16;
 
                 default:
                     throw new Exception("Invalid data type");
+            }
+        }
+
+        /// <summary>
+        /// Value tagged as an empty return type
+        /// </summary>
+        public static double VoidReturn()
+        {
+            unchecked
+            {
+                ulong encoded = NAN_FLAG | TAG_14;
+                return BitConverter.Int64BitsToDouble((long)encoded);
             }
         }
 
@@ -172,6 +185,20 @@ namespace EvieCompilerSystem.InputOutput
                 ulong raw = NAN_FLAG | TAG_1 | crushedName;
 
                 return BitConverter.Int64BitsToDouble((long)raw);
+            }
+        }
+
+        /// <summary>
+        /// Get hash code of names, as created by variable reference op codes
+        /// </summary>
+        public static ulong GetCrushedName(string fullName) {
+            unchecked
+            {
+                ulong hash = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
+                byte f = (byte)fullName[fullName.Length - 1];
+                byte l = (byte)fullName.Length;
+
+                return ((ulong)f << 40) | ((ulong)l << 32) | hash;
             }
         }
 
@@ -288,6 +315,14 @@ namespace EvieCompilerSystem.InputOutput
                 hash ^= hash >> 16;
                 return hash + key;
             }
+        }
+
+        /// <summary>
+        /// Encode a boolean. We use Int32, 0 = false
+        /// </summary>
+        public static double EncodeBool(bool b)
+        {
+            return EncodeInt32(b ? -1 : 0);
         }
     }
 

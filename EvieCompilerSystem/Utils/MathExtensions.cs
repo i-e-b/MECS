@@ -9,19 +9,19 @@ namespace EvieCompilerSystem.Utils
         /// <summary>
         /// Successive subtraction
         /// </summary>
-        public static int ChainDifference<T>(this ICollection<T> collection, Func<T, int> selector) {
-            int accum = 0;
+        public static double ChainDifference(this ICollection<double> collection) {
+            double accum = 0;
             var first = true;
 
             foreach (var v in collection)
             {
                 if (first) {
-                    accum = selector(v);
+                    accum = v;
                     first = false;
                     continue;
                 }
                  
-                accum -= selector(v);
+                accum -= v;
             }
             return accum;
         }
@@ -29,19 +29,19 @@ namespace EvieCompilerSystem.Utils
         /// <summary>
         /// Successive division
         /// </summary>
-        public static int ChainDivide<T>(this ICollection<T> collection, Func<T, int> selector) {
-            int accum = 0;
+        public static double ChainDivide(this ICollection<double> collection) {
+            double accum = 0;
             var first = true;
 
             foreach (var v in collection)
             {
                 if (first) {
-                    accum = selector(v);
+                    accum = v;
                     first = false;
                     continue;
                 }
                  
-                accum /= selector(v);
+                accum /= v;
             }
             return accum;
         }
@@ -49,19 +49,19 @@ namespace EvieCompilerSystem.Utils
         /// <summary>
         /// Successive division remainder
         /// </summary>
-        public static int ChainRemainder<T>(this ICollection<T> collection, Func<T, int> selector) {
-            int accum = 0;
+        public static double ChainRemainder(this ICollection<double> collection) {
+            double accum = 0;
             var first = true;
 
             foreach (var v in collection)
             {
                 if (first) {
-                    accum = selector(v);
+                    accum = v;
                     first = false;
                     continue;
                 }
                  
-                accum %= selector(v);
+                accum %= v;
             }
             return accum;
         }
@@ -70,12 +70,12 @@ namespace EvieCompilerSystem.Utils
         /// <summary>
         /// Successive multiplication
         /// </summary>
-        public static int ChainProduct<T>(this ICollection<T> collection, Func<T, int> selector) {
-            int accum = 1;
+        public static double ChainProduct(this ICollection<double> collection) {
+            double accum = 1;
 
             foreach (var v in collection)
             {
-                accum *= selector(v);
+                accum *= v;
             }
             return accum;
         }

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace EvieCompilerSystem.Compiler
 {
-    class SourceCodeReader
+    class SourceCodeTokeniser
     {
         public Node Read(string source)
         {

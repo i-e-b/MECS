@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using EvieCompilerSystem.Compiler;
 using EvieCompilerSystem.InputOutput;
 using EvieCompilerSystem.Runtime;
 
@@ -13,12 +12,17 @@ namespace EvieCompilerSystem
         // ReSharper disable once UnusedMember.Global
         public static void BuildAndRun(string languageInput, TextReader input, TextWriter output) {
             
-            var contents = InputReader.ReadContent(languageInput, true);
+            var contents = SourceCodeReader.ReadContent(languageInput, true);
             
             // Compile
-            var reader = new SourceCodeReader();
-            var program = reader.Read(contents);
-            var bin = Compiler.Compiler.CompileRoot(program, debug: false);
+            var sourceCodeReader = new Compiler.SourceCodeTokeniser();
+            var program = sourceCodeReader.Read(contents);
+            var compiledOutput = Compiler.Compiler.CompileRoot(program, debug: false);
+
+            var stream = new MemoryStream();
+            compiledOutput.WriteToStream(stream);
+            stream.Seek(0,SeekOrigin.Begin);
+            var byteCodeReader = new RuntimeMemoryModel(stream);
 
             // Execute
             try
@@ -26,7 +30,7 @@ namespace EvieCompilerSystem
                 var interpreter = new ByteCodeInterpreter();
 
                 // Init the interpreter.
-                interpreter.Init(bin, input, output);
+                interpreter.Init(byteCodeReader, input, output);
 
                 /* TODO later: ability to pass in args
                 foreach (var pair in argsVariables.ToArray())

@@ -4,50 +4,63 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using EvieCompilerSystem.Compiler;
+using EvieCompilerSystem.InputOutput;
 using EvieCompilerSystem.Utils;
 
 namespace EvieCompilerSystem.Runtime
 {
     public class ByteCodeInterpreter
     {
-        private List<string> program;
-        public Dictionary<string, FunctionDefinition>  Functions;
+        private List<double> program;
+        public Dictionary<ulong, FunctionDefinition>  Functions;
+        public static Dictionary<ulong, string> BuiltInFunctions;
         public Scope Variables;
         public static Random rnd = new Random();
        
         private int stepsTaken;
         private TextReader _input;
         private TextWriter _output;
+        private RuntimeMemoryModel _memory;
 
-        public void Init(string bin, TextReader input, TextWriter output, Scope importVariables = null)
+        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null)
         {
-            program = new List<string>();
+            _memory = bin;
 
-            var tokens = bin.Split('\t', '\n', '\r', ' ');
-            foreach (var token in tokens)
-            {
-                if (token.Length == 0) continue;
-
-                program.Add(StringEncoding.Decode(token));
+            if (BuiltInFunctions == null) {
+                PrepareBuiltInFunctions();
             }
 
+            program = bin.Tokens();
+
             Variables = new Scope(importVariables);
-            Functions = new Dictionary<string, FunctionDefinition>();
+            Functions = new Dictionary<ulong, FunctionDefinition>();
 
             _input  = input;
             _output = output;
         }
 
-        public string Execute(bool resetVars, bool verbose)
+        private void PrepareBuiltInFunctions()
         {
-		    string evalResult;
+            BuiltInFunctions = new Dictionary<ulong, string>();
+            Action<string> add = s => BuiltInFunctions.Add(NanTags.GetCrushedName(s), s);
+
+            add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
+            add("assert"); add("random"); add("eval"); add("call"); add("not"); add("or");
+            add("and"); add("readkey"); add("readline"); add("print"); add("substring");
+            add("length"); add("replace"); add("concat"); add("return"); add("+"); add("-");
+            add("*"); add("/"); add("%");
+        }
+
+        public double Execute(bool resetVars, bool verbose)
+        {
+		    double evalResult;
 
             if (resetVars) { Variables.Clear(); }
 
-		    var valueStack = new Stack<string>();
+		    var valueStack = new Stack<double>();
             var returnStack = new Stack<int>(); // absolute position for call and return
 		    
-            var param = new LinkedList<string>();
+            var param = new LinkedList<double>();
             int position = 0; // the PC. This is in TOKEN positions, not bytes
 		    int programCount = program.Count;
 		    
@@ -57,13 +70,13 @@ namespace EvieCompilerSystem.Runtime
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
-			    if ((stepsTaken & 127) == 0 && valueStack.Count > 100) // TODO: improve this mess
+			    if ((stepsTaken & 127) == 0 && valueStack.Count > 100) // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
                 {
                     var oldValues = valueStack.ToArray();
-                    valueStack = new Stack<string>(oldValues.Skip(oldValues.Length - 100));
+                    valueStack = new Stack<double>(oldValues.Skip(oldValues.Length - 100));
                 }
 
-                string word = program[position];
+                double word = program[position];
 
                 if (verbose)
                 {
@@ -73,36 +86,23 @@ namespace EvieCompilerSystem.Runtime
                     _output.WriteLine("word = " + word);
                 }
 
-                char action = word[0];
+                var type = NanTags.TypeOf(word);
+                switch (type) {
+                    case DataType.Invalid:
+                        throw new Exception("Unknown code point at " + position);
 
-			    switch (action)
-                {
-			        case 'v': // Value.
-				        valueStack.Push(word);
-				        break;
-
-			        case 'f': // Function *CALLS*
-				        position = PrepareFunctionCall(position, param, valueStack, word, returnStack);
-			            break;
-
-			        case 'c': // flow Control -- conditions, jumps etc
-				        position = HandleControlSignal(word, valueStack, returnStack, position);
-			            break;
-
-			        case 'm': // Memory access - get|set|isset|unset
-				        HandleMemoryAccess(word, valueStack);
-			            break;
-
-			        case 's': // reserved for System operation.
-				        break;
-
-                    case 'd': // function Definition
-                        position = HandleFunctionDefinition(word, position);
+                    case DataType.Opcode:
+                        // decode opcode and do stuff
+                        NanTags.DecodeOpCode(word, out var codeClass, out var codeAction, out var p1, out var p2);
+                        ProcessOpCode(codeClass, codeAction, p1, p2, ref position, param, valueStack, returnStack, word);
                         break;
 
                     default:
-                        throw new Exception("Unexpected op code at " + position + " : " + word);
+                        valueStack.Push(word); // these could be raw doubles, encoded real values, or references/pointers
+                        break;
                 }
+
+                
                 position++;
 		    }
 
@@ -112,7 +112,7 @@ namespace EvieCompilerSystem.Runtime
 		    }
             else
             {
-			    evalResult = "";
+			    evalResult = 0;
 		    }
 
 		    valueStack.Clear();
@@ -120,57 +120,74 @@ namespace EvieCompilerSystem.Runtime
 		    return evalResult;
 	    }
 
-        private int HandleFunctionDefinition(string word, int position)
+        private void ProcessOpCode(char codeClass, char codeAction, ushort p1, ushort p2, ref int position, LinkedList<double> param, Stack<double> valueStack, Stack<int> returnStack, double word)
         {
-            // [d, FunctionName] [parameter count] [skip length]
+            switch (codeClass)
+            {
+                case 'f': // Function *CALLS*
+                    if (codeAction == 'c') {
+                        position = PrepareFunctionCall(position, param, p1, valueStack, returnStack);
+                    }
+                    else if (codeAction == 'd') {
+                        position = HandleFunctionDefinition(p1, p2, position, valueStack);
+                    }
+                    break;
 
-            var funcName = word.Substring(1);
-            if (Functions.ContainsKey(funcName)) throw new Exception("Function '"+funcName+"' redefined at "+position+". Original at "+Functions[funcName]);
-            var paramCount = TryParseInt(program[position + 1]);
-            var offset = TryParseInt(program[position + 2]);
+                case 'c': // flow Control -- conditions, jumps etc
+                    position = HandleControlSignal(codeAction, p1, valueStack, returnStack, position);
+                    break;
 
-            Functions.Add(funcName, new FunctionDefinition{
-                StartPosition = position + 2,
-                ParamCount = paramCount
-            });
+                case 'm': // Memory access - get|set|isset|unset
+                    HandleMemoryAccess(codeAction, valueStack);
+                    break;
 
-            return position + offset + 3; // + definition length + args
+                case 's': // reserved for System operation.
+                    break;
+
+                case 'd': // function Definition
+                    break;
+
+                default:
+                    throw new Exception("Unexpected op code at " + position + " : " + word);
+            }
         }
 
-        private void HandleMemoryAccess(string word, Stack<string> valueStack)
+        private int HandleFunctionDefinition(ushort argCount, ushort tokenCount, int position, Stack<double> valueStack)
         {
-            word = word.Substring(1);
-            var action = word[0];
+            // [d, FunctionName] [parameter count] [skip length]
+            
+            var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
+            if (Functions.ContainsKey(functionNameHash)) throw new Exception("Function '"+functionNameHash+"' redefined at "+position+". Original at "+Functions[functionNameHash]);
 
-            string varName = valueStack.Pop();
-            string value;
-            varName = varName.Substring(1);
+            Functions.Add(functionNameHash, new FunctionDefinition{
+                StartPosition = position + 2,
+                ParamCount = argCount
+            });
+
+            return position + tokenCount + 3; // + definition length + args
+        }
+
+        private void HandleMemoryAccess(char action, Stack<double> valueStack)
+        {
+            var varName = NanTags.DecodeVariableRef(valueStack.Pop());
+            double value;
 
             switch (action)
             {
                 case 'g': // get (adds a value to the stack, false if not set)
                     value = Variables.Resolve(varName);
-                    if (value != null)
-                    {
-                        valueStack.Push("v" + value);
-                    }
-                    else
-                    {
-                        // TODO: strict mode?
-                        valueStack.Push("vfalse");
-                    }
+                    valueStack.Push(value);
 
                     break;
 
                 case 's': // set
                     if (valueStack.Count < 1) throw new Exception("There were no values to save. Did you forget a `return` in a function?");
                     value = valueStack.Pop();
-                    value = value.Substring(1);
                     Variables.SetValue(varName, value);
                     break;
 
                 case 'i': // is set? (adds a bool to the stack)
-                    valueStack.Push("v" + Variables.CanResolve(varName));
+                    valueStack.Push(NanTags.EncodeBool(Variables.CanResolve(varName)));
                     break;
 
                 case 'u': // unset
@@ -179,46 +196,34 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private int HandleControlSignal(string word, Stack<string> valueStack, Stack<int> returnStack,  int position)
+        private int HandleControlSignal(char action, ushort opCodeCount, Stack<double> valueStack, Stack<int> returnStack,  int position)
         {
-            word = word.Substring(1);
-            var action = word[0];
             switch (action)
             {
                 // cmp - relative jump *DOWN* if top of stack is false
                 case 'c':
-                    string condition = valueStack.Pop();
-                    condition = condition.Length == 0 ? "false" : condition.Substring(1);
+                    var condition = _memory.CastBoolean(valueStack.Pop());
 
                     position++;
-                    var bodyLengthString = program[position];
-                    var bodyLength = TryParseInt(bodyLengthString);
-
-                    condition = condition.ToLower();
-
-                    if (condition.Equals("false") || condition.Equals("0"))
-                    {
-                        position += bodyLength;
-                    }
+                    if (condition == false) { position += opCodeCount; }
                     break;
 
                 // jmp - unconditional relative jump *UP*
                 case 'j':
                     position++;
-                    string jmpLengthString = program[position];
-                    int jmpLength = TryParseInt(jmpLengthString);
+                    int jmpLength = opCodeCount;
                     position -= 2;
                     position -= jmpLength;
                     break;
 
                 // ct - call term - a function that returns values ended without returning
                 case 't':
-                    throw new Exception("A function returned without setting a value. Did you miss a 'return' in '"+word.Substring(1)+"'");
+                    throw new Exception("A function returned without setting a value. Did you miss a 'return' in a function?");
 
                 // ret - pop return stack and jump to absolute position
                 case 'r':
                     // set a special value for "void return" here, in case someone tries to use the result of a void function
-                    valueStack.Push("v");
+                    valueStack.Push(NanTags.VoidReturn()); // TODO: after a return, can we clear the stack down to a previous void return?
                     if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
                     Variables.DropScope();
                     position = returnStack.Pop();
@@ -228,18 +233,19 @@ namespace EvieCompilerSystem.Runtime
             return position;
         }
 
-        private int PrepareFunctionCall(int position, LinkedList<string> param, Stack<string> valueStack, string word, Stack<int> returnStack)
+        private int PrepareFunctionCall(int position, LinkedList<double> param, ushort nbParams, Stack<double> valueStack, Stack<int> returnStack)
         {
             position++;
-            var nbParams = TryParseInt(program[position].Trim());
             param.Clear();
+
+            var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
 
             // Pop values from stack.
             for (int i = 0; i < nbParams; i++)
             {
                 try
                 {
-                    param.AddFirst(valueStack.Pop().Substring(1));
+                    param.AddFirst(valueStack.Pop());
                 }
                 catch (Exception ex)
                 {
@@ -248,262 +254,252 @@ namespace EvieCompilerSystem.Runtime
             }
 
             // Evaluate function.
-            var evalResult = EvaluateFunctionCall(ref position, word.Substring(1), nbParams, param, returnStack, valueStack);
+            var evalResult = EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
 
             // Add result on stack as a value.
-            if (evalResult != null)
+            if (NanTags.TypeOf(evalResult) != DataType.NoValue)
             {
-                valueStack.Push("v" + evalResult);
+                valueStack.Push(evalResult);
             }
 
             return position;
         }
 
         // Evaluate a function call
-	    public string EvaluateFunctionCall(ref int position, string functionName, int nbParams, LinkedList<string> param, Stack<int> returnStack, Stack<string> valueStack)
+	    public double EvaluateFunctionCall(ref int position, ulong functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
         {
-            if (string.IsNullOrWhiteSpace(functionName)) throw new Exception("Empty function name");
-
-            string condition;
-
-		    if (functionName == "()" && nbParams != 0) // todo: better listing behaviour
+            string functionName = "";
+            if (BuiltInFunctions.ContainsKey(functionNameHash))
             {
-			    return param.ElementAt(nbParams - 1);
-		    }
+                functionName = BuiltInFunctions[functionNameHash];
+                double result;
 
-            string result;
-            switch (functionName)
-            {
-                // each element equal to the last
-                case "=":
-                case "equals":
-                    if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
-                    return "" + FoldInequality(param, (a, b) => a == b);
-                
-                // Each element smaller than the last
-                case ">":
-                    if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
-                    return "" + FoldInequality(param, (a, b) => TryParseInt(a) > TryParseInt(b));
-
-                // Each element larger than the last
-                case "<":
-                    if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
-                    return "" + FoldInequality(param, (a, b) => TryParseInt(a) < TryParseInt(b));
-
-                // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
-                case "<>":
-                case "not-equal":
-                    if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
-                    return "" + FoldInequality(param, (a, b) => a != b);
-
-                case "assert":
-                    if (nbParams < 1) return null; // assert nothing passes
-                    condition = param.ElementAt(0);
-                    if (condition == "false" || condition == "0")
-                    {
-                        var msg = ConcatLinkedList(param.First.Next);
-                        throw new Exception("Assertion failed: " + msg);
-                    }
-
-                    break;
-
-                case "random":
-                    if (nbParams < 1) return "" + rnd.Next();                                               // 0 params - any size
-                    if (nbParams < 2) return "" + rnd.Next(TryParseInt(param.ElementAt(0)));                // 1 param  - max size
-                    return "" + rnd.Next(TryParseInt(param.ElementAt(0)), TryParseInt(param.ElementAt(1))); // 2 params - range
-
-                case "eval":
-                    var reader = new SourceCodeReader();
-                    var statements = param.ElementAt(0);
-                    var programTmp = reader.Read(statements);
-                    var bin = Compiler.Compiler.CompileRoot(programTmp, false);
-                    var interpreter = new ByteCodeInterpreter();
-                    interpreter.Init(bin,_input, _output, Variables); // todo: optional other i/o for eval?
-                    result = interpreter.Execute(false, false);
-                    if (result != null && result.Length > 1) result = result.Substring(1);
-                    return result;
-
-                case "call":
-                    functionName = param.ElementAt(0);
-                    nbParams--;
-                    param.RemoveFirst();
-                    return EvaluateFunctionCall(ref position, functionName, nbParams, param, returnStack, valueStack);
-
-                case "not" when nbParams == 1:
-                    condition = param.ElementAt(0);
-
-                    condition = condition.ToLower();
-
-                    return "" + (condition == "false" || condition == "0");
-
-                case "or":
+                if (IsMathFunc(functionName))
                 {
-                    bool more = nbParams > 0;
-                    int i = 0;
-                    result = "false";
-                    while (more)
+                    // handle math functions
+                    try
                     {
-                        condition = param.ElementAt(i);
-                        condition = condition.ToLower();
-
-                        if (condition != "false" && condition != "0")
-                        {
-                            result = "true";
-                            break;
-                        }
-                        i++;
-                        more = i < nbParams;
+                        return EvalMath(functionName[0], param);
                     }
-                    return result;
+                    catch (Exception e)
+                    {
+                        throw new Exception("Math Error : " + e.Message);
+                    }
                 }
 
-                case "and":
+                double condition;
+                switch (functionName)
                 {
-                    bool more = nbParams > 0;
-                    int i = 0;
-                    result = more + "";
-                    while (more)
-                    {
-                        condition = param.ElementAt(i);
-                        condition = condition.ToLower();
+                    // each element equal to the last
+                    case "=":
+                    case "equals":
+                        if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
+                        return FoldInequality(param, (a, b) => Math.Abs(a - b) <= double.Epsilon);
 
-                        if (condition == "false" || condition == "0")
+                    // Each element smaller than the last
+                    case ">":
+                        if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
+                        return FoldInequality(param, (a, b) => a > b);
+
+                    // Each element larger than the last
+                    case "<":
+                        if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
+                        return FoldInequality(param, (a, b) => a < b);
+
+                    // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
+                    case "<>":
+                    case "not-equal":
+                        if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
+                        return FoldInequality(param, (a, b) => Math.Abs(a - b) > double.Epsilon);
+
+                    case "assert":
+                        if (nbParams < 1) return NanTags.VoidReturn(); // assert nothing passes
+                        condition = param.ElementAt(0);
+                        if (_memory.CastBoolean(condition) == false)
                         {
-                            result = "false";
-                            break;
+                            var msg = ConcatLinkedList(param.First.Next);
+                            throw new Exception("Assertion failed: " + msg);
                         }
-                        i++;
-                        more = i < nbParams;
-                    }
-                    return result;
+
+                        break;
+
+                    case "random":
+                        if (nbParams < 1) return rnd.NextDouble();                                         // 0 params - any size
+                        if (nbParams < 2) return rnd.Next(_memory.CastInt(param.ElementAt(0)));             // 1 param  - max size
+                        return rnd.Next(_memory.CastInt(param.ElementAt(0)), _memory.CastInt(param.ElementAt(1))); // 2 params - range
+
+                    case "eval":
+                        var reader = new SourceCodeTokeniser();
+                        var statements = _memory.CastString(param.ElementAt(0));
+                        var programTmp = reader.Read(statements);
+                        var bin = Compiler.Compiler.CompileRoot(programTmp, false);
+                        var interpreter = new ByteCodeInterpreter();
+                        interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables); // todo: optional other i/o for eval?
+                        result = interpreter.Execute(false, false);
+                        return result;
+
+                    case "call":
+                        functionNameHash = NanTags.DecodeVariableRef(param.ElementAt(0));
+                        nbParams--;
+                        param.RemoveFirst();
+                        return EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
+
+                    case "not" when nbParams == 1:
+                        var bval = _memory.CastBoolean(param.ElementAt(0));
+                        return NanTags.EncodeBool(!bval);
+
+                    case "or":
+                        {
+                            bool more = nbParams > 0;
+                            int i = 0;
+                            while (more)
+                            {
+                                var bresult = _memory.CastBoolean(param.ElementAt(i));
+                                if (bresult) return NanTags.EncodeBool(true);
+
+                                i++;
+                                more = i < nbParams;
+                            }
+                            return NanTags.EncodeBool(false);
+                        }
+
+                    case "and":
+                        {
+                            bool more = nbParams > 0;
+                            int i = 0;
+                            while (more)
+                            {
+                                var bresult = _memory.CastBoolean(param.ElementAt(i));
+                                if (!bresult) return NanTags.EncodeBool(false);
+
+                                i++;
+                                more = i < nbParams;
+                            }
+                            return NanTags.EncodeBool(true);
+                        }
+
+                    case "readkey":
+                        return _memory.StoreStringAndGetReference(((char)_input.Read()).ToString());
+
+                    case "readline":
+                        return _memory.StoreStringAndGetReference(_input.ReadLine());
+
+                    case "print":
+                        {
+                            string lastStr = null;
+                            foreach (var v in param)
+                            {
+                                lastStr = _memory.CastString(v);
+                                _output.Write(lastStr);
+                            }
+                            if (lastStr != "") _output.WriteLine();
+                        }
+                        break;
+
+                    case "substring" when nbParams == 2:
+                        {
+                            var newString = _memory.CastString(param.ElementAt(0)).Substring(_memory.CastInt(param.ElementAt(1)));
+                            return _memory.StoreStringAndGetReference(newString);
+                        }
+
+                    case "substring":
+                        if (nbParams == 3)
+                        {
+                            int start = _memory.CastInt(param.ElementAt(1));
+                            int length = _memory.CastInt(param.ElementAt(2));
+
+                            try
+                            {
+                                string s = _memory.CastString(param.ElementAt(0)).Substring(start, length);
+                                return _memory.StoreStringAndGetReference(s);
+                            }
+                            catch (Exception ex)
+                            {
+                                _output.WriteLine("Runner error: " + ex);
+                            }
+                        }
+
+                        break;
+
+                    case "length" when nbParams == 1:
+                        return _memory.CastString(param.ElementAt(0)).Length; // TODO: lengths of other things
+
+                    case "replace" when nbParams == 3:
+                        string exp = _memory.CastString(param.ElementAt(0));
+                        string oldValue = _memory.CastString(param.ElementAt(1));
+                        string newValue = _memory.CastString(param.ElementAt(2));
+                        exp = exp.Replace(oldValue, newValue);
+                        return _memory.StoreStringAndGetReference(exp);
+
+                    case "concat":
+                        StringBuilder builder = new StringBuilder();
+                        foreach (var v in param)
+                        {
+                            builder.Append(_memory.CastString(v));
+                        }
+                        return _memory.StoreStringAndGetReference(builder.ToString());
+
+                    case "return":
+                        // need to stop flow, check we have a return stack, check value need?
+                        foreach (var v in param)
+                        {
+                            valueStack.Push(v);
+                        }
+
+                        if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
+                        Variables.DropScope();
+                        position = returnStack.Pop();
+                        break;
                 }
-
-                case "readkey":
-                    return ((char)_input.Read()).ToString();
-
-                case "readline":
-                    return _input.ReadLine();
-
-                case "print":
-                    foreach (string s in param)
-                    {
-                        _output.Write(s);
-                    }
-                    if (param.Last.Value != "") _output.WriteLine();
-                    break;
-
-                case "substring" when nbParams == 2:
-                    return param.ElementAt(0).Substring(TryParseInt(param.ElementAt(1)));
-
-                case "substring":
-                    if(nbParams == 3)
-                    {
-                        int start = TryParseInt(param.ElementAt(1));
-                        int length = TryParseInt(param.ElementAt(2));
-                    
-                        try
-                        {
-                            string s = param.ElementAt(0).Substring(start, length);
-                            return s;
-                        }
-                        catch(Exception ex)
-                        {
-                            _output.WriteLine("Runner error: " + ex);
-                        }
-                    }
-
-                    break;
-
-                case "length" when nbParams == 1:
-                    return param.ElementAt(0).Length + "";
-
-                case "replace" when nbParams == 3:
-                    string exp = param.ElementAt(0);
-                    string oldValue = param.ElementAt(1);
-                    string newValue = param.ElementAt(2);
-                    exp = exp.Replace(oldValue, newValue);
-                    return exp;
-
-                case "concat":
-                    StringBuilder builder = new StringBuilder();
-                    foreach (string s in param)
-                    {
-                        builder.Append(s);
-                    }
-                    return builder.ToString();
-
-                case "return":
-                    // need to stop flow, check we have a return stack, check value need?
-                    foreach (string s in param)
-                    {
-                        valueStack.Push("v" + s);
-                    }
-                    
-                    if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
-                    Variables.DropScope();
-                    position = returnStack.Pop();
-                    break;
-
-
-                default:
-                    if (functionName == "()") { // empty object. TODO: when we have better values, have an empty list
-                        return "";
-                    }
-                    else if (IsMathFunc(functionName))
-                    {
-                        // handle math functions
-                        try
-                        {
-                            return EvalMath(functionName[0], param);
-                        }
-                        catch (Exception e)
-                        {
-                            return "Math Error : " + e.Message;
-                        }
-                    }
-                    else if (Functions.ContainsKey(functionName))
-                    {
-                        // handle functions that are defined in the program
-
-                        Variables.PushScope(param); // write parameters into new scope
-                        returnStack.Push(position); // set position for 'cret' call
-                        position = Functions[functionName].StartPosition; // move pointer to start of function
-                        return null; // return no value, continue execution elsewhere
-                    }
-                    else
-                    {
-                        throw new Exception("Tried to call an undefined function '" + functionName + "'\r\nKnown functions: " + string.Join(", ", Functions.Keys));
-                    }
             }
 
-            return null; // Void.
-	    }
 
-        private string ConcatLinkedList(LinkedListNode<string> list)
+
+            if (functionName == "()")
+            { // empty object. TODO: when we have better values, have an empty list
+                return NanTags.VoidReturn();
+            }
+
+            if (Functions.ContainsKey(functionNameHash))
+            {
+                // handle functions that are defined in the program
+
+                Variables.PushScope(param); // write parameters into new scope
+                returnStack.Push(position); // set position for 'cret' call
+                position = Functions[functionNameHash].StartPosition; // move pointer to start of function
+                return NanTags.VoidReturn(); // return no value, continue execution elsewhere
+            }
+
+            // TODO: use a symbols file to get source names back?
+            throw new Exception("Tried to call an undefined function '" + functionNameHash + "'\r\nKnown functions: " + string.Join(", ", Functions.Keys));
+        }
+
+        private string ConcatLinkedList(LinkedListNode<double> list)
         {
             var sb = new StringBuilder();
             while (list != null) {
-                sb.Append(list.Value);
+                sb.Append(_memory.CastString(list.Value));
                 list = list.Next;
             }
             return sb.ToString();
         }
 
-        private static bool FoldInequality(IEnumerable<string> list, Func<string, string, bool> comparitor)
+        private double FoldInequality(IEnumerable<double> list, Func<double, double, bool> comparitor)
         {
             bool first = true;
-            string prev = null;
-            foreach (var str in list)
+            double prev = 0;
+            foreach (var encoded in list)
             {
                 if (first) {
-                    prev = str;
+                    prev = _memory.CastDouble(encoded);
                     first = false;
                     continue;
                 }
-                if ( ! comparitor(prev, str)) return false;
-                prev = str;
+                var current = _memory.CastDouble(encoded);
+                if ( ! comparitor(prev, current)) return NanTags.EncodeBool(false);
+                prev = current;
             }
-            return true;
+            return NanTags.EncodeBool(true);
         }
 
         private static bool IsMathFunc(string functionName)
@@ -522,30 +518,24 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private static int TryParseInt(string s)
-        {
-            int.TryParse(s, out int result);
-            return result;
-	    }
-
-	    private static string EvalMath(char op, LinkedList<string> args)
+	    private static double EvalMath(char op, LinkedList<double> args)
         {
             var argCount = args.Count;
 
             if (argCount == 0) throw new Exception("Math funtion called with no arguments");
 
-            var arg0 = TryParseInt(args.First());
+            var arg0 = args.First();
 
             if (argCount == 1) {
                 switch (op) {
                     case '+': // uniary plus: no-op
-                        return arg0 + "";
+                        return arg0;
 
                     case '-': // uniary minus: value negation
-                        return (-arg0) + "";
+                        return -arg0;
 
                     case '%': // uniary remainder: common case, odd/even
-                        return (arg0 % 2) + "";
+                        return arg0 % 2;
 
                     default:
                         throw new Exception("Uniary '"+op+"' is not supported");
@@ -555,19 +545,19 @@ namespace EvieCompilerSystem.Runtime
 		    switch (op)
             {
 		        case '+':
-			        return "" + args.Sum(TryParseInt);
+			        return args.Sum();
 
 		        case '-':
-			        return "" + args.ChainDifference(TryParseInt);
+			        return args.ChainDifference();
 
 		        case '*':
-		            return "" + args.ChainProduct(TryParseInt);
+		            return args.ChainProduct();
 
 		        case '/':
-		            return "" + args.ChainDivide(TryParseInt);
+		            return args.ChainDivide();
 
 		        case '%':
-		            return "" + args.ChainRemainder(TryParseInt);
+		            return args.ChainRemainder();
 		    }
 
             throw new Exception("Error Math : unknown op : " + op); // this should never happen. It would be an error in the interpreter

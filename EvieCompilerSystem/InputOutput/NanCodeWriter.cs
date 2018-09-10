@@ -35,6 +35,7 @@ namespace EvieCompilerSystem.InputOutput
 
         /// <summary>
         /// Inject a compiled sub-unit into this writer
+        /// References to string constants will be recalculated
         /// </summary>
         public void Merge(NanCodeWriter fragment) {
 
@@ -45,7 +46,8 @@ namespace EvieCompilerSystem.InputOutput
         /// References to string constants will be recalculated
         /// </summary>
         public void WriteToStream(Stream output) {
-
+            
+            // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
         }
 
         /// <summary>
@@ -127,8 +129,19 @@ namespace EvieCompilerSystem.InputOutput
 
         public void LiteralString(string s)
         {
+            // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
             _stringTable.Add(s);
             _opcodes.Add(NanTags.EncodePointer(_stringTable.Count - 1, DataType.PtrString));
+        }
+
+        public void LiteralInt32(int i)
+        {
+            _opcodes.Add(NanTags.EncodeInt32(i));
+        }
+
+        public void RawToken(double value)
+        {
+            _opcodes.Add(value);
         }
     }
 }

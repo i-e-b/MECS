@@ -84,8 +84,14 @@ namespace EvieCompilerSystem.Compiler
 
         private static void EmitLeafNode(Node root, bool debug, Scope parameterNames, Context compileContext, NanCodeWriter wr)
         {
+            double leafValue = 0;
+            bool substitute = false;
             var valueName = root.Text;
-            if (parameterNames.CanResolve(valueName)) valueName = parameterNames.Resolve(valueName);
+            var nameHash = NanTags.GetCrushedName(valueName);
+            if (parameterNames.CanResolve(nameHash)) {
+                substitute = true;
+                leafValue = parameterNames.Resolve(nameHash);
+            }
 
             // An unwrapped variable name?
             if (IsUnwrappedIdentifier(valueName, root, compileContext))
@@ -100,21 +106,32 @@ namespace EvieCompilerSystem.Compiler
 
             if (debug)
             {
-                wr.Comment("// Value : \""
-                           + EscapeEncodedTextForDebug(root)
-                           + "\"\r\n");
-                if (parameterNames.CanResolve(root.Text))
+                wr.Comment("// Value : \"" + root + "\"\r\n");
+                if (substitute)
                 {
                     wr.Comment("// Parameter reference redefined as '" + valueName + "'\r\n");
                 }
             }
 
-            if (root.NodeType == NodeType.Numeric) {
-                wr.LiteralNumber(double.Parse(valueName));
-            }
+            switch (root.NodeType)
+            {
+                case NodeType.Numeric:
+                    wr.LiteralNumber(double.Parse(valueName));
+                    break;
 
-            if (root.NodeType == NodeType.StringLiteral) {
-                wr.LiteralString(valueName);
+                case NodeType.StringLiteral:
+                    wr.LiteralString(valueName);
+                    break;
+
+                case NodeType.Atom:
+                    if (valueName == "true") wr.LiteralInt32(-1);
+                    else if (valueName == "false") wr.LiteralInt32(0);
+                    else if (substitute) wr.RawToken(leafValue);
+                    else wr.VariableReference(valueName);
+                    break;
+
+                default:
+                    throw new Exception("Unexpected compiler state");
             }
         }
 
@@ -246,8 +263,8 @@ namespace EvieCompilerSystem.Compiler
             var text = File.ReadAllText(targetFile);
             includedFiles.Add(targetFile);
             
-            var reader = new SourceCodeReader();
-            var parsed = reader.Read(InputReader.ReadContent(text, true));
+            var reader = new SourceCodeTokeniser();
+            var parsed = reader.Read(SourceCodeReader.ReadContent(text, true));
             var programFragment = Compile(parsed, level, debug, parameterNames, includedFiles, Context.External);
 
 
@@ -419,21 +436,13 @@ namespace EvieCompilerSystem.Compiler
             var i = 0;
             foreach (var paramName in paramNames)
             {
-                if (parameterNames.InScope(paramName)) throw new Exception("Duplicate parameter '"+paramName+"'.\r\n" +
-                                                                           "All parameter names must be unique in a single function definition.");
+                if (parameterNames.InScope(NanTags.GetCrushedName(paramName)))
+                    throw new Exception("Duplicate parameter '"+paramName+"'.\r\n" +
+                                        "All parameter names must be unique in a single function definition.");
 
-                parameterNames.SetValue(paramName, Scope.NameFor(i)); // Pattern for positional vars.
+                parameterNames.SetValue(NanTags.GetCrushedName(paramName), Scope.NameFor(i)); // Pattern for positional vars.
                 i++;
             }
-        }
-        
-        private static string EscapeEncodedTextForDebug(Node root)
-        {
-            return StringEncoding.Decode(root.Text)
-                .Replace("\\", "\\\\")
-                .Replace("\t", "\\t")
-                .Replace("\n", "\\n")
-                .Replace("\r", "");
         }
     }
 }

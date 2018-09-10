@@ -3,7 +3,7 @@ using EvieCompilerSystem.Compiler;
 
 namespace EvieCompilerSystem.InputOutput
 {
-    class InputReader
+    class SourceCodeReader
     {
         public static string ReadContent(string content, bool removeComment)
         {

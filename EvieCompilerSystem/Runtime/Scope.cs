@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using EvieCompilerSystem.InputOutput;
 
 namespace EvieCompilerSystem.Runtime
 {
@@ -9,15 +10,15 @@ namespace EvieCompilerSystem.Runtime
     /// </summary>
     public class Scope
     {
-        readonly LinkedList<Dictionary<string, string>> scopes;
+        readonly LinkedList<Dictionary<ulong, double>> scopes;
 
         /// <summary>
         /// Create a new empty value scope
         /// </summary>
         public Scope()
         {
-            scopes = new LinkedList<Dictionary<string, string>>();
-            scopes.AddLast(new Dictionary<string, string>()); // global scope
+            scopes = new LinkedList<Dictionary<ulong, double>>();
+            scopes.AddLast(new Dictionary<ulong, double>()); // global scope
         }
 
         /// <summary>
@@ -27,8 +28,8 @@ namespace EvieCompilerSystem.Runtime
         /// <param name="importVariables">Variables to copy. All will be added to the global level.</param>
         public Scope(Scope importVariables)
         {
-            scopes = new LinkedList<Dictionary<string, string>>();
-            var global = new Dictionary<string, string>();
+            scopes = new LinkedList<Dictionary<ulong, double>>();
+            var global = new Dictionary<ulong, double>();
 
             if (importVariables != null) {
                 foreach (var value in importVariables.ListAllVisible()){
@@ -42,9 +43,9 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// List all values in the scope
         /// </summary>
-        private IEnumerable<KeyValuePair<string,string>> ListAllVisible()
+        private IEnumerable<KeyValuePair<ulong, double>> ListAllVisible()
         {
-            var seen = new HashSet<string>();
+            var seen = new HashSet<ulong>();
             var scope = scopes.Last;
             while (scope != null)
             {
@@ -62,8 +63,8 @@ namespace EvieCompilerSystem.Runtime
         /// Start a new inner-most scope.
         /// Parameters are specially named by index (like "__p0", "__p1"). The compiler must match this.
         /// </summary>
-        public void PushScope(ICollection<string> parameters = null) {
-            var sd = new Dictionary<string, string>();
+        public void PushScope(ICollection<double> parameters = null) {
+            var sd = new Dictionary<ulong, double>();
             var i = 0;
             if (parameters != null)
             {
@@ -86,30 +87,30 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Read a value by name
         /// </summary>
-        public string Resolve(string name){
+        public double Resolve(ulong crushedName){
             var current = scopes.Last;
             while (current != null) {
-                if (current.Value.ContainsKey(name)) return current.Value[name];
+                if (current.Value.ContainsKey(crushedName)) return current.Value[crushedName];
                 current = current.Previous;
             }
 
-            throw new Exception("Could not resolve '"+name+"', check program logic");
+            throw new Exception("Could not resolve '"+crushedName+"', check program logic");
         }
 
         /// <summary>
         /// Set a value by name. If no scope has it, then it will be defined in the innermost scope
         /// </summary>
-        public void SetValue(string name, string value) {
+        public void SetValue(ulong crushedName, double value) {
             var current = scopes.Last;
             while (current != null) {
-                if (current.Value.ContainsKey(name)) {
-                    current.Value[name] = value;
+                if (current.Value.ContainsKey(crushedName)) {
+                    current.Value[crushedName] = value;
                     return;
                 }
                 current = current.Previous;
             }
 
-            scopes.Last.Value.Add(name, value);
+            scopes.Last.Value.Add(crushedName, value);
         }
 
         /// <summary>
@@ -118,17 +119,17 @@ namespace EvieCompilerSystem.Runtime
         public void Clear()
         {
             scopes.Clear();
-            scopes.AddLast(new Dictionary<string, string>()); // global scope
+            scopes.AddLast(new Dictionary<ulong, double>()); // global scope
         }
 
         /// <summary>
         /// Does this name exist in any scopes?
         /// </summary>
-        public bool CanResolve(string name)
+        public bool CanResolve(ulong crushedName)
         {
             var current = scopes.Last;
             while (current != null) {
-                if (current.Value.ContainsKey(name)) return true;
+                if (current.Value.ContainsKey(crushedName)) return true;
                 current = current.Previous;
             }
             return false;
@@ -141,27 +142,27 @@ namespace EvieCompilerSystem.Runtime
         /// </para>
         /// It's expected that this will be used mostly on globals. They will be removed in preference to locals.
         /// </summary>
-        public void Remove(string name)
+        public void Remove(ulong crushedName)
         {
-            if (scopes.First.Value.Remove(name)) return;
-            scopes.Last.Value.Remove(name);
+            if (scopes.First.Value.Remove(crushedName)) return;
+            scopes.Last.Value.Remove(crushedName);
         }
 
         /// <summary>
         /// Get the name for a positional argument
         /// </summary>
-        public static string NameFor(int i)
+        public static ulong NameFor(int i)
         {
-            return "__p" + i;
+            return NanTags.GetCrushedName("__p" + i);
         }
 
         /// <summary>
         /// Does this name exist in the top level scope?
         /// Will ignore other scopes, including global.
         /// </summary>
-        public bool InScope(string name)
+        public bool InScope(ulong crushedName)
         {
-            return scopes.Last.Value.ContainsKey(name);
+            return scopes.Last.Value.ContainsKey(crushedName);
         }
     }
 }
