@@ -35,6 +35,8 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="InputOutput\NanCodeWriter.cs" />
+    <Compile Include="InputOutput\NanTags.cs" />
     <Compile Include="Repl.cs" />
     <Compile Include="Compiler\Compiler.cs" />
     <Compile Include="Compiler\Context.cs" />

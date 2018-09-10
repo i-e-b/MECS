@@ -1,6 +1,6 @@
 ﻿namespace EvieCompilerSystem.Compiler
 {
-    internal enum Context
+    public enum Context
     {
         /// <summary>
         /// Normal code

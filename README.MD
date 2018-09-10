@@ -17,10 +17,14 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Split into library and apps
 * [x] Add a REPL.
 
+* [ ] Change assm definition to be less stringy
+      - Tagged basic type (NaN-tagging?)
+      - All non-numbers are pointers to type
+
+* [ ] Basic types
 * [ ] Memory model (heap, arrays)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] Move value definitions into memory
-* [ ] Change assm definition to be less stringy
 
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc

@@ -2,47 +2,45 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using EvieCompilerSystem.InputOutput;
 using EvieCompilerSystem.Runtime;
 using EvieCompilerSystem.Utils;
 
 namespace EvieCompilerSystem.Compiler
 {
-    class Compiler
+    public class Compiler
     {
-        public static string CompileRoot(Node root, bool debug)
+        public static NanCodeWriter CompileRoot(Node root, bool debug)
         {
-            var sb = new StringBuilder();
+            var wr = new NanCodeWriter();
 
             if (debug)
             {
-                sb.Append("/*\r\n");
-                sb.Append("CompiledScript - Intermediate Language\r\n");
-                sb.Append("Date    : " + DateTime.Now + "\r\n");
-                sb.Append("Version : 1.1\r\n");
-                sb.Append("*/\r\n\r\n");
+                wr.Comment("/*\r\n"
+                           +"CompiledScript - Intermediate Language\r\n"
+                           +"Date    : " + DateTime.Now + "\r\n"
+                           +"Version : 2.0\r\n"
+                           +"*/\r\n\r\n");
             }
 
             var parameterNames = new Scope(); // renaming for local parameters
             var includedFiles = new HashSet<string>();
 
-            sb.Append(Compile(root, 0, debug, parameterNames, includedFiles, Context.Default));
+            wr.Merge(Compile(root, 0, debug, parameterNames, includedFiles, Context.Default));
 
-            return sb.ToString();
+            return wr;
         }
 
         /// <summary>
         /// Function/Program compiler. This is called recursively when subroutines are found
         /// </summary>
-        public static ProgramFragment Compile(Node root, int indent, bool debug, Scope parameterNames, HashSet<string> includedFiles, Context compileContext)
+        public static NanCodeWriter Compile(Node root, int indent, bool debug, Scope parameterNames, HashSet<string> includedFiles, Context compileContext)
         {
-		    var sb = new StringBuilder();
-            var result = new ProgramFragment { ReturnsValues = false };
+		    var wr = new NanCodeWriter();
 
             if (root.IsLeaf)
             {
-                EmitLeafNode(root, indent, debug, parameterNames, compileContext, sb);
+                EmitLeafNode(root, debug, parameterNames, compileContext, wr);
             }
             else
             {
@@ -55,37 +53,36 @@ namespace EvieCompilerSystem.Compiler
 					    var container = node;
 					    if (IsMemoryFunction(node) )
 					    {
-					        CompileMemoryFunction(indent, debug, node, container, sb, parameterNames);
+					        CompileMemoryFunction(indent, debug, node, container, wr, parameterNames);
 					    }
                         else if (IsInclude(node))
                         {
-                            CompileExternalFile(indent, debug, node, sb, parameterNames, includedFiles);
+                            CompileExternalFile(indent, debug, node, wr, parameterNames, includedFiles);
                         }
                         else if (IsFlowControl(node))
 					    {
-					        result.ReturnsValues |= CompileConditionOrLoop(indent, debug, container, node, sb, parameterNames);
+					        wr.ReturnsValues |= CompileConditionOrLoop(indent, debug, container, node, wr, parameterNames);
 					    }
                         else if (IsFunctionDefinition(node))
                         {
-                            CompileFunctionDefinition(indent, debug, node, sb, parameterNames);
+                            CompileFunctionDefinition(indent, debug, node, wr, parameterNames);
                         }
                         else
 					    {
-					        result.ReturnsValues |= CompileFunctionCall(indent, debug, sb, node, parameterNames);
+					        wr.ReturnsValues |= CompileFunctionCall(indent, debug, wr, node, parameterNames);
 					    }
 				    }
                     else
                     {
-                        sb.Append(Compile(node, indent + 1, debug, parameterNames, includedFiles, compileContext));
+                        wr.Merge(Compile(node, indent + 1, debug, parameterNames, includedFiles, compileContext));
 				    }
 			    }
 		    }
 
-            result.ByteCode = sb.ToString();
-		    return result;
+		    return wr;
 	    }
 
-        private static void EmitLeafNode(Node root, int indent, bool debug, Scope parameterNames, Context compileContext, StringBuilder sb)
+        private static void EmitLeafNode(Node root, bool debug, Scope parameterNames, Context compileContext, NanCodeWriter wr)
         {
             var valueName = root.Text;
             if (parameterNames.CanResolve(valueName)) valueName = parameterNames.Resolve(valueName);
@@ -94,31 +91,31 @@ namespace EvieCompilerSystem.Compiler
             if (IsUnwrappedIdentifier(valueName, root, compileContext))
             {
                 if (debug) {
-                    sb.AppendLine(Fill(indent - 1, ' ') + "// treating '"+valueName+"' as an implicit get()");
-                } 
-                sb.AppendLine("v"+valueName+"  mg");
+                    wr.Comment("// treating '"+valueName+"' as an implicit get()");
+                }
+                wr.VariableReference(valueName);
+                wr.Memory('g');
                 return;
             }
 
-
             if (debug)
             {
-                sb.Append(Fill(indent - 1, ' '));
-                sb.Append("// Value : \"");
-                sb.Append(EscapeEncodedTextForDebug(root));
-                sb.Append("\"\r\n");
+                wr.Comment("// Value : \""
+                           + EscapeEncodedTextForDebug(root)
+                           + "\"\r\n");
                 if (parameterNames.CanResolve(root.Text))
                 {
-                    sb.Append("// Parameter reference redefined as '" + valueName + "'\r\n");
+                    wr.Comment("// Parameter reference redefined as '" + valueName + "'\r\n");
                 }
-
-                sb.Append(Fill(indent - 1, ' '));
             }
 
+            if (root.NodeType == NodeType.Numeric) {
+                wr.LiteralNumber(double.Parse(valueName));
+            }
 
-            sb.Append("v");
-            sb.Append(valueName);
-            sb.Append("\r\n");
+            if (root.NodeType == NodeType.StringLiteral) {
+                wr.LiteralString(valueName);
+            }
         }
 
         private static bool IsUnwrappedIdentifier(string valueName, Node root, Context compileContext)
@@ -188,7 +185,7 @@ namespace EvieCompilerSystem.Compiler
             }
         }
 
-        private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, StringBuilder sb, Scope parameterNames)
+        private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, NanCodeWriter wr, Scope parameterNames)
         {
             switch (node.Text)
             {
@@ -216,35 +213,30 @@ namespace EvieCompilerSystem.Compiler
                 child.Children.AddLast(container.Children.ElementAt(i));
             }
 
-            sb.Append(Compile(child, level + 1, debug, parameterNames, null, Context.MemoryAccess));
+            wr.Merge(Compile(child, level + 1, debug, parameterNames, null, Context.MemoryAccess));
 
             if (debug)
             {
-                sb.Append(Fill(level, ' '));
-                sb.Append("// Memory function : " + node.Text);
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
+                wr.Comment("// Memory function : " + node.Text);
             }
 
-            sb.Append("m" + node.Text[0]);
-            sb.Append("\r\n");
+            wr.Memory(node.Text[0]);
         }
 
         
-        private static void CompileExternalFile(int level, bool debug, Node node, StringBuilder sb, Scope parameterNames, HashSet<string> includedFiles)
+        private static void CompileExternalFile(int level, bool debug, Node node, NanCodeWriter wr, Scope parameterNames, HashSet<string> includedFiles)
         {
             //     1) Check against import list. If already done, warn and skip.
             //     2) Read file. Fail = terminate with error
             //     3) Compile to opcodes
-            //     4) Inject opcodes in `sb`
+            //     4) Inject opcodes in `wr`
 
             if (includedFiles == null) throw new Exception("Files can only be included at the root level");
 
             var targetFile = node.Children.First.Value.Text;
 
             if (includedFiles.Contains(targetFile)) {
-                sb.Append(Fill(level, ' '));
-                sb.Append("// Ignored import: " + targetFile);
+                wr.Comment("// Ignored import: " + targetFile);
                 return;
             }
 
@@ -261,24 +253,18 @@ namespace EvieCompilerSystem.Compiler
 
             if (debug)
             {
-                sb.Append(Fill(level, ' '));
-                sb.Append("// File import: \"" + targetFile);
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
+                wr.Comment("// File import: \"" + targetFile);
             }
 
-            sb.Append(programFragment.ByteCode);
+            wr.Merge(programFragment);
 
             if (debug)
             {
-                sb.Append(Fill(level, ' '));
-                sb.Append("// <-- End of file import: \"" + targetFile);
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
+                wr.Comment("// <-- End of file import: \"" + targetFile);
             }
         }
 
-        private static bool CompileConditionOrLoop(int level, bool debug, Node container, Node node, StringBuilder sb, Scope parameterNames)
+        private static bool CompileConditionOrLoop(int level, bool debug, Node container, Node node, NanCodeWriter wr, Scope parameterNames)
         {
             bool returns = false;
             if (container.Children.Count < 1)
@@ -292,19 +278,14 @@ namespace EvieCompilerSystem.Compiler
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
-            var compilerOutput = Compile(condition, level + 1, debug, parameterNames, null, context);
-            returns |= compilerOutput.ReturnsValues;
-            string compiledCondition = compilerOutput.ByteCode;
+            var conditionCode = Compile(condition, level + 1, debug, parameterNames, null, context);
 
             if (debug)
             {
-                sb.Append(Fill(level, ' '));
-                sb.Append("// Condition for : " + node.Text);
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
+                wr.Comment("// Condition for : " + node.Text);
             }
 
-            sb.Append(compiledCondition);
+            wr.Merge(conditionCode);
 
             Node body = new Node(false);
             for (int i = 1; i < container.Children.Count; i++)
@@ -316,97 +297,29 @@ namespace EvieCompilerSystem.Compiler
             var compiledBody = Compile(body, level + 1, debug, parameterNames, null, context);
             returns |= compiledBody.ReturnsValues;
 
-            string clean = InputReader.RemoveInlineComment(compiledBody.ByteCode);
-
-
-            List<string> elementsBody = new List<string>();
-            foreach (string s in clean.Replace("\t", " ").Replace("\r", " ").Replace("\n", " ").Split(' '))
-            {
-                elementsBody.Add(s);
-            }
-
-            int nbElementBody = 0;
-            foreach (string s in elementsBody)
-            {
-                if (s.Length != 0)
-                {
-                    nbElementBody++;
-                }
-            }
-
-            int nbElementBack = nbElementBody;
-            if (isLoop)
-            {
-                clean = InputReader.RemoveInlineComment(compiledCondition);
-
-                elementsBody = new List<string>();
-                foreach (string s in clean.Replace("\t", " ").Replace("\r", " ").Replace("\n", " ").Split(' '))
-                {
-                    elementsBody.Add(s);
-                }
-
-                foreach (string s in elementsBody)
-                {
-                    if (s.Length != 0)
-                    {
-                        nbElementBack++;
-                    }
-                }
-                
-                nbElementBack += 2; // CMP + len body
-                nbElementBody += 2;
-            }
-
             if (debug)
             {
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
-                sb.Append("// Compare condition for : " + node.Text);
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
+                wr.Comment("// Compare condition for : " + node.Text +", If false, skip " + compiledBody.OpCodeCount() + " element(s)");
             }
 
-            sb.Append("ccmp");
-            sb.Append(" ").Append(nbElementBody);
+            wr.CompareJump(compiledBody.OpCodeCount() + 1); // also skip the end unconditional jump
 
-            if (debug)
-            {
-                sb.Append(" // If false, skip " + nbElementBody + " element(s)");
-            }
-
-            sb.Append("\r\n");
-
-            sb.Append(compiledBody.ByteCode);
+            wr.Merge(compiledBody);
 
             if (isLoop)
             {
                 if (debug)
                 {
-                    sb.Append(Fill(level, ' '));
-                    sb.Append("// End : " + node.Text);
-                    sb.Append("\r\n");
-                    sb.Append(Fill(level, ' '));
+                    wr.Comment("// End : " + node.Text);
                 }
 
-                sb.Append("cjmp");
-                sb.Append(" ").Append(nbElementBack);
-                sb.Append("\r\n");
-
-                if (debug)
-                {
-                    sb.Append("\r\n");
-                    sb.Append(Fill(level, ' '));
-                }
+                wr.UnconditionalJump(compiledBody.OpCodeCount());
             }
             else
             {
                 if (debug)
                 {
-                    sb.Append(Fill(level, ' '));
-                    sb.Append("// End : " + node.Text);
-                    sb.Append("\r\n");
-                    sb.Append("\r\n");
-                    sb.Append(Fill(level, ' '));
+                    wr.Comment("// End : " + node.Text);
                 }
             }
             return returns;
@@ -415,34 +328,27 @@ namespace EvieCompilerSystem.Compiler
         /// <summary>
         /// Compile a function call. Returns true if it's a call to return a value
         /// </summary>
-        private static bool CompileFunctionCall(int level, bool debug, StringBuilder sb, Node node, Scope parameterNames)
+        private static bool CompileFunctionCall(int level, bool debug, NanCodeWriter wr, Node node, Scope parameterNames)
         {
 
             var funcName = StringEncoding.Decode(node.Text);
             if (Desugar.NeedsDesugaring(funcName)) {
                 node = Desugar.ProcessNode(funcName, parameterNames, node);
                 var frag = Compile(node, level + 1, debug, parameterNames, null, Context.Default);
-                sb.Append(frag.ByteCode);
+                wr.Merge(frag);
                 return frag.ReturnsValues;
             }
 
-            sb.Append(Compile(node, level + 1, debug, parameterNames, null, Context.Default));
+            wr.Merge(Compile(node, level + 1, debug, parameterNames, null, Context.Default));
 
 
             if (debug)
             {
-                sb.Append(Fill(level, ' '));
-                sb.Append("// Function : \"" + funcName);
-                sb.Append("\" with " + node.Children.Count);
-                sb.Append(" parameter(s)");
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
+                wr.Comment("// Function : \"" + funcName
+                          + "\" with " + node.Children.Count + " parameter(s)");
             }
 
-            sb.Append("f");
-            sb.Append(node.Text).Append(" ");
-            sb.Append(node.Children.Count); // parameter count
-            sb.Append("\r\n");
+            wr.FunctionCall(node.Text, node.Children.Count);
 
             return (funcName == "return") && (node.Children.Count > 0); // is there a value return?
         }
@@ -452,7 +358,7 @@ namespace EvieCompilerSystem.Compiler
         /// <summary>
         /// Compile a custom function definition
         /// </summary>
-        private static void CompileFunctionDefinition(int level, bool debug, Node node, StringBuilder sb, Scope parameterNames)
+        private static void CompileFunctionDefinition(int level, bool debug, Node node, NanCodeWriter wr, Scope parameterNames)
         {
             // 1) Compile the func to a temporary string
             // 2) Inject a new 'def' op-code, that names the function and does an unconditional jump over it.
@@ -476,38 +382,26 @@ namespace EvieCompilerSystem.Compiler
             ParameterPositions(parameterNames, definitionNode.Children.Select(c => c.Text));
 
             var subroutine = Compile(bodyNode, level, debug, parameterNames, null, Context.Default);
-            var tokenCount = subroutine.ByteCode.Split(new[] { '\t', '\n', '\r', ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            var tokenCount = subroutine.OpCodeCount();
 
             if (debug)
             {
-                sb.Append(Fill(level, ' '));
-                sb.Append("// Function definition : \"" + functionName);
-                sb.Append("\" with " + argCount);
-                sb.Append(" parameter(s)");
-                sb.Append("\r\n");
-                sb.Append(Fill(level, ' '));
+                wr.Comment("// Function definition : \"" + functionName
+                         + "\" with " + argCount + " parameter(s)");
             }
-            
-            sb.Append("d");
-            sb.Append(functionName);
-            sb.Append(" ");
-            sb.Append(argCount);
-            sb.Append(" ");
-            sb.Append(tokenCount); // relative jump to skip the function opcodes
-            sb.Append("\r\n");
 
-            // Write the actual function
-            sb.Append(subroutine);
+            wr.FunctionDefine(functionName, argCount, tokenCount);
+            wr.Merge(subroutine);
 
             if (subroutine.ReturnsValues)
             {
                 // Add an invalid return opcode. This will show an error message.
-                sb.Append("ct" + functionName + "\r\n");
+                wr.InvalidReturn();
             }
             else
             {
                 // Add the 'return' call
-                sb.Append("cret\r\n");
+                wr.Return();
             }
 
             // Then the runner will need to interpret both the new op-codes
@@ -541,16 +435,5 @@ namespace EvieCompilerSystem.Compiler
                 .Replace("\n", "\\n")
                 .Replace("\r", "");
         }
-        
-        public static string Fill(int nb, char car)
-        {
-            var sb = new StringBuilder();
-            for (int i = 0; i < nb * 4; i++)
-            {
-                sb.Append(car);
-            }
-            return sb.ToString();
-        }
-
     }
 }

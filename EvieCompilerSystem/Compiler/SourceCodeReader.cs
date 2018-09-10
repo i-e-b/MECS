@@ -111,7 +111,7 @@ namespace EvieCompilerSystem.Compiler
 
         private bool IsNumeric(string word)
         {
-            return char.IsDigit(word, 0);
+            return double.TryParse(word, out _);
         }
 
         public static int Skip(string exp, int position, char[] cars)
