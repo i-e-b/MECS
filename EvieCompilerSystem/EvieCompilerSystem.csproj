@@ -44,7 +44,6 @@
     <Compile Include="Compiler\Desugar.cs" />
     <Compile Include="Compiler\Node.cs" />
     <Compile Include="Compiler\NodeType.cs" />
-    <Compile Include="Compiler\ProgramFragment.cs" />
     <Compile Include="Compiler\SourceCodeTokeniser.cs" />
     <Compile Include="Compiler\StringReader.cs" />
     <Compile Include="InputOutput\SourceCodeReader.cs" />

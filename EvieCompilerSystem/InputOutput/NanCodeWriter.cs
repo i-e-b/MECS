@@ -38,7 +38,7 @@ namespace EvieCompilerSystem.InputOutput
         /// References to string constants will be recalculated
         /// </summary>
         public void Merge(NanCodeWriter fragment) {
-
+            TODO_IMPLEMENT_ME;
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace EvieCompilerSystem.InputOutput
         /// References to string constants will be recalculated
         /// </summary>
         public void WriteToStream(Stream output) {
-            
+            TODO_IMPLEMENT_ME;
             // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
         }
 

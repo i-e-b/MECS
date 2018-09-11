@@ -42,6 +42,11 @@ namespace EvieCompilerSystem.InputOutput
 
         public string DereferenceString(long position) {
             // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
+            // The plan:
+            //  1) read the byte length
+            //  2) calculate chunk count and read the chunks
+            //  3) chunks to bytes
+            //  4) make string (ascii for now, then utf-8?)
         }
         
         public bool CastBoolean(double encoded)
@@ -93,18 +98,25 @@ namespace EvieCompilerSystem.InputOutput
         }
 
         /// <summary>
-        /// Get a resonable string representation from a value
+        /// Get a resonable string representation from a value.
+        /// This should include stringifying non-string types (numbers, structures etc)
         /// </summary>
         public string CastString(double encoded)
         {
             return TODO_IMPLEMENT_ME;
         }
 
+        /// <summary>
+        /// Cast a value to int. If not applicable, returns zero
+        /// </summary>
         public int CastInt(double encoded)
         {
             return TODO_IMPLEMENT_ME;
         }
 
+        /// <summary>
+        /// Store a new string at the end of memory, and return a string pointer token for it
+        /// </summary>
         public double StoreStringAndGetReference(string toString)
         {
             return TODO_IMPLEMENT_ME;
