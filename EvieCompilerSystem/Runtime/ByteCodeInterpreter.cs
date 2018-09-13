@@ -134,7 +134,10 @@ namespace EvieCompilerSystem.Runtime
                     break;
 
                 case 'c': // flow Control -- conditions, jumps etc
-                    position = HandleControlSignal(codeAction, p1, valueStack, returnStack, position);
+                    {
+                        int opCodeCount = p1 + (p2 << 16); // we use 31 bit jumps, in case we have lots of static data
+                        position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position);
+                    }
                     break;
 
                 case 'm': // Memory access - get|set|isset|unset
@@ -196,7 +199,7 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private int HandleControlSignal(char action, ushort opCodeCount, Stack<double> valueStack, Stack<int> returnStack,  int position)
+        private int HandleControlSignal(char action, int opCodeCount, Stack<double> valueStack, Stack<int> returnStack,  int position)
         {
             switch (action)
             {

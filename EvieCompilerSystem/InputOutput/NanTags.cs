@@ -30,7 +30,7 @@ namespace EvieCompilerSystem.InputOutput
 
         const ulong TAG_3 = 0x8002000000000000;         // Memory pointer to STRING header
         const ulong TAG_4 = 0x8003000000000000;         // Memory pointer to HASHTABLE
-        const ulong TAG_5 = 0x8004000000000000;         // Memory pointer to GRID (hash table keyed by ints)
+        const ulong TAG_5 = 0x8004000000000000;         // Memory pointer to GRID (hash table keyed by ints) -- maybe this can be inferred from usage?
 
         const ulong TAG_6 = 0x8005000000000000;         // Memory pointer to ARRAY of int32
         const ulong TAG_7 = 0x8006000000000000;         // Memory pointer to ARRAY of uint32

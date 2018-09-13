@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 
 namespace EvieCompilerSystem.InputOutput
 {
@@ -38,16 +41,103 @@ namespace EvieCompilerSystem.InputOutput
         /// References to string constants will be recalculated
         /// </summary>
         public void Merge(NanCodeWriter fragment) {
-            TODO_IMPLEMENT_ME;
+            var codes = fragment._opcodes;
+            var strings = fragment._stringTable;
+
+            foreach (var code in codes)
+            {
+                var type = NanTags.TypeOf(code);
+                switch (type) {
+                    case DataType.Invalid: throw new Exception("Invalid opcode when merging");
+
+                    case DataType.ValInt32:
+                    case DataType.ValUInt32:
+                    case DataType.VariableRef:
+                    case DataType.Number:
+                        _opcodes.Add(code);
+                        break;
+                    
+                    case DataType.PtrString:
+                        NanTags.DecodePointer(code, out var target, out _);
+                        LiteralString(strings[(int)target]);
+                        break;
+
+                    // all other types are only expected at runtime (so far)
+                    default: throw new Exception("Unexpected opcode when merging");
+                }
+            }
         }
 
         /// <summary>
-        /// Write opcodes to stream, then data section.
+        /// Write opcodes and data section to stream
         /// References to string constants will be recalculated
         /// </summary>
         public void WriteToStream(Stream output) {
-            TODO_IMPLEMENT_ME;
             // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
+
+            // 1) Calculate the string table size
+            var dataLength = _stringTable.Select(CalculatePaddedSize).Sum() + _stringTable.Count;
+
+            // 2) Write a jump command to skip the table
+            Split16(dataLength, out var lower, out var upper);
+            var jumpCode = NanTags.EncodeOpcode('c','j', lower, upper);
+            WriteCode(output, jumpCode);
+
+            // 3) Write the strings, with a mapping dictionary
+            long location = 1; // counting initial jump as 0
+            var mapping = new Dictionary<long, long>(); // original index, final memory location
+            for (var index = 0; index < _stringTable.Count; index++)
+            {
+                var staticStr = _stringTable[index];
+                var bytes = Encoding.ASCII.GetBytes(staticStr);
+                var chunks = CalculatePaddedSize(staticStr);
+                var padSize = (chunks * 8) - bytes.Length;
+
+                mapping.Add(index, location);
+
+                var headerOpCode = NanTags.EncodeUInt32((uint)bytes.Length);
+                WriteCode(output, headerOpCode);
+                location++;
+
+                output.Write(bytes, 0, bytes.Length);
+                location += chunks;
+
+                for (int p = 0; p < padSize; p++) { output.WriteByte(0); }
+            }
+
+            // 4) Write the op-codes
+            foreach (var code in _opcodes)
+            {
+                var type = NanTags.TypeOf(code);
+                switch (type) {
+                    case DataType.PtrString:
+                        NanTags.DecodePointer(code, out var original, out _);
+                        var final = mapping[original];
+                        WriteCode(output, NanTags.EncodePointer(final, DataType.PtrString));
+                        break;
+
+                    default: 
+                        WriteCode(output, code);
+                        break;
+                }
+            }
+
+            output.Flush();
+        }
+
+        private void WriteCode(Stream output, double code)
+        {
+            var bytes = BitConverter.GetBytes(code);
+            output.Write(bytes, 0, bytes.Length);
+        }
+
+        /// <summary>
+        /// Number of 8-byte chunks required to store this string
+        /// </summary>
+        private int CalculatePaddedSize(string s)
+        {
+            double bytes = Encoding.ASCII.GetByteCount(s);
+            return (int)Math.Ceiling(bytes / 8.0d);
         }
 
         /// <summary>
@@ -106,12 +196,20 @@ namespace EvieCompilerSystem.InputOutput
             _opcodes.Add(NanTags.EncodeOpcode('c', 'r', 0, 0));
         }
 
+        private void Split16(int longVal, out ushort p1, out ushort p2) {
+            unchecked{
+                p1 =(ushort)(longVal & 0xFFFF);
+                p2 =(ushort)(longVal >> 16);
+            }
+        }
+
         /// <summary>
         /// Jump relative down if top of value-stack is false
         /// </summary>
         public void CompareJump(int opCodeCount)
         {
-            _opcodes.Add(NanTags.EncodeOpcode('c', 'c', (ushort)opCodeCount, 0));
+            Split16(opCodeCount, out var lower, out var upper);
+            _opcodes.Add(NanTags.EncodeOpcode('c', 'c', lower, upper));
         }
 
         /// <summary>
@@ -119,7 +217,8 @@ namespace EvieCompilerSystem.InputOutput
         /// </summary>
         public void UnconditionalJump(int opCodeCount)
         {
-            _opcodes.Add(NanTags.EncodeOpcode('c','j', (ushort)opCodeCount, 0));
+            Split16(opCodeCount, out var lower, out var upper);
+            _opcodes.Add(NanTags.EncodeOpcode('c', 'j', lower, upper));
         }
 
         public void LiteralNumber(double d)
