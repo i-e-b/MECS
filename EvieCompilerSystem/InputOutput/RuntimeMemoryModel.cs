@@ -37,12 +37,35 @@ namespace EvieCompilerSystem.InputOutput
             }
         }
 
-        public string ToString(Dictionary<ulong, string> debugSymbols) {
-
-            // TODO: be smarter with string headers?
-
+        public string ToString(Dictionary<ulong, string> debugSymbols)
+        {
+            int index = 0;
             var sb = new StringBuilder();
-            for (var index = 0; index < encodedTokens.Count; index++)
+
+            // Try to display static strings meaningfully
+            if (NanTags.TypeOf(encodedTokens[0]) == DataType.Opcode) {
+                index = 1;
+                NanTags.DecodeLongOpCode(encodedTokens[0], out var c1, out var c2, out var count);
+                if (c1 == 'c' && c2 == 's') {
+                    sb.AppendLine("Data table: "+count+" tokens ("+(count*8)+" bytes)");
+                    while (index < count)
+                    {
+                        var length = NanTags.DecodeUInt32(encodedTokens[index++]);
+                        var chunkCount = (int)Math.Ceiling(length / 8.0d);
+                        sb.Append(index + ": ("+length+") ");
+
+                        for (var ch = 0; ch < chunkCount; ch++)
+                        {
+                            var raw = BitConverter.GetBytes(encodedTokens[index++]);
+                            sb.Append(MakeSafe(Encoding.ASCII.GetString(raw)));
+                        }
+                        sb.AppendLine();
+                    }
+                }
+            }
+
+            // output remaining bytecodes
+            for (; index < encodedTokens.Count; index++)
             {
                 var token = encodedTokens[index];
                 var type = NanTags.TypeOf(token);
@@ -54,6 +77,13 @@ namespace EvieCompilerSystem.InputOutput
             }
 
             return sb.ToString();
+        }
+
+        private string MakeSafe(string raw)
+        {
+            return string.Join("", raw.ToCharArray().Select(c => 
+                (c >= ' ' && c <= '~') ? c : '▒'
+                ));
         }
 
         public override string ToString()
@@ -185,7 +215,7 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.Number: return encoded.ToString(CultureInfo.InvariantCulture);
                 case DataType.VariableRef: return "<Reference>";
                 case DataType.Opcode: return "<Op Code>";
-                case DataType.NoValue: return "<NAR>";
+                case DataType.NoValue: return "";
 
                 case DataType.PtrDiagnosticString:
                 case DataType.PtrString:

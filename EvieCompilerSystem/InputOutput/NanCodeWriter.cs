@@ -98,8 +98,7 @@ namespace EvieCompilerSystem.InputOutput
             var dataLength = _stringTable.Select(CalculatePaddedSize).Sum() + _stringTable.Count;
 
             // 2) Write a jump command to skip the table
-            Split16(dataLength, out var lower, out var upper);
-            var jumpCode = NanTags.EncodeOpcode('c','s', lower, upper);
+            var jumpCode = NanTags.EncodeLongOpcode('c','s', dataLength);
             WriteCode(output, jumpCode);
 
             // 3) Write the strings, with a mapping dictionary
@@ -244,20 +243,12 @@ namespace EvieCompilerSystem.InputOutput
             _opcodes.Add(NanTags.EncodeOpcode('c', 'r', 0, 0));
         }
 
-        private void Split16(int longVal, out ushort p1, out ushort p2) {
-            unchecked{
-                p1 =(ushort)(longVal & 0xFFFF);
-                p2 =(ushort)(longVal >> 16);
-            }
-        }
-
         /// <summary>
         /// Jump relative down if top of value-stack is false
         /// </summary>
         public void CompareJump(int opCodeCount)
         {
-            Split16(opCodeCount, out var lower, out var upper);
-            _opcodes.Add(NanTags.EncodeOpcode('c', 'c', lower, upper));
+            _opcodes.Add(NanTags.EncodeLongOpcode('c', 'c', opCodeCount));
         }
 
         /// <summary>
@@ -265,8 +256,7 @@ namespace EvieCompilerSystem.InputOutput
         /// </summary>
         public void UnconditionalJump(int opCodeCount)
         {
-            Split16(opCodeCount, out var lower, out var upper);
-            _opcodes.Add(NanTags.EncodeOpcode('c', 'j', lower, upper));
+            _opcodes.Add(NanTags.EncodeLongOpcode('c', 'j', opCodeCount));
         }
 
         public void LiteralNumber(double d)

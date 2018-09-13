@@ -321,7 +321,14 @@ namespace EvieCompilerSystem.Compiler
                 wr.Comment("// Compare condition for : " + node.Text +", If false, skip " + compiledBody.OpCodeCount() + " element(s)");
             }
 
-            wr.CompareJump(compiledBody.OpCodeCount() + 1); // also skip the end unconditional jump
+            if (isLoop)
+            {
+                wr.CompareJump(compiledBody.OpCodeCount() + 1); // also skip the end unconditional jump
+            }
+            else
+            {
+                wr.CompareJump(compiledBody.OpCodeCount()); // if doesn't have the unconditional
+            }
 
             wr.Merge(compiledBody);
 

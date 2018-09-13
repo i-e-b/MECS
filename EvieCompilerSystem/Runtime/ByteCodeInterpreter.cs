@@ -54,6 +54,7 @@ namespace EvieCompilerSystem.Runtime
             add("and"); add("readkey"); add("readline"); add("print"); add("substring");
             add("length"); add("replace"); add("concat"); add("return"); add("+"); add("-");
             add("*"); add("/"); add("%");
+            add("()"); // empty value marker
             return tmp;
         }
 
@@ -73,6 +74,7 @@ namespace EvieCompilerSystem.Runtime
 		    while (position < programCount)
             {
 			    stepsTaken++;
+                if (stepsTaken > 1000) throw new Exception("trap");
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
@@ -140,7 +142,7 @@ namespace EvieCompilerSystem.Runtime
 
                 case 'c': // flow Control -- conditions, jumps etc
                     {
-                        int opCodeCount = p1 + (p2 << 16); // we use 31 bit jumps, in case we have lots of static data
+                        int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
                         position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position);
                     }
                     break;
@@ -271,6 +273,8 @@ namespace EvieCompilerSystem.Runtime
             if (NanTags.TypeOf(evalResult) != DataType.NoValue)
             {
                 valueStack.Push(evalResult);
+            } else if (NanTags.DecodeNonValue(evalResult) == NonValueType.Unit) {
+                valueStack.Push(evalResult);
             }
 
             return position;
@@ -285,11 +289,6 @@ namespace EvieCompilerSystem.Runtime
                 return EvaluateBuiltInFunction(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
             }
 
-            if (functionName == "()") // TODO: this will never happen now. Not sure what...
-            { // empty object. TODO: when we have better values, have an empty list
-                return NanTags.VoidReturn();
-            }
-
             if (Functions.ContainsKey(functionNameHash))
             {
                 // handle functions that are defined in the program
@@ -301,7 +300,18 @@ namespace EvieCompilerSystem.Runtime
             }
 
             // TODO: use a symbols file to get source names back?
-            throw new Exception("Tried to call an undefined function '" + functionNameHash + "'\r\nKnown functions: " + string.Join(", ", Functions.Keys));
+            throw new Exception("Tried to call an undefined function '"
+                                + DbgStr(functionNameHash) 
+                                + "' at position " + position
+                                + "\r\nKnown functions: " + string.Join(", ", Functions.Keys.Select(DbgStr)));
+        }
+
+        private string DbgStr(ulong hash)
+        {
+            if (DebugSymbols == null) return hash.ToString("X");
+            if ( ! DebugSymbols.ContainsKey(hash)) return "<unknown> " + hash.ToString("X");
+
+            return DebugSymbols[hash] + " ("+hash.ToString("X")+")";
         }
 
         private double EvaluateBuiltInFunction(ref int position, ulong functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
@@ -486,6 +496,11 @@ namespace EvieCompilerSystem.Runtime
                     Variables.DropScope();
                     position = returnStack.Pop();
                     break;
+
+                case "()":
+                    { // valueless marker (like an empty object)
+                        return NanTags.EncodeNonValue(NonValueType.Unit);
+                    }
             }
 
             return NanTags.VoidReturn();
