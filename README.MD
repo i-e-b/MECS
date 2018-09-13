@@ -29,10 +29,11 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] Move value definitions into memory
 
-* [ ] Reference counting / basic GC / etc
+* [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity)
 
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
+* [ ] More math: useful constants (pi, e, inf, neg-inf)
 * [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Make sure (de)serialisation is available
 * [ ] Object-literal form? Functions-as-data, or special syntax?

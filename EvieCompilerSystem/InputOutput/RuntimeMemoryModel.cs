@@ -131,7 +131,7 @@ namespace EvieCompilerSystem.InputOutput
 
             switch (type) {
                 case DataType.Number:
-                    return Math.Abs(encoded) <= double.Epsilon;
+                    return Math.Abs(encoded) > double.Epsilon;
                
                 case DataType.ValInt32:
                     return NanTags.DecodeInt32(encoded) != 0;
