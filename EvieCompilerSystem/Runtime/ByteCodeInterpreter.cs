@@ -14,6 +14,7 @@ namespace EvieCompilerSystem.Runtime
         private List<double> program;
         public Dictionary<ulong, FunctionDefinition>  Functions;
         public static Dictionary<ulong, string> BuiltInFunctions;
+        public static Dictionary<ulong, string> DebugSymbols;
         public Scope Variables;
         public static Random rnd = new Random();
        
@@ -22,33 +23,38 @@ namespace EvieCompilerSystem.Runtime
         private TextWriter _output;
         private RuntimeMemoryModel _memory;
 
-        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null)
+        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null, Dictionary<ulong, string> debugSymbols = null)
         {
             _memory = bin;
 
             if (BuiltInFunctions == null) {
-                PrepareBuiltInFunctions();
+                BuiltInFunctions = BuiltInFunctionSymbols();
             }
 
             program = bin.Tokens();
 
             Variables = new Scope(importVariables);
             Functions = new Dictionary<ulong, FunctionDefinition>();
+            DebugSymbols = debugSymbols;
 
             _input  = input;
             _output = output;
         }
 
-        private void PrepareBuiltInFunctions()
+        /// <summary>
+        /// Symbol mapping for built-in functions
+        /// </summary>
+        public static Dictionary<ulong, string> BuiltInFunctionSymbols()
         {
-            BuiltInFunctions = new Dictionary<ulong, string>();
-            Action<string> add = s => BuiltInFunctions.Add(NanTags.GetCrushedName(s), s);
+            var tmp = new Dictionary<ulong, string>();
+            Action<string> add = s => tmp.Add(NanTags.GetCrushedName(s), s);
 
             add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
             add("assert"); add("random"); add("eval"); add("call"); add("not"); add("or");
             add("and"); add("readkey"); add("readline"); add("print"); add("substring");
             add("length"); add("replace"); add("concat"); add("return"); add("+"); add("-");
             add("*"); add("/"); add("%");
+            return tmp;
         }
 
         public double Execute(bool resetVars, bool verbose)
@@ -80,10 +86,9 @@ namespace EvieCompilerSystem.Runtime
 
                 if (verbose)
                 {
-                    _output.WriteLine("---------------------------------------------");
-                    _output.WriteLine("Iteration #" + stepsTaken);
-                    _output.WriteLine("pos = " + position + "/" + programCount);
-                    _output.WriteLine("word = " + word);
+                    _output.WriteLine("          stack :"+string.Join(", ",valueStack.ToArray().Select(t=> _memory.DiagnosticString(t, DebugSymbols))));
+                    _output.WriteLine("          #" + stepsTaken + "; p="+position
+                                      +"; w="+_memory.DiagnosticString(word, DebugSymbols) );
                 }
 
                 var type = NanTags.TypeOf(word);
@@ -141,36 +146,32 @@ namespace EvieCompilerSystem.Runtime
                     break;
 
                 case 'm': // Memory access - get|set|isset|unset
-                    HandleMemoryAccess(codeAction, valueStack);
+                    if (valueStack.Count < 1) throw new Exception("Empty stack before memory access at position " + position);
+                    HandleMemoryAccess(codeAction, valueStack, position);
                     break;
 
                 case 's': // reserved for System operation.
                     break;
 
-                case 'd': // function Definition
-                    break;
-
                 default:
-                    throw new Exception("Unexpected op code at " + position + " : " + word);
+                    throw new Exception("Unexpected op code at " + position + " : " + _memory.DiagnosticString(word, DebugSymbols));
             }
         }
 
         private int HandleFunctionDefinition(ushort argCount, ushort tokenCount, int position, Stack<double> valueStack)
         {
-            // [d, FunctionName] [parameter count] [skip length]
-            
             var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
-            if (Functions.ContainsKey(functionNameHash)) throw new Exception("Function '"+functionNameHash+"' redefined at "+position+". Original at "+Functions[functionNameHash]);
+            if (Functions.ContainsKey(functionNameHash)) throw new Exception("Function '" + functionNameHash + "' redefined at " + position + ". Original at " + Functions[functionNameHash]);
 
             Functions.Add(functionNameHash, new FunctionDefinition{
-                StartPosition = position + 2,
+                StartPosition = position,
                 ParamCount = argCount
             });
 
-            return position + tokenCount + 3; // + definition length + args
+            return position + tokenCount + 1; // + definition length + terminator
         }
 
-        private void HandleMemoryAccess(char action, Stack<double> valueStack)
+        private void HandleMemoryAccess(char action, Stack<double> valueStack, int position)
         {
             var varName = NanTags.DecodeVariableRef(valueStack.Pop());
             double value;
@@ -184,7 +185,7 @@ namespace EvieCompilerSystem.Runtime
                     break;
 
                 case 's': // set
-                    if (valueStack.Count < 1) throw new Exception("There were no values to save. Did you forget a `return` in a function?");
+                    if (valueStack.Count < 1) throw new Exception("There were no values to save. Did you forget a `return` in a function? Position: " + position);
                     value = valueStack.Pop();
                     Variables.SetValue(varName, value);
                     break;
@@ -245,7 +246,7 @@ namespace EvieCompilerSystem.Runtime
 
         private int PrepareFunctionCall(int position, LinkedList<double> param, ushort nbParams, Stack<double> valueStack, Stack<int> returnStack)
         {
-            position++;
+            //position++;
             param.Clear();
 
             var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
@@ -259,7 +260,7 @@ namespace EvieCompilerSystem.Runtime
                 }
                 catch (Exception ex)
                 {
-                    _output.WriteLine("Stack underflow. Ran out of values before function call at " + position + ": " + ex);
+                    throw new Exception("Stack underflow. Ran out of values before function call at " + position, ex);
                 }
             }
 
@@ -320,7 +321,6 @@ namespace EvieCompilerSystem.Runtime
                 }
             }
 
-            double condition;
             switch (functionName)
             {
                 // each element equal to the last
@@ -347,7 +347,7 @@ namespace EvieCompilerSystem.Runtime
 
                 case "assert":
                     if (nbParams < 1) return NanTags.VoidReturn(); // assert nothing passes
-                    condition = param.ElementAt(0);
+                    var condition = param.ElementAt(0);
                     if (_memory.CastBoolean(condition) == false)
                     {
                         var msg = ConcatLinkedList(param.First.Next);

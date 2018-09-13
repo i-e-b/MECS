@@ -10,7 +10,7 @@ namespace EvieCompilerSystem
     {
 
         // ReSharper disable once UnusedMember.Global
-        public static void BuildAndRun(string languageInput, TextReader input, TextWriter output) {
+        public static void BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL) {
             
             var contents = SourceCodeReader.ReadContent(languageInput, true);
             
@@ -24,7 +24,13 @@ namespace EvieCompilerSystem
             stream.Seek(0,SeekOrigin.Begin);
             var byteCodeReader = new RuntimeMemoryModel(stream);
 
-            //output.WriteLine(byteCodeReader.ToString());
+            if (printIL)
+            {
+                output.WriteLine("======= BYTE CODE SUMMARY ==========");
+                compiledOutput.AddSymbols(ByteCodeInterpreter.BuiltInFunctionSymbols());
+                output.WriteLine(value: byteCodeReader.ToString(compiledOutput.GetSymbols()));
+                output.WriteLine("====================================");
+            }
 
             // Execute
             try
@@ -32,7 +38,7 @@ namespace EvieCompilerSystem
                 var interpreter = new ByteCodeInterpreter();
 
                 // Init the interpreter.
-                interpreter.Init(byteCodeReader, input, output);
+                interpreter.Init(byteCodeReader, input, output, debugSymbols: compiledOutput.GetSymbols());
 
                 /* TODO later: ability to pass in args
                 foreach (var pair in argsVariables.ToArray())
@@ -41,7 +47,7 @@ namespace EvieCompilerSystem
                 }
                 */
 
-                interpreter.Execute(false, false);
+                interpreter.Execute(false, trace);
             }
             catch (Exception e)
             {

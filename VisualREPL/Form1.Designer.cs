@@ -38,6 +38,8 @@
             this.statusLabel = new System.Windows.Forms.Label();
             this.clearLogButton = new System.Windows.Forms.Button();
             this.saveFileButton = new System.Windows.Forms.Button();
+            this.traceCheckbox = new System.Windows.Forms.CheckBox();
+            this.showBytecodeCheck = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -154,11 +156,35 @@
             this.saveFileButton.UseVisualStyleBackColor = true;
             this.saveFileButton.Click += new System.EventHandler(this.saveFileButton_Click);
             // 
+            // traceCheckbox
+            // 
+            this.traceCheckbox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.traceCheckbox.AutoSize = true;
+            this.traceCheckbox.Location = new System.Drawing.Point(13, 421);
+            this.traceCheckbox.Name = "traceCheckbox";
+            this.traceCheckbox.Size = new System.Drawing.Size(100, 17);
+            this.traceCheckbox.TabIndex = 8;
+            this.traceCheckbox.Text = "Execution trace";
+            this.traceCheckbox.UseVisualStyleBackColor = true;
+            // 
+            // showBytecodeCheck
+            // 
+            this.showBytecodeCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.showBytecodeCheck.AutoSize = true;
+            this.showBytecodeCheck.Location = new System.Drawing.Point(13, 398);
+            this.showBytecodeCheck.Name = "showBytecodeCheck";
+            this.showBytecodeCheck.Size = new System.Drawing.Size(100, 17);
+            this.showBytecodeCheck.TabIndex = 9;
+            this.showBytecodeCheck.Text = "Show bytecode";
+            this.showBytecodeCheck.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.showBytecodeCheck);
+            this.Controls.Add(this.traceCheckbox);
             this.Controls.Add(this.saveFileButton);
             this.Controls.Add(this.clearLogButton);
             this.Controls.Add(this.statusLabel);
@@ -173,6 +199,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -188,6 +215,8 @@
         private System.Windows.Forms.Label statusLabel;
         private System.Windows.Forms.Button clearLogButton;
         private System.Windows.Forms.Button saveFileButton;
+        private System.Windows.Forms.CheckBox traceCheckbox;
+        private System.Windows.Forms.CheckBox showBytecodeCheck;
     }
 }
 

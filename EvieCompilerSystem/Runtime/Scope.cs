@@ -94,7 +94,7 @@ namespace EvieCompilerSystem.Runtime
                 current = current.Previous;
             }
 
-            throw new Exception("Could not resolve '"+crushedName+"', check program logic");
+            throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");
         }
 
         /// <summary>

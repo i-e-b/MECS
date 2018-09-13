@@ -27,7 +27,8 @@ namespace VisualREPL
             {
                 SetStatus("Running");
                 sw.Start();
-                Repl.BuildAndRun(text, streamIn, streamOut);
+                Repl.BuildAndRun(text, streamIn, streamOut,
+                    traceCheckbox.Checked, showBytecodeCheck.Checked);
                 sw.Stop();
                 SetStatus("Complete: "+sw.Elapsed);
             })

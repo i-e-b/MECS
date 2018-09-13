@@ -21,6 +21,9 @@ Parse and compile a prefix expression (source code) to a simple byte code.
       - Tagged basic type (NaN-tagging?)
       - All non-numbers are pointers to type
 
+* [ ] Single step in repl gui
+* [ ] Runtime interpreter exceptions to give position
+
 * [ ] Basic types
 * [ ] Memory model (heap, arrays)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.

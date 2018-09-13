@@ -99,7 +99,8 @@ namespace EvieCompilerSystem.Compiler
                 if (debug) {
                     wr.Comment("// treating '"+valueName+"' as an implicit get()");
                 }
-                wr.VariableReference(valueName);
+                if (substitute) wr.RawToken(leafValue);
+                else wr.VariableReference(valueName);
                 wr.Memory('g');
                 return;
             }
@@ -302,6 +303,7 @@ namespace EvieCompilerSystem.Compiler
                 wr.Comment("// Condition for : " + node.Text);
             }
 
+            var topOfBlock = wr.Position() - 1;
             wr.Merge(conditionCode);
 
             Node body = new Node(false);
@@ -330,7 +332,8 @@ namespace EvieCompilerSystem.Compiler
                     wr.Comment("// End : " + node.Text);
                 }
 
-                wr.UnconditionalJump(compiledBody.OpCodeCount());
+                var distance = wr.Position() - topOfBlock;
+                wr.UnconditionalJump(distance);
             }
             else
             {
@@ -370,7 +373,6 @@ namespace EvieCompilerSystem.Compiler
         }
 
 
-
         /// <summary>
         /// Compile a custom function definition
         /// </summary>
@@ -395,7 +397,7 @@ namespace EvieCompilerSystem.Compiler
             var functionName = definitionNode.Text;
             var argCount = definitionNode.Children.Count;
 
-            ParameterPositions(parameterNames, definitionNode.Children.Select(c => c.Text));
+            ParameterPositions(parameterNames, definitionNode.Children.Select(c => c.Text), wr);
 
             var subroutine = Compile(bodyNode, level, debug, parameterNames, null, Context.Default);
             var tokenCount = subroutine.OpCodeCount();
@@ -429,7 +431,7 @@ namespace EvieCompilerSystem.Compiler
         /// <summary>
         /// Map parameter names to positional names. This must match the expectations of the interpreter
         /// </summary>
-        private static void ParameterPositions(Scope parameterNames,IEnumerable<string> paramNames)
+        private static void ParameterPositions(Scope parameterNames, IEnumerable<string> paramNames, NanCodeWriter wr)
         {
             parameterNames.PushScope();
             var i = 0;
@@ -439,7 +441,15 @@ namespace EvieCompilerSystem.Compiler
                     throw new Exception("Duplicate parameter '"+paramName+"'.\r\n" +
                                         "All parameter names must be unique in a single function definition.");
 
-                parameterNames.SetValue(NanTags.GetCrushedName(paramName), Scope.NameFor(i)); // Pattern for positional vars.
+                var originalReference = NanTags.GetCrushedName(paramName);
+                var parameterReference = Scope.NameFor(i);
+                var parameterByteCode = NanTags.EncodeVariableRef(parameterReference);
+
+                parameterNames.SetValue(originalReference, parameterByteCode);
+
+                wr.AddSymbol(originalReference, paramName);
+                wr.AddSymbol(parameterReference, "param["+i+"]");
+
                 i++;
             }
         }

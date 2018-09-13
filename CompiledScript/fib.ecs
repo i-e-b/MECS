@@ -9,7 +9,7 @@ def (
 set(x 0)
 set(y 0)
 set(z 1)
-while ( >(z 0) // wait for overflow
+while ( <(z 1E10) // wait for overflow
     print( z )
     
     set(x get(y))

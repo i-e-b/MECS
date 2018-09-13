@@ -37,28 +37,43 @@ namespace EvieCompilerSystem.InputOutput
             }
         }
 
-        public override string ToString()
-        {
+        public string ToString(Dictionary<ulong, string> debugSymbols) {
+
             // TODO: be smarter with string headers?
 
             var sb = new StringBuilder();
-            foreach (var token in encodedTokens)
+            for (var index = 0; index < encodedTokens.Count; index++)
             {
+                var token = encodedTokens[index];
                 var type = NanTags.TypeOf(token);
+                sb.Append(index.ToString());
+                sb.Append(" ");
                 sb.Append(type.ToString());
                 sb.Append(": ");
-                sb.AppendLine(Stringify(token, type));
+                sb.AppendLine(Stringify(token, type, debugSymbols));
             }
+
             return sb.ToString();
         }
 
-        private string Stringify(double token, DataType type)
+        public override string ToString()
+        {
+            return ToString(null);
+        }
+
+        private string Stringify(double token, DataType type, Dictionary<ulong, string> debugSymbols)
         {
             switch (type){
                 case DataType.Invalid: return "";
                 case DataType.NoValue: return "";
 
-                case DataType.VariableRef: return NanTags.DecodeVariableRef(token).ToString("X");
+                case DataType.VariableRef:
+                    var rref = NanTags.DecodeVariableRef(token);
+                    if (debugSymbols?.ContainsKey(rref) == true)
+                    {
+                        return "'" + debugSymbols[rref] + "' (" + rref.ToString("X") + ")";
+                    }
+                    return rref.ToString("X");
 
                 case DataType.Opcode:
                     NanTags.DecodeOpCode(token, out var ccls, out var cact, out var p1, out var p2);
@@ -266,6 +281,11 @@ namespace EvieCompilerSystem.InputOutput
 
 
             return location;
+        }
+
+        public string DiagnosticString(double token, Dictionary<ulong, string> symbols = null)
+        {
+            return Stringify(token, NanTags.TypeOf(token), symbols);
         }
     }
 }

@@ -22,6 +22,11 @@ namespace EvieCompilerSystem.InputOutput
         private readonly List<double> _opcodes;
 
         /// <summary>
+        /// Names that we've hashed
+        /// </summary>
+        private readonly Dictionary<ulong, string> _symbols;
+
+        /// <summary>
         /// The program fragment expects to produce result values. Defaults to false.
         /// </summary>
         public bool ReturnsValues { get; set; }
@@ -34,6 +39,17 @@ namespace EvieCompilerSystem.InputOutput
             ReturnsValues = false;
             _stringTable = new List<string>(100);
             _opcodes = new List<double>(1024);
+            _symbols = new Dictionary<ulong, string>();
+        }
+
+        
+
+        /// <summary>
+        /// Current written opcode position (relative only, for calculating relative jumps)
+        /// </summary>
+        public int Position()
+        {
+            return _opcodes.Count;
         }
 
         /// <summary>
@@ -43,6 +59,8 @@ namespace EvieCompilerSystem.InputOutput
         public void Merge(NanCodeWriter fragment) {
             var codes = fragment._opcodes;
             var strings = fragment._stringTable;
+
+            AddSymbols(fragment._symbols);
 
             foreach (var code in codes)
             {
@@ -156,7 +174,8 @@ namespace EvieCompilerSystem.InputOutput
         /// </summary>
         public void VariableReference(string valueName)
         {
-            _opcodes.Add(NanTags.EncodeVariableRef(valueName, out _));
+            _opcodes.Add(NanTags.EncodeVariableRef(valueName, out var crushed));
+            AddSymbol(crushed, valueName);
         }
 
         public void Memory(char action)
@@ -180,8 +199,36 @@ namespace EvieCompilerSystem.InputOutput
         /// </summary>
         public void FunctionDefine(string functionName, int argCount, int tokenCount)
         {
-            _opcodes.Add(NanTags.EncodeVariableRef(functionName, out _));
+            _opcodes.Add(NanTags.EncodeVariableRef(functionName, out var crushed));
+            AddSymbol(crushed, functionName);
             _opcodes.Add(NanTags.EncodeOpcode('f','d', (ushort)argCount, (ushort)tokenCount));
+        }
+
+        /// <summary>
+        /// Add a symbol set to the known symbols table
+        /// </summary>
+        public void AddSymbols(Dictionary<ulong, string> sym)
+        {
+            foreach (var symbol in sym)
+            {
+                AddSymbol(symbol.Key, symbol.Value);
+            }
+        }
+
+        /// <summary>
+        /// Add a single symbol reference
+        /// </summary>
+        public void AddSymbol(ulong crushed, string name)
+        {
+            try {
+                _symbols.Add(crushed, name);
+            } catch {
+                if (name == _symbols[crushed]) return; // same symbol.
+
+                throw new Exception("Hash collision between symbols!" +
+                                    " This is a compiler limitation, sorry." +
+                                    " Try renaming '"+_symbols[crushed]+"' or '"+name+"'");
+            }
         }
 
         /// <summary>
@@ -242,6 +289,15 @@ namespace EvieCompilerSystem.InputOutput
         public void RawToken(double value)
         {
             _opcodes.Add(value);
+        }
+
+        /// <summary>
+        /// Return the original names of variable references we've hashed.
+        /// Keys are the Variable Ref byte codes
+        /// </summary>
+        public Dictionary<ulong, string> GetSymbols()
+        {
+            return _symbols;
         }
     }
 }

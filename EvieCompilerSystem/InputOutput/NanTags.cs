@@ -187,6 +187,19 @@ namespace EvieCompilerSystem.InputOutput
                 return BitConverter.Int64BitsToDouble((long)raw);
             }
         }
+        
+        /// <summary>
+        /// Encode an already crushed name as a variable ref
+        /// </summary>
+        public static double EncodeVariableRef(ulong crushedName)
+        {
+            unchecked
+            {
+                ulong raw = NAN_FLAG | TAG_1 | crushedName;
+
+                return BitConverter.Int64BitsToDouble((long)raw);
+            }
+        }
 
         /// <summary>
         /// Get hash code of names, as created by variable reference op codes
