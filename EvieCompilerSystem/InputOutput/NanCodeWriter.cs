@@ -54,6 +54,7 @@ namespace EvieCompilerSystem.InputOutput
                     case DataType.ValUInt32:
                     case DataType.VariableRef:
                     case DataType.Number:
+                    case DataType.Opcode:
                         _opcodes.Add(code);
                         break;
                     
@@ -80,7 +81,7 @@ namespace EvieCompilerSystem.InputOutput
 
             // 2) Write a jump command to skip the table
             Split16(dataLength, out var lower, out var upper);
-            var jumpCode = NanTags.EncodeOpcode('c','j', lower, upper);
+            var jumpCode = NanTags.EncodeOpcode('c','s', lower, upper);
             WriteCode(output, jumpCode);
 
             // 3) Write the strings, with a mapping dictionary

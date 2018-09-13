@@ -207,7 +207,7 @@ namespace EvieCompilerSystem.Runtime
                 case 'c':
                     var condition = _memory.CastBoolean(valueStack.Pop());
 
-                    position++;
+                    //position++;
                     if (condition == false) { position += opCodeCount; }
                     break;
 
@@ -215,8 +215,15 @@ namespace EvieCompilerSystem.Runtime
                 case 'j':
                     position++;
                     int jmpLength = opCodeCount;
-                    position -= 2;
+                    position -= 1; // this opcode
                     position -= jmpLength;
+                    break;
+                    
+
+                // skip - unconditional relative jump *DOWN*
+                case 's':
+                    //position++;
+                    position += opCodeCount;
                     break;
 
                 // ct - call term - a function that returns values ended without returning
@@ -274,191 +281,10 @@ namespace EvieCompilerSystem.Runtime
             string functionName = "";
             if (BuiltInFunctions.ContainsKey(functionNameHash))
             {
-                functionName = BuiltInFunctions[functionNameHash];
-                double result;
-
-                if (IsMathFunc(functionName))
-                {
-                    // handle math functions
-                    try
-                    {
-                        return EvalMath(functionName[0], param);
-                    }
-                    catch (Exception e)
-                    {
-                        throw new Exception("Math Error : " + e.Message);
-                    }
-                }
-
-                double condition;
-                switch (functionName)
-                {
-                    // each element equal to the last
-                    case "=":
-                    case "equals":
-                        if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
-                        return FoldInequality(param, (a, b) => Math.Abs(a - b) <= double.Epsilon);
-
-                    // Each element smaller than the last
-                    case ">":
-                        if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
-                        return FoldInequality(param, (a, b) => a > b);
-
-                    // Each element larger than the last
-                    case "<":
-                        if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
-                        return FoldInequality(param, (a, b) => a < b);
-
-                    // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
-                    case "<>":
-                    case "not-equal":
-                        if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
-                        return FoldInequality(param, (a, b) => Math.Abs(a - b) > double.Epsilon);
-
-                    case "assert":
-                        if (nbParams < 1) return NanTags.VoidReturn(); // assert nothing passes
-                        condition = param.ElementAt(0);
-                        if (_memory.CastBoolean(condition) == false)
-                        {
-                            var msg = ConcatLinkedList(param.First.Next);
-                            throw new Exception("Assertion failed: " + msg);
-                        }
-
-                        break;
-
-                    case "random":
-                        if (nbParams < 1) return rnd.NextDouble();                                         // 0 params - any size
-                        if (nbParams < 2) return rnd.Next(_memory.CastInt(param.ElementAt(0)));             // 1 param  - max size
-                        return rnd.Next(_memory.CastInt(param.ElementAt(0)), _memory.CastInt(param.ElementAt(1))); // 2 params - range
-
-                    case "eval":
-                        var reader = new SourceCodeTokeniser();
-                        var statements = _memory.CastString(param.ElementAt(0));
-                        var programTmp = reader.Read(statements);
-                        var bin = Compiler.Compiler.CompileRoot(programTmp, false);
-                        var interpreter = new ByteCodeInterpreter();
-                        interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables); // todo: optional other i/o for eval?
-                        result = interpreter.Execute(false, false);
-                        return result;
-
-                    case "call":
-                        functionNameHash = NanTags.DecodeVariableRef(param.ElementAt(0));
-                        nbParams--;
-                        param.RemoveFirst();
-                        return EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
-
-                    case "not" when nbParams == 1:
-                        var bval = _memory.CastBoolean(param.ElementAt(0));
-                        return NanTags.EncodeBool(!bval);
-
-                    case "or":
-                        {
-                            bool more = nbParams > 0;
-                            int i = 0;
-                            while (more)
-                            {
-                                var bresult = _memory.CastBoolean(param.ElementAt(i));
-                                if (bresult) return NanTags.EncodeBool(true);
-
-                                i++;
-                                more = i < nbParams;
-                            }
-                            return NanTags.EncodeBool(false);
-                        }
-
-                    case "and":
-                        {
-                            bool more = nbParams > 0;
-                            int i = 0;
-                            while (more)
-                            {
-                                var bresult = _memory.CastBoolean(param.ElementAt(i));
-                                if (!bresult) return NanTags.EncodeBool(false);
-
-                                i++;
-                                more = i < nbParams;
-                            }
-                            return NanTags.EncodeBool(true);
-                        }
-
-                    case "readkey":
-                        return _memory.StoreStringAndGetReference(((char)_input.Read()).ToString());
-
-                    case "readline":
-                        return _memory.StoreStringAndGetReference(_input.ReadLine());
-
-                    case "print":
-                        {
-                            string lastStr = null;
-                            foreach (var v in param)
-                            {
-                                lastStr = _memory.CastString(v);
-                                _output.Write(lastStr);
-                            }
-                            if (lastStr != "") _output.WriteLine();
-                        }
-                        break;
-
-                    case "substring" when nbParams == 2:
-                        {
-                            var newString = _memory.CastString(param.ElementAt(0)).Substring(_memory.CastInt(param.ElementAt(1)));
-                            return _memory.StoreStringAndGetReference(newString);
-                        }
-
-                    case "substring":
-                        if (nbParams == 3)
-                        {
-                            int start = _memory.CastInt(param.ElementAt(1));
-                            int length = _memory.CastInt(param.ElementAt(2));
-
-                            try
-                            {
-                                string s = _memory.CastString(param.ElementAt(0)).Substring(start, length);
-                                return _memory.StoreStringAndGetReference(s);
-                            }
-                            catch (Exception ex)
-                            {
-                                _output.WriteLine("Runner error: " + ex);
-                            }
-                        }
-
-                        break;
-
-                    case "length" when nbParams == 1:
-                        return _memory.CastString(param.ElementAt(0)).Length; // TODO: lengths of other things
-
-                    case "replace" when nbParams == 3:
-                        string exp = _memory.CastString(param.ElementAt(0));
-                        string oldValue = _memory.CastString(param.ElementAt(1));
-                        string newValue = _memory.CastString(param.ElementAt(2));
-                        exp = exp.Replace(oldValue, newValue);
-                        return _memory.StoreStringAndGetReference(exp);
-
-                    case "concat":
-                        StringBuilder builder = new StringBuilder();
-                        foreach (var v in param)
-                        {
-                            builder.Append(_memory.CastString(v));
-                        }
-                        return _memory.StoreStringAndGetReference(builder.ToString());
-
-                    case "return":
-                        // need to stop flow, check we have a return stack, check value need?
-                        foreach (var v in param)
-                        {
-                            valueStack.Push(v);
-                        }
-
-                        if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
-                        Variables.DropScope();
-                        position = returnStack.Pop();
-                        break;
-                }
+                return EvaluateBuiltInFunction(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
             }
 
-
-
-            if (functionName == "()")
+            if (functionName == "()") // TODO: this will never happen now. Not sure what...
             { // empty object. TODO: when we have better values, have an empty list
                 return NanTags.VoidReturn();
             }
@@ -475,6 +301,194 @@ namespace EvieCompilerSystem.Runtime
 
             // TODO: use a symbols file to get source names back?
             throw new Exception("Tried to call an undefined function '" + functionNameHash + "'\r\nKnown functions: " + string.Join(", ", Functions.Keys));
+        }
+
+        private double EvaluateBuiltInFunction(ref int position, ulong functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
+        {
+            var functionName = BuiltInFunctions[functionNameHash];
+
+            if (IsMathFunc(functionName))
+            {
+                // handle math functions
+                try
+                {
+                    return EvalMath(functionName[0], param);
+                }
+                catch (Exception e)
+                {
+                    throw new Exception("Math Error : " + e.Message);
+                }
+            }
+
+            double condition;
+            switch (functionName)
+            {
+                // each element equal to the last
+                case "=":
+                case "equals":
+                    if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
+                    return FoldInequality(param, (a, b) => Math.Abs(a - b) <= double.Epsilon);
+
+                // Each element smaller than the last
+                case ">":
+                    if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
+                    return FoldInequality(param, (a, b) => a > b);
+
+                // Each element larger than the last
+                case "<":
+                    if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
+                    return FoldInequality(param, (a, b) => a < b);
+
+                // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
+                case "<>":
+                case "not-equal":
+                    if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
+                    return FoldInequality(param, (a, b) => Math.Abs(a - b) > double.Epsilon);
+
+                case "assert":
+                    if (nbParams < 1) return NanTags.VoidReturn(); // assert nothing passes
+                    condition = param.ElementAt(0);
+                    if (_memory.CastBoolean(condition) == false)
+                    {
+                        var msg = ConcatLinkedList(param.First.Next);
+                        throw new Exception("Assertion failed: " + msg);
+                    }
+
+                    break;
+
+                case "random":
+                    if (nbParams < 1) return rnd.NextDouble(); // 0 params - any size
+                    if (nbParams < 2) return rnd.Next(_memory.CastInt(param.ElementAt(0))); // 1 param  - max size
+                    return rnd.Next(_memory.CastInt(param.ElementAt(0)), _memory.CastInt(param.ElementAt(1))); // 2 params - range
+
+                case "eval":
+                    var reader = new SourceCodeTokeniser();
+                    var statements = _memory.CastString(param.ElementAt(0));
+                    var programTmp = reader.Read(statements);
+                    var bin = Compiler.Compiler.CompileRoot(programTmp, false);
+                    var interpreter = new ByteCodeInterpreter();
+                    interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables); // todo: optional other i/o for eval?
+                    return interpreter.Execute(false, false);
+
+                case "call":
+                    functionNameHash = NanTags.DecodeVariableRef(param.ElementAt(0));
+                    nbParams--;
+                    param.RemoveFirst();
+                    return EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
+
+                case "not" when nbParams == 1:
+                    var bval = _memory.CastBoolean(param.ElementAt(0));
+                    return NanTags.EncodeBool(!bval);
+
+                case "or":
+                {
+                    bool more = nbParams > 0;
+                    int i = 0;
+                    while (more)
+                    {
+                        var bresult = _memory.CastBoolean(param.ElementAt(i));
+                        if (bresult) return NanTags.EncodeBool(true);
+
+                        i++;
+                        more = i < nbParams;
+                    }
+
+                    return NanTags.EncodeBool(false);
+                }
+
+                case "and":
+                {
+                    bool more = nbParams > 0;
+                    int i = 0;
+                    while (more)
+                    {
+                        var bresult = _memory.CastBoolean(param.ElementAt(i));
+                        if (!bresult) return NanTags.EncodeBool(false);
+
+                        i++;
+                        more = i < nbParams;
+                    }
+
+                    return NanTags.EncodeBool(true);
+                }
+
+                case "readkey":
+                    return _memory.StoreStringAndGetReference(((char) _input.Read()).ToString());
+
+                case "readline":
+                    return _memory.StoreStringAndGetReference(_input.ReadLine());
+
+                case "print":
+                {
+                    string lastStr = null;
+                    foreach (var v in param)
+                    {
+                        lastStr = _memory.CastString(v);
+                        _output.Write(lastStr);
+                    }
+
+                    if (lastStr != "") _output.WriteLine();
+                }
+                    break;
+
+                case "substring" when nbParams == 2:
+                {
+                    var newString = _memory.CastString(param.ElementAt(0)).Substring(_memory.CastInt(param.ElementAt(1)));
+                    return _memory.StoreStringAndGetReference(newString);
+                }
+
+                case "substring":
+                    if (nbParams == 3)
+                    {
+                        int start = _memory.CastInt(param.ElementAt(1));
+                        int length = _memory.CastInt(param.ElementAt(2));
+
+                        try
+                        {
+                            string s = _memory.CastString(param.ElementAt(0)).Substring(start, length);
+                            return _memory.StoreStringAndGetReference(s);
+                        }
+                        catch (Exception ex)
+                        {
+                            _output.WriteLine("Runner error: " + ex);
+                        }
+                    }
+
+                    break;
+
+                case "length" when nbParams == 1:
+                    return _memory.CastString(param.ElementAt(0)).Length; // TODO: lengths of other things
+
+                case "replace" when nbParams == 3:
+                    string exp = _memory.CastString(param.ElementAt(0));
+                    string oldValue = _memory.CastString(param.ElementAt(1));
+                    string newValue = _memory.CastString(param.ElementAt(2));
+                    exp = exp.Replace(oldValue, newValue);
+                    return _memory.StoreStringAndGetReference(exp);
+
+                case "concat":
+                    StringBuilder builder = new StringBuilder();
+                    foreach (var v in param)
+                    {
+                        builder.Append(_memory.CastString(v));
+                    }
+
+                    return _memory.StoreStringAndGetReference(builder.ToString());
+
+                case "return":
+                    // need to stop flow, check we have a return stack, check value need?
+                    foreach (var v in param)
+                    {
+                        valueStack.Push(v);
+                    }
+
+                    if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
+                    Variables.DropScope();
+                    position = returnStack.Pop();
+                    break;
+            }
+
+            return NanTags.VoidReturn();
         }
 
         private string ConcatLinkedList(LinkedListNode<double> list)

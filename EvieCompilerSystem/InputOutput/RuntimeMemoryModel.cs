@@ -37,6 +37,56 @@ namespace EvieCompilerSystem.InputOutput
             }
         }
 
+        public override string ToString()
+        {
+            // TODO: be smarter with string headers?
+
+            var sb = new StringBuilder();
+            foreach (var token in encodedTokens)
+            {
+                var type = NanTags.TypeOf(token);
+                sb.Append(type.ToString());
+                sb.Append(": ");
+                sb.AppendLine(Stringify(token, type));
+            }
+            return sb.ToString();
+        }
+
+        private string Stringify(double token, DataType type)
+        {
+            switch (type){
+                case DataType.Invalid: return "";
+                case DataType.NoValue: return "";
+
+                case DataType.VariableRef: return NanTags.DecodeVariableRef(token).ToString("X");
+
+                case DataType.Opcode:
+                    NanTags.DecodeOpCode(token, out var ccls, out var cact, out var p1, out var p2);
+                    return ccls+""+cact+" ("+p1+", "+p2+")";
+
+                case DataType.PtrString:
+                case DataType.PtrHashtable:
+                case DataType.PtrGrid:
+                case DataType.PtrArray_Int32:
+                case DataType.PtrArray_UInt32:
+                case DataType.PtrArray_String:
+                case DataType.PtrArray_Double:
+                case DataType.PtrSet_String:
+                case DataType.PtrSet_Int32:
+                case DataType.PtrLinkedList:
+                case DataType.PtrDiagnosticString:
+                    NanTags.DecodePointer(token, out var targ, out _);
+                    return " -> " + targ;
+
+                case DataType.ValInt32: return NanTags.DecodeInt32(token).ToString();
+                case DataType.ValUInt32: return NanTags.DecodeUInt32(token).ToString();
+                case DataType.Number:  return token.ToString(CultureInfo.InvariantCulture);
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
+            }
+        }
+
         public List<double> Tokens()
         {
             return encodedTokens;

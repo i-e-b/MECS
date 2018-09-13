@@ -356,6 +356,14 @@ cjmp 10     // else jump back 10 tokens
 ...         // outside of loop
 ```
 
+### `[cskip]  [token count]`
+Make an unconditional jump **forward**.
+```
+cskip 50    // skip some binary or scratch data
+... 50 chunks ...   
+[next code]
+```
+
 ### `[cret]`
 Return from a function call. A absolute token position value is popped from the return-stack and program flow continues from there.
 ```

@@ -52,7 +52,6 @@
     <Compile Include="Runtime\FunctionDefinition.cs" />
     <Compile Include="Runtime\Scope.cs" />
     <Compile Include="Utils\MathExtensions.cs" />
-    <Compile Include="Utils\StringEncoding.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

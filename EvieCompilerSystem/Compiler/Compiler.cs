@@ -47,7 +47,7 @@ namespace EvieCompilerSystem.Compiler
                 Node rootContainer = root;
                 foreach (Node node in rootContainer.Children.ToList())
                 {
-				    node.Text = StringEncoding.Encode(node.Text);
+				    node.Text = node.Text;
 				    if (!node.IsLeaf)
                     {
 					    var container = node;
@@ -347,8 +347,7 @@ namespace EvieCompilerSystem.Compiler
         /// </summary>
         private static bool CompileFunctionCall(int level, bool debug, NanCodeWriter wr, Node node, Scope parameterNames)
         {
-
-            var funcName = StringEncoding.Decode(node.Text);
+            var funcName = node.Text;
             if (Desugar.NeedsDesugaring(funcName)) {
                 node = Desugar.ProcessNode(funcName, parameterNames, node);
                 var frag = Compile(node, level + 1, debug, parameterNames, null, Context.Default);

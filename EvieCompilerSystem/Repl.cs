@@ -24,6 +24,8 @@ namespace EvieCompilerSystem
             stream.Seek(0,SeekOrigin.Begin);
             var byteCodeReader = new RuntimeMemoryModel(stream);
 
+            //output.WriteLine(byteCodeReader.ToString());
+
             // Execute
             try
             {

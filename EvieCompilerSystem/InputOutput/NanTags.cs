@@ -265,7 +265,7 @@ namespace EvieCompilerSystem.InputOutput
         {
             unchecked
             {
-                return BitConverter.Int64BitsToDouble((long)(NAN_FLAG | TAG_15 | ((ulong)original & LOWER_32)));
+                return BitConverter.Int64BitsToDouble((long)(NAN_FLAG | TAG_16 | ((ulong)original & LOWER_32)));
             }
         }
 
