@@ -1,0 +1,18 @@
+
+// Tests around the string manipulation functions
+set(a "hello")
+set(b "world")
+
+print(  concat(a ", " b) )           // should say "hello, world"
+print(  substring("123456789" 4) )   // should say "56789"
+print(  substring("123456789" 3 2))  // should say "45"
+print(  length(a)  )                 // should say 5
+print(  replace("01010" "0" "xx"))   // should say "xx1xx1xx"
+
+print("Press a key in the console")
+print( readkey() )
+
+print("Type a line in the console")
+print( readline() )
+
+print("All done. Check results against comments in the code")

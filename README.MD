@@ -17,10 +17,12 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Split into library and apps
 * [x] Add a REPL.
 
-* [ ] Change assm definition to be less stringy
-      - Tagged basic type (NaN-tagging?)
+* [x] Change assm definition to be less stringy
+      - Tagged basic type (NaN-tagging)
       - All non-numbers are pointers to type
 
+* [ ] Underscores in numbers
+* [ ] String interning / deduplication (compiler, maybe runtime)
 * [ ] Single step in repl gui
 * [ ] Runtime interpreter exceptions to give position
 
@@ -80,6 +82,15 @@ The `def` function defines custom functions
 `true`, `false` (technically these are just string atoms at the moment)
 
 ### Reserved functions
+
+```
+=    equals    >    <    <>    not-equal
+assert    random    eval    call    not    or
+and    readkey    readline    print    substring
+length    replace    concat    return    +    -
+*    /    %
+()
+```
 
 ### get (1 param)
 Get the value of a variable by name. If a variable is used *outside* of the params of a `get` or `set`, it is treated as a get.
