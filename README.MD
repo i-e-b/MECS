@@ -45,11 +45,10 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 * String
 * Int
-* Bool
 * Float/Number
 * Set/flags
 * Dictionary/map/hashtable
-* Array (of type?)
+* Array (of type)
 * List (heterogenous)
 * Grid (2+D array, sparse)
 

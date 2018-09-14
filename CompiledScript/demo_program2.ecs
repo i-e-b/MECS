@@ -10,13 +10,13 @@ while ( not-equal(i 0)
 
 
 // Simple example of evaluation
-eval("print('Hello, world') print('This is a program inside a program')")
+eval("print('Hello, world from eval') print('This is a program inside a program')")
 
 
 // 'Call' functionality
 
 set(i "print")
-call(i "Hello, world") // call print by name
+call(i "Hello, world from call") // call print by name
 unset(i)
 
 

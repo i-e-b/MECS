@@ -56,6 +56,7 @@ namespace VisualREPL
                 case DialogResult.OK:
                 case DialogResult.Yes:
                     scriptInputBox.Text = File.ReadAllText(openFileDialog1.FileName);
+                    Repl.SetBasePath(Path.GetDirectoryName(openFileDialog1.FileName));
                     break;
             }
         }

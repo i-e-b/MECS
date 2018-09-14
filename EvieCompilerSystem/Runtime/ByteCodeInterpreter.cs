@@ -22,6 +22,7 @@ namespace EvieCompilerSystem.Runtime
         private TextReader _input;
         private TextWriter _output;
         private RuntimeMemoryModel _memory;
+        private bool runningVerbose;
 
         public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null, Dictionary<ulong, string> debugSymbols = null)
         {
@@ -61,6 +62,7 @@ namespace EvieCompilerSystem.Runtime
         public double Execute(bool resetVars, bool verbose)
         {
 		    double evalResult;
+            runningVerbose = verbose;
 
             if (resetVars) { Variables.Clear(); }
 
@@ -74,7 +76,7 @@ namespace EvieCompilerSystem.Runtime
 		    while (position < programCount)
             {
 			    stepsTaken++;
-                if (stepsTaken > 1000) throw new Exception("trap");
+                //if (stepsTaken > 1000) throw new Exception("trap");
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
@@ -283,7 +285,6 @@ namespace EvieCompilerSystem.Runtime
         // Evaluate a function call
 	    public double EvaluateFunctionCall(ref int position, ulong functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
         {
-            string functionName = "";
             if (BuiltInFunctions.ContainsKey(functionNameHash))
             {
                 return EvaluateBuiltInFunction(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
@@ -292,7 +293,6 @@ namespace EvieCompilerSystem.Runtime
             if (Functions.ContainsKey(functionNameHash))
             {
                 // handle functions that are defined in the program
-
                 Variables.PushScope(param); // write parameters into new scope
                 returnStack.Push(position); // set position for 'cret' call
                 position = Functions[functionNameHash].StartPosition; // move pointer to start of function
@@ -303,7 +303,21 @@ namespace EvieCompilerSystem.Runtime
             throw new Exception("Tried to call an undefined function '"
                                 + DbgStr(functionNameHash) 
                                 + "' at position " + position
-                                + "\r\nKnown functions: " + string.Join(", ", Functions.Keys.Select(DbgStr)));
+                                + "\r\nKnown functions: " + string.Join(", ", Functions.Keys.Select(DbgStr))
+                                + "\r\nAs a string: " + TryDeref(functionNameHash) + "?"
+                                + "\r\nKnown symbols: " + string.Join(", ", DebugSymbols.Keys.Select(DbgStr)));
+        }
+
+        private string TryDeref(ulong functionNameHash)
+        {
+            try
+            {
+                return _memory.DereferenceString((long)functionNameHash);
+            }
+            catch
+            {
+                return "<not a known string>";
+            }
         }
 
         private string DbgStr(ulong hash)
@@ -377,11 +391,15 @@ namespace EvieCompilerSystem.Runtime
                     var programTmp = reader.Read(statements);
                     var bin = Compiler.Compiler.CompileRoot(programTmp, false);
                     var interpreter = new ByteCodeInterpreter();
-                    interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables); // todo: optional other i/o for eval?
-                    return interpreter.Execute(false, false);
+                    interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables, DebugSymbols); // todo: optional other i/o for eval?
+                    return interpreter.Execute(false, runningVerbose);
 
                 case "call":
-                    functionNameHash = NanTags.DecodeVariableRef(param.ElementAt(0));
+                    NanTags.DecodePointer(param.ElementAt(0), out var target, out var type);
+                    if (type != DataType.PtrString) throw new Exception("Tried to call a function by name, but passed a '" + type + "' at " + position);
+                    // this should be a string, but we need a function name hash -- so calculate it:
+                    var strName = _memory.DereferenceString(target);
+                    functionNameHash = NanTags.GetCrushedName(strName);
                     nbParams--;
                     param.RemoveFirst();
                     return EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
@@ -477,7 +495,7 @@ namespace EvieCompilerSystem.Runtime
                     return _memory.StoreStringAndGetReference(exp);
 
                 case "concat":
-                    StringBuilder builder = new StringBuilder();
+                    var builder = new StringBuilder();
                     foreach (var v in param)
                     {
                         builder.Append(_memory.CastString(v));

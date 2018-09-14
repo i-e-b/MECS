@@ -4,12 +4,13 @@ using System.IO;
 using System.Linq;
 using EvieCompilerSystem.InputOutput;
 using EvieCompilerSystem.Runtime;
-using EvieCompilerSystem.Utils;
 
 namespace EvieCompilerSystem.Compiler
 {
     public class Compiler
     {
+        public static string BaseDirectory = "";
+
         public static NanCodeWriter CompileRoot(Node root, bool debug)
         {
             var wr = new NanCodeWriter();
@@ -251,7 +252,7 @@ namespace EvieCompilerSystem.Compiler
 
             if (includedFiles == null) throw new Exception("Files can only be included at the root level");
 
-            var targetFile = node.Children.First.Value.Text;
+            var targetFile = Path.Combine(BaseDirectory, node.Children.First.Value.Text);
 
             if (includedFiles.Contains(targetFile)) {
                 wr.Comment("// Ignored import: " + targetFile);

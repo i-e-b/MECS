@@ -231,7 +231,7 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.PtrSet_String:
                 case DataType.PtrSet_Int32:
                 case DataType.PtrLinkedList:
-                    return "<complex type>"; // TODO: add strigification later
+                    return "<complex type>"; // TODO: add stringification later
 
                 case DataType.ValInt32: return NanTags.DecodeInt32(encoded).ToString();
                 case DataType.ValUInt32: return NanTags.DecodeUInt32(encoded).ToString();
@@ -309,8 +309,7 @@ namespace EvieCompilerSystem.InputOutput
             
             encodedTokens.Add(BitConverter.Int64BitsToDouble(pack)); // might be a bit wasteful if alignment happened to be perfect, but meh.
 
-
-            return location;
+            return NanTags.EncodePointer(location, DataType.PtrString);
         }
 
         public string DiagnosticString(double token, Dictionary<ulong, string> symbols = null)

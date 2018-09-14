@@ -8,6 +8,7 @@ namespace EvieCompilerSystem
     // ReSharper disable once UnusedMember.Global
     public static class Repl
     {
+        private static string baseDirectory = "";
 
         // ReSharper disable once UnusedMember.Global
         public static void BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL) {
@@ -17,6 +18,7 @@ namespace EvieCompilerSystem
             // Compile
             var sourceCodeReader = new Compiler.SourceCodeTokeniser();
             var program = sourceCodeReader.Read(contents);
+            Compiler.Compiler.BaseDirectory = baseDirectory;
             var compiledOutput = Compiler.Compiler.CompileRoot(program, debug: false);
 
             var stream = new MemoryStream();
@@ -56,5 +58,12 @@ namespace EvieCompilerSystem
             }
         }
 
+        /// <summary>
+        /// Set the directory used to resolve includes
+        /// </summary>
+        public static void SetBasePath(string path)
+        {
+            baseDirectory = path;
+        }
     }
 }
