@@ -77,6 +77,7 @@ namespace EvieCompilerSystem.Runtime
             {
 			    stepsTaken++;
                 //if (stepsTaken > 1000) throw new Exception("trap");
+                // TODO: add a hook for a step event here?
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
@@ -496,6 +497,7 @@ namespace EvieCompilerSystem.Runtime
 
                 case "concat":
                     var builder = new StringBuilder();
+
                     foreach (var v in param)
                     {
                         builder.Append(_memory.CastString(v));

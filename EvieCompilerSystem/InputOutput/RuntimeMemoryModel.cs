@@ -292,23 +292,31 @@ namespace EvieCompilerSystem.InputOutput
 
             encodedTokens.Add(headerOpCode);
 
-            long pack = 0;
-            int rem = 56;
-            for (int i = 0; i < bytes.Length; i++)
+            unchecked
             {
-                pack |= ((long)bytes[i]) << rem;
+                ulong pack = 0;
+                int rem = 0;
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    pack += ((ulong)bytes[i]) << rem;
 
-                if (rem <= 0) {
-                    rem = 64;
-                    encodedTokens.Add(BitConverter.Int64BitsToDouble(pack));
-                    pack = 0;
+                    rem += 8;
+                    if (rem > 56)
+                    {
+                        encodedTokens.Add(BitConverter.Int64BitsToDouble((long)pack));
+                        rem = 0;
+                        pack = 0;
+                    }
                 }
 
-                rem -= 8;
+                if (rem != 0) {
+                    for (; rem < 64; rem += 8)
+                    {
+                        pack += ((ulong)'_') << rem;
+                    }
+                    encodedTokens.Add(BitConverter.Int64BitsToDouble((long)pack));
+                }
             }
-            
-            encodedTokens.Add(BitConverter.Int64BitsToDouble(pack)); // might be a bit wasteful if alignment happened to be perfect, but meh.
-
             return NanTags.EncodePointer(location, DataType.PtrString);
         }
 
