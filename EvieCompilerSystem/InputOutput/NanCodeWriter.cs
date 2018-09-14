@@ -266,7 +266,14 @@ namespace EvieCompilerSystem.InputOutput
 
         public void LiteralString(string s)
         {
-            // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
+            // duplication check
+            if (_stringTable.Contains(s)) {
+                var idx = _stringTable.IndexOf(s);
+                _opcodes.Add(NanTags.EncodePointer(idx, DataType.PtrString));
+                return;
+            }
+
+            // no existing matches
             _stringTable.Add(s);
             _opcodes.Add(NanTags.EncodePointer(_stringTable.Count - 1, DataType.PtrString));
         }

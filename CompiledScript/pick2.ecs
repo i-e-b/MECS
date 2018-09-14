@@ -1,0 +1,26 @@
+
+// Shows using `return` to give a value out of a pick
+
+set( val random(1 11) ) // runtime value
+
+set (result
+  pick (
+    if ( equals(1 val)
+        return("The random number was UNO! You win!")
+    )
+    
+    if ( equals(10 val)
+        return("The random number was DIEZ! You lose!")
+    )
+    
+    if ( >(5 val)
+        return("The random number was less than five. Are you half way there?")
+    )
+    
+    if ( true
+        return("Boring. Try again")
+    )
+  )
+)
+
+print("The result was '" result "'")

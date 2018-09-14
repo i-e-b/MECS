@@ -118,7 +118,7 @@ namespace EvieCompilerSystem.Compiler
             switch (root.NodeType)
             {
                 case NodeType.Numeric:
-                    wr.LiteralNumber(double.Parse(valueName));
+                    wr.LiteralNumber(double.Parse(valueName.Replace("_","")));
                     break;
 
                 case NodeType.StringLiteral:
