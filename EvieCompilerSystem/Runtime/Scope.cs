@@ -12,6 +12,16 @@ namespace EvieCompilerSystem.Runtime
     {
         readonly LinkedList<Dictionary<ulong, double>> scopes;
 
+        private static readonly ulong[] posParamHash;
+
+        static Scope() {
+            posParamHash = new ulong[128]; // this limits the number of parameters, so is quite high
+            for (int i = 0; i < 128; i++)
+            {
+                posParamHash[i] = NanTags.GetCrushedName("__p" + i);
+            }
+        }
+
         /// <summary>
         /// Create a new empty value scope
         /// </summary>
@@ -70,7 +80,7 @@ namespace EvieCompilerSystem.Runtime
             {
                 foreach (var parameter in parameters)
                 {
-                    sd.Add(NameFor(i), parameter);
+                    sd.Add(posParamHash[i], parameter);
                     i++;
                 }
             }
@@ -90,8 +100,11 @@ namespace EvieCompilerSystem.Runtime
         public double Resolve(ulong crushedName){
             var current = scopes.Last;
             while (current != null) {
-                if (current.Value.ContainsKey(crushedName)) return current.Value[crushedName];
-                current = current.Previous;
+                try {
+                    return current.Value[crushedName];
+                } catch {
+                    current = current.Previous;
+                }
             }
 
             throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");
@@ -148,12 +161,13 @@ namespace EvieCompilerSystem.Runtime
             scopes.Last.Value.Remove(crushedName);
         }
 
+
         /// <summary>
         /// Get the name for a positional argument
         /// </summary>
         public static ulong NameFor(int i)
         {
-            return NanTags.GetCrushedName("__p" + i);
+            return posParamHash[i];
         }
 
         /// <summary>

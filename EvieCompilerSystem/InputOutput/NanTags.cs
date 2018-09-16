@@ -2,31 +2,36 @@
 
 namespace EvieCompilerSystem.InputOutput
 {
-    public enum DataType
-    {
-        Invalid,
-        Number,
-        VariableRef, Opcode,
-        PtrString, PtrHashtable, PtrGrid,
-        PtrArray_Int32, PtrArray_UInt32, PtrArray_String, PtrArray_Double,
-        PtrSet_String, PtrSet_Int32,
-        PtrLinkedList,
-        PtrDiagnosticString,
-        NoValue,
-        ValInt32, ValUInt32
-    }
-
     public enum NonValueType
     {
-        /// <summary>
-        /// Nothing returned
-        /// </summary>
+        /// <summary>Nothing returned</summary>
         Void = 0,
 
-        /// <summary>
-        /// No result, but as part of a return
-        /// </summary>
+        /// <summary>No result, but as part of a return</summary>
         Unit = 1
+    }
+
+    public enum DataType : uint
+    {
+        Invalid               = 1,
+        Number                = 2,
+
+        VariableRef           = 0x80000000,
+        Opcode                = 0x80010000,
+        PtrString             = 0x80020000,
+        PtrHashtable          = 0x80030000,
+        PtrGrid               = 0x80040000,
+        PtrArray_Int32        = 0x80050000,
+        PtrArray_UInt32       = 0x80060000,
+        PtrArray_String       = 0x80070000,
+        PtrArray_Double       = 0x00000000,
+        PtrSet_String         = 0x00010000,
+        PtrSet_Int32          = 0x00020000,
+        PtrLinkedList         = 0x00030000,
+        PtrDiagnosticString   = 0x00040000,
+        NoValue               = 0x00050000,
+        ValInt32              = 0x00060000,
+        ValUInt32             = 0x00070000
     }
 
     public static class NanTags
@@ -64,33 +69,14 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Read tagged type
         /// </summary>
-        public static DataType TypeOf(double unknown)
+        public static unsafe DataType TypeOf(double unknown)
         {
-            if (!double.IsNaN(unknown)) return DataType.Number;
-
-            var tag = (ulong)BitConverter.DoubleToInt64Bits(unknown) & UPPER_FOUR;
-
-            switch (tag)
+            unchecked
             {
-                case TAG_VAR_REF: return DataType.VariableRef;
-                case TAG_OPCODE: return DataType.Opcode;
-                case TAG_PTR_STR: return DataType.PtrString;
-                case TAG_PTR_TABLE: return DataType.PtrHashtable;
-                case TAG_PTR_GRID: return DataType.PtrGrid;
-                case TAG_PTR_ARR_INT32: return DataType.PtrArray_Int32;
-                case TAG_PTR_ARR_UINT32: return DataType.PtrArray_UInt32;
-                case TAG_ARR_STR: return DataType.PtrArray_String;
-                case TAG_ARR_DOUBLE: return DataType.PtrArray_Double;
-                case TAG_PTR_SET_STR: return DataType.PtrSet_String;
-                case TAG_PTR_SET_INT32: return DataType.PtrSet_Int32;
-                case TAG_PTR_LINKLIST: return DataType.PtrLinkedList;
-                case TAG_PTR_DEBUG: return DataType.PtrDiagnosticString;
-                case TAG_NAR: return DataType.NoValue;
-                case TAG_INT32_VAL: return DataType.ValInt32;
-                case TAG_UINT32_VAL: return DataType.ValUInt32;
-
-                default:
-                    return DataType.Invalid;
+                var bits = *(ulong*) &unknown;
+                if ((bits & NAN_FLAG) != NAN_FLAG) return DataType.Number;
+                var tag = (bits & UPPER_FOUR) >> 32;
+                return (DataType)tag;
             }
         }
 
@@ -126,35 +112,35 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Value tagged as an non return type
         /// </summary>
-        public static double VoidReturn()
+        public static unsafe double VoidReturn()
         {
             unchecked
             {
                 ulong encoded = NAN_FLAG | TAG_NAR | (ulong)NonValueType.Void;
-                return BitConverter.Int64BitsToDouble((long)encoded);
+                return *(double*)&encoded;//BitConverter.Int64BitsToDouble((long)encoded);
             }
         }
 
         /// <summary>
         /// Encode a tagged non-value tag
         /// </summary>
-        public static double EncodeNonValue(NonValueType type)
+        public static unsafe double EncodeNonValue(NonValueType type)
         {
             unchecked
             {
                 ulong encoded = NAN_FLAG | TAG_NAR | ((ulong)type);
-                return BitConverter.Int64BitsToDouble((long)encoded);
+                return *(double*)&encoded;
             }
         }
 
         /// <summary>
         /// Read the tag from a non value tag
         /// </summary>
-        public static NonValueType DecodeNonValue(double encoded) {
+        public static unsafe NonValueType DecodeNonValue(double encoded) {
             
             unchecked
             {
-                int tag = (int)((ulong)BitConverter.DoubleToInt64Bits(encoded) & LOWER_32);
+                int tag = (int)((*(ulong*)&encoded) & LOWER_32);
                 return (NonValueType)tag;
             }
         }
@@ -166,7 +152,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <param name="codeAction">The action to perform in the class</param>
         /// <param name="p1">First parameter, if used</param>
         /// <param name="p2">Second parameter if used</param>
-        public static double EncodeOpcode(char codeClass, char codeAction, ushort p1, ushort p2)
+        public static unsafe double EncodeOpcode(char codeClass, char codeAction, ushort p1, ushort p2)
         {
             unchecked
             {
@@ -180,7 +166,7 @@ namespace EvieCompilerSystem.InputOutput
                       | ((ulong)p1 << 16)
                       | ((ulong)p2)
                     ;
-                return BitConverter.Int64BitsToDouble((long)encoded);
+                return *(double*)&encoded;
             }
         }
 
@@ -216,11 +202,11 @@ namespace EvieCompilerSystem.InputOutput
         /// <param name="codeAction">action of op code</param>
         /// <param name="p1">first param</param>
         /// <param name="p2">second param</param>
-        public static void DecodeOpCode(double encoded, out char codeClass, out char codeAction, out ushort p1, out ushort p2)
+        public static unsafe void DecodeOpCode(double encoded, out char codeClass, out char codeAction, out ushort p1, out ushort p2)
         {
             unchecked
             {
-                var enc = LOWER_48 & (ulong)BitConverter.DoubleToInt64Bits(encoded);
+                var enc = LOWER_48 & (*(ulong*)&encoded);
                 codeClass = (char)(enc >> 40);
                 codeAction = (char)(0xFF & (enc >> 32));
                 p1 = (ushort)(enc >> 16);
@@ -235,11 +221,11 @@ namespace EvieCompilerSystem.InputOutput
         /// <param name="codeClass">class of op code</param>
         /// <param name="codeAction">action of op code</param>
         /// <param name="p1">first param and second param combined</param>
-        public static void DecodeLongOpCode(double encoded, out char codeClass, out char codeAction, out uint p1)
+        public static unsafe void DecodeLongOpCode(double encoded, out char codeClass, out char codeAction, out uint p1)
         {
             unchecked
             {
-                var enc = LOWER_48 & (ulong)BitConverter.DoubleToInt64Bits(encoded);
+                var enc = LOWER_48 & (*(ulong*)&encoded);
                 codeClass = (char)(enc >> 40);
                 codeAction = (char)(0xFF & (enc >> 32));
                 p1 = (uint)enc;
@@ -297,11 +283,11 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Extract an encoded reference name from a double
         /// </summary>
-        public static ulong DecodeVariableRef(double enc)
+        public static unsafe ulong DecodeVariableRef(double encoded)
         {
             unchecked
             {
-                return LOWER_48 & (ulong)BitConverter.DoubleToInt64Bits(enc);
+                return LOWER_48 & (*(ulong*)&encoded);
             }
         }
 
@@ -319,12 +305,12 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Decode a pointer and type
         /// </summary>
-        public static void DecodePointer(double encoded, out long target, out DataType type)
+        public static unsafe void DecodePointer(double encoded, out long target, out DataType type)
         {
             unchecked
             {
                 type = TypeOf(encoded);
-                target = (long)((ulong)BitConverter.DoubleToInt64Bits(encoded) & LOWER_48);
+                target = (long)((*(ulong*)&encoded) & LOWER_48);
             }
         }
 
@@ -342,11 +328,11 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Decode an int32
         /// </summary>
-        public static int DecodeInt32(double enc)
+        public static unsafe int DecodeInt32(double encoded)
         {
             unchecked
             {
-                return (int)((ulong)BitConverter.DoubleToInt64Bits(enc) & LOWER_32);
+                return (int)((*(ulong*)&encoded) & LOWER_32);
             }
         }
 
@@ -364,22 +350,12 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Decode an unsigned int32
         /// </summary>
-        public static uint DecodeUInt32(double enc)
+        public static unsafe uint DecodeUInt32(double encoded)
         {
             unchecked
             {
-                return (uint)((ulong)BitConverter.DoubleToInt64Bits(enc) & LOWER_32);
+                return (uint)((*(ulong*)&encoded) & LOWER_32);
             }
-        }
-
-        /// <summary>
-        /// Test if all data except Exponent and first bit of mantissa are equal
-        /// </summary>
-        public static bool AreEqual(double a, double b)
-        {
-            var da = ALL_DATA & (ulong)BitConverter.DoubleToInt64Bits(a);
-            var db = ALL_DATA & (ulong)BitConverter.DoubleToInt64Bits(b);
-            return da == db;
         }
 
         /// <summary>
