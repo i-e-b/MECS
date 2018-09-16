@@ -146,7 +146,7 @@ namespace EvieCompilerSystem.Runtime
                 case 'c': // flow Control -- conditions, jumps etc
                     {
                         int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
-                        position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position);
+                        position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position, param);
                     }
                     break;
 
@@ -205,7 +205,7 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private int HandleControlSignal(char action, int opCodeCount, Stack<double> valueStack, Stack<int> returnStack,  int position)
+        private int HandleControlSignal(char action, int opCodeCount, Stack<double> valueStack, Stack<int> returnStack, int position, LinkedList<double> param)
         {
             switch (action)
             {
@@ -238,20 +238,22 @@ namespace EvieCompilerSystem.Runtime
 
                 // ret - pop return stack and jump to absolute position
                 case 'r':
-                    // set a special value for "void return" here, in case someone tries to use the result of a void function
-                    valueStack.Push(NanTags.VoidReturn()); // TODO: after a return, can we clear the stack down to a previous void return?
-                    if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
-                    Variables.DropScope();
-                    position = returnStack.Pop();
+                    HandleReturn(ref position, valueStack, returnStack, Variables, opCodeCount);
                     break;
             }
 
             return position;
         }
 
+        private void HandleReturn(ref int position, Stack<double> valueStack, Stack<int> returnStack, Scope Variables, int returnParamCount)
+        {
+            if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
+            Variables.DropScope();
+            position = returnStack.Pop();
+        }
+
         private int PrepareFunctionCall(int position, LinkedList<double> param, ushort nbParams, Stack<double> valueStack, Stack<int> returnStack)
         {
-            //position++;
             param.Clear();
 
             var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
@@ -504,18 +506,6 @@ namespace EvieCompilerSystem.Runtime
                     }
 
                     return _memory.StoreStringAndGetReference(builder.ToString());
-
-                case "return":
-                    // need to stop flow, check we have a return stack, check value need?
-                    foreach (var v in param)
-                    {
-                        valueStack.Push(v);
-                    }
-
-                    if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
-                    Variables.DropScope();
-                    position = returnStack.Pop();
-                    break;
 
                 case "()":
                     { // valueless marker (like an empty object)
