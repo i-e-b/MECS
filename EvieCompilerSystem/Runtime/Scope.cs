@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using EvieCompilerSystem.InputOutput;
 
+// TODO: This currently is faking `int` keys.
+// It seems to really improve run time.
+// TODO: move scope resolution out to the compiler
+
 namespace EvieCompilerSystem.Runtime
 {
     /// <summary>
@@ -10,7 +14,7 @@ namespace EvieCompilerSystem.Runtime
     /// </summary>
     public class Scope
     {
-        readonly LinkedList<Dictionary<ulong, double>> scopes;
+        readonly LinkedList<Dictionary<int, double>> scopes;
 
         private static readonly ulong[] posParamHash;
 
@@ -27,8 +31,8 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public Scope()
         {
-            scopes = new LinkedList<Dictionary<ulong, double>>();
-            scopes.AddLast(new Dictionary<ulong, double>()); // global scope
+            scopes = new LinkedList<Dictionary<int, double>>();
+            scopes.AddLast(new Dictionary<int, double>()); // global scope
         }
 
         /// <summary>
@@ -38,12 +42,17 @@ namespace EvieCompilerSystem.Runtime
         /// <param name="importVariables">Variables to copy. All will be added to the global level.</param>
         public Scope(Scope importVariables)
         {
-            scopes = new LinkedList<Dictionary<ulong, double>>();
-            var global = new Dictionary<ulong, double>();
+            scopes = new LinkedList<Dictionary<int, double>>();
+            var global = new Dictionary<int, double>();
 
-            if (importVariables != null) {
-                foreach (var value in importVariables.ListAllVisible()){
-                    global.Add(value.Key, value.Value);
+            unchecked
+            {
+                if (importVariables != null)
+                {
+                    foreach (var value in importVariables.ListAllVisible())
+                    {
+                        global.Add((int)value.Key, value.Value);
+                    }
                 }
             }
 
@@ -53,9 +62,10 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// List all values in the scope
         /// </summary>
-        private IEnumerable<KeyValuePair<ulong, double>> ListAllVisible()
+        private IEnumerable<KeyValuePair<int, double>> ListAllVisible()
         {
-            var seen = new HashSet<ulong>();
+            unchecked {
+            var seen = new HashSet<int>();
             var scope = scopes.Last;
             while (scope != null)
             {
@@ -67,6 +77,7 @@ namespace EvieCompilerSystem.Runtime
                 }
                 scope = scope.Previous;
             }
+            }
         }
 
         /// <summary>
@@ -74,17 +85,19 @@ namespace EvieCompilerSystem.Runtime
         /// Parameters are specially named by index (like "__p0", "__p1"). The compiler must match this.
         /// </summary>
         public void PushScope(ICollection<double> parameters = null) {
-            var sd = new Dictionary<ulong, double>();
+            unchecked {
+            var sd = new Dictionary<int, double>();
             var i = 0;
             if (parameters != null)
             {
                 foreach (var parameter in parameters)
                 {
-                    sd.Add(posParamHash[i], parameter);
+                    sd.Add((int)posParamHash[i], parameter);
                     i++;
                 }
             }
             scopes.AddLast(sd);
+            }
         }
 
         /// <summary>
@@ -98,32 +111,36 @@ namespace EvieCompilerSystem.Runtime
         /// Read a value by name
         /// </summary>
         public double Resolve(ulong crushedName){
+            unchecked {
             var current = scopes.Last;
             while (current != null) {
                 try {
-                    return current.Value[crushedName];
+                    return current.Value[(int)crushedName];
                 } catch {
                     current = current.Previous;
                 }
             }
 
             throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");
+            }
         }
 
         /// <summary>
         /// Set a value by name. If no scope has it, then it will be defined in the innermost scope
         /// </summary>
         public void SetValue(ulong crushedName, double value) {
+            unchecked {
             var current = scopes.Last;
             while (current != null) {
-                if (current.Value.ContainsKey(crushedName)) {
-                    current.Value[crushedName] = value;
+                if (current.Value.ContainsKey((int)crushedName)) {
+                    current.Value[(int)crushedName] = value;
                     return;
                 }
                 current = current.Previous;
             }
 
-            scopes.Last.Value.Add(crushedName, value);
+            scopes.Last.Value.Add((int)crushedName, value);
+            }
         }
 
         /// <summary>
@@ -132,7 +149,7 @@ namespace EvieCompilerSystem.Runtime
         public void Clear()
         {
             scopes.Clear();
-            scopes.AddLast(new Dictionary<ulong, double>()); // global scope
+            scopes.AddLast(new Dictionary<int, double>()); // global scope
         }
 
         /// <summary>
@@ -140,12 +157,14 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public bool CanResolve(ulong crushedName)
         {
+            unchecked{
             var current = scopes.Last;
             while (current != null) {
-                if (current.Value.ContainsKey(crushedName)) return true;
+                if (current.Value.ContainsKey((int)crushedName)) return true;
                 current = current.Previous;
             }
             return false;
+            }
         }
 
         /// <summary>
@@ -157,8 +176,10 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public void Remove(ulong crushedName)
         {
-            if (scopes.First.Value.Remove(crushedName)) return;
-            scopes.Last.Value.Remove(crushedName);
+            unchecked{
+            if (scopes.First.Value.Remove((int)crushedName)) return;
+            scopes.Last.Value.Remove((int)crushedName);
+            }
         }
 
 
@@ -176,7 +197,9 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public bool InScope(ulong crushedName)
         {
-            return scopes.Last.Value.ContainsKey(crushedName);
+            unchecked{
+            return scopes.Last.Value.ContainsKey((int)crushedName);
+            }
         }
     }
 }

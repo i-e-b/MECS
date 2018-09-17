@@ -1,0 +1,15 @@
+// Nested loops
+
+set(y 0)
+set(total 0)
+
+while ( <(y 480)
+	set(x 0)
+	while ( <(x 640)
+		set(total +(total 1))
+		
+		set(x +(x 1))
+	)
+	set(y +(y 1))
+)
+print("total = " total)
