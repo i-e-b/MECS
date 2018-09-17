@@ -180,11 +180,9 @@ namespace EvieCompilerSystem.InputOutput
 
         public void Memory(char action, string targetName)
         {
-            unchecked
-            {
-                NanTags.EncodeVariableRef(targetName, out var crush);
-                _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
-            }
+            NanTags.EncodeVariableRef(targetName, out var crush);
+            AddSymbol(crush, targetName);
+            _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
         }
 
         public void Memory(char action, double opcode)

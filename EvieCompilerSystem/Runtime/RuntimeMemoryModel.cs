@@ -107,7 +107,14 @@ namespace EvieCompilerSystem.Runtime
                     return rref.ToString("X");
 
                 case DataType.Opcode:
-                    NanTags.DecodeOpCode(token, out var ccls, out var cact, out var p1, out var p2);
+                    NanTags.DecodeLongOpCode(token, out var ccls, out var cact, out var refr);
+                    if (ccls == 'm') {
+                        if (debugSymbols?.ContainsKey(refr) == true)
+                        {
+                            return ccls+""+cact+" '" + debugSymbols[refr] + "' (" + refr.ToString("X") + ")";
+                        }
+                    }
+                    NanTags.DecodeOpCode(token, out _, out _, out var p1, out var p2);
                     return ccls+""+cact+" ("+p1+", "+p2+")";
 
                 case DataType.PtrString:
@@ -138,7 +145,6 @@ namespace EvieCompilerSystem.Runtime
             return encodedTokens;
         }
 
-
         public string DereferenceString(long position) {
             // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
             // The plan:
@@ -154,7 +160,6 @@ namespace EvieCompilerSystem.Runtime
             //  4) make string (ascii for now, then utf-8?)
             return Encoding.ASCII.GetString(rawBytes, 0, (int)length);
         }
-        
         
         public bool CastBoolean(double encoded)
         {

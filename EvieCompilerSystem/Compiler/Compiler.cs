@@ -226,7 +226,6 @@ namespace EvieCompilerSystem.Compiler
 
             int nb = node.Text == "set" ? 1 : 0;
             var child = new Node(false);
-            //child.Text = container.Children.ElementAt(0).Text;
             child.Text = container.Children.First.Value.Text;
             for (int i = nb; i > 0; i--) // skip the first element
             {
