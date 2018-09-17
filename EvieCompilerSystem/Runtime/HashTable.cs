@@ -61,7 +61,8 @@ namespace EvieCompilerSystem.Runtime
                         PutInternal(oldBuckets[i], false, false);
             }
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool Get(uint key, out TValue value)
         {
             uint index;
@@ -118,7 +119,8 @@ namespace EvieCompilerSystem.Runtime
                 probeCurrent++;
             }
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool Find(uint key, out uint index)
         {
             index = 0;

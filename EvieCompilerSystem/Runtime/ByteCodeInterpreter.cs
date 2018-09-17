@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using EvieCompilerSystem.Compiler;
 using EvieCompilerSystem.InputOutput;
@@ -165,8 +166,8 @@ namespace EvieCompilerSystem.Runtime
                     break;
 
                 case 'm': // Memory access - get|set|isset|unset
-                    if (valueStack.Count < 1) throw new Exception("Empty stack before memory access at position " + position);
-                    HandleMemoryAccess(codeAction, valueStack, position);
+                    uint varRef = (uint) (p2 + (p1 << 16)); // the reference to read/write
+                    HandleMemoryAccess(codeAction, valueStack, position, varRef);
                     break;
 
                 case 's': // reserved for System operation.
@@ -190,31 +191,25 @@ namespace EvieCompilerSystem.Runtime
             return position + tokenCount + 1; // + definition length + terminator
         }
 
-        private void HandleMemoryAccess(char action, Stack<double> valueStack, int position)
+        private void HandleMemoryAccess(char action, Stack<double> valueStack, int position, uint varRef)
         {
-            var varName = NanTags.DecodeVariableRef(valueStack.Pop());
-            double value;
-
             switch (action)
             {
                 case 'g': // get (adds a value to the stack, false if not set)
-                    value = Variables.Resolve(varName);
-                    valueStack.Push(value);
-
+                    valueStack.Push(Variables.Resolve(varRef));
                     break;
 
                 case 's': // set
                     if (valueStack.Count < 1) throw new Exception("There were no values to save. Did you forget a `return` in a function? Position: " + position);
-                    value = valueStack.Pop();
-                    Variables.SetValue(varName, value);
+                    Variables.SetValue(varRef, valueStack.Pop());
                     break;
 
                 case 'i': // is set? (adds a bool to the stack)
-                    valueStack.Push(NanTags.EncodeBool(Variables.CanResolve(varName)));
+                    valueStack.Push(NanTags.EncodeBool(Variables.CanResolve(varRef)));
                     break;
 
                 case 'u': // unset
-                    Variables.Remove(varName);
+                    Variables.Remove(varRef);
                     break;
             }
         }
@@ -265,7 +260,8 @@ namespace EvieCompilerSystem.Runtime
             Variables.DropScope();
             position = returnStack.Pop();
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int PrepareFunctionCall(int position, ushort nbParams, Stack<double> valueStack, Stack<int> returnStack)
         {
             var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
@@ -297,7 +293,7 @@ namespace EvieCompilerSystem.Runtime
             return position;
         }
 
-        // Evaluate a function call
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
 	    public double EvaluateFunctionCall(ref int position, uint functionNameHash, int nbParams, double[] param, Stack<int> returnStack, Stack<double> valueStack)
         {
             var found = Functions.TryGetValue(functionNameHash, out var fun);

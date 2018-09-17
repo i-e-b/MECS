@@ -14,7 +14,7 @@ namespace EvieCompilerSystem.Runtime
 
         public RuntimeMemoryModel(NanCodeWriter writer)
         {
-            var ms = new MemoryStream(writer.OpCodeCount() * 16);
+            var ms = new MemoryStream((int)writer.OpCodeCount() * 16);
             writer.WriteToStream(ms);
             ms.Seek(0, SeekOrigin.Begin);
 

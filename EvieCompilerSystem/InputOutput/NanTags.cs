@@ -179,7 +179,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <param name="codeClass">Kind of op code</param>
         /// <param name="codeAction">The action to perform in the class</param>
         /// <param name="p1">First parameter, if used</param>
-        public static double EncodeLongOpcode(char codeClass, char codeAction, int p1)
+        public static double EncodeLongOpcode(char codeClass, char codeAction, uint p1)
         {
             unchecked
             {
@@ -190,7 +190,7 @@ namespace EvieCompilerSystem.InputOutput
                         | TAG_OPCODE
                         | ((ulong)cc << 40)
                         | ((ulong)ca << 32)
-                        | ((ulong)p1)
+                        | p1
                     ;
                 return BitConverter.Int64BitsToDouble((long)encoded);
             }

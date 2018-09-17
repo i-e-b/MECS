@@ -99,7 +99,7 @@ namespace EvieCompilerSystem.InputOutput
             var dataLength = _stringTable.Select(CalculatePaddedSize).Sum() + _stringTable.Count;
 
             // 2) Write a jump command to skip the table
-            var jumpCode = NanTags.EncodeLongOpcode('c','s', dataLength);
+            var jumpCode = NanTags.EncodeLongOpcode('c','s', (uint)dataLength);
             WriteCode(output, jumpCode);
 
             // 3) Write the strings, with a mapping dictionary
@@ -178,10 +178,21 @@ namespace EvieCompilerSystem.InputOutput
             AddSymbol(crushed, valueName);
         }
 
-        public void Memory(char action)
+        public void Memory(char action, string targetName)
         {
-            _opcodes.Add(NanTags.EncodeOpcode('m', action, 0, 0));
+            unchecked
+            {
+                NanTags.EncodeVariableRef(targetName, out var crush);
+                _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
+            }
         }
+
+        public void Memory(char action, double opcode)
+        {
+            var crush = NanTags.DecodeUInt32(opcode);
+            _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
+        }
+
 
         public void FunctionCall(string functionName, int parameterCount)
         {
@@ -189,15 +200,15 @@ namespace EvieCompilerSystem.InputOutput
             _opcodes.Add(NanTags.EncodeOpcode('f','c', (ushort)parameterCount, 0));
         }
 
-        public int OpCodeCount()
+        public uint OpCodeCount()
         {
-            return _opcodes.Count;
+            return (uint)_opcodes.Count;
         }
 
         /// <summary>
         /// Add a define-and-skip set of opcodes *before* merging in the compiled function opcodes.
         /// </summary>
-        public void FunctionDefine(string functionName, int argCount, int tokenCount)
+        public void FunctionDefine(string functionName, int argCount, uint tokenCount)
         {
             _opcodes.Add(NanTags.EncodeVariableRef(functionName, out var crushed));
             AddSymbol(crushed, functionName);
@@ -247,7 +258,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Jump relative down if top of value-stack is false
         /// </summary>
-        public void CompareJump(int opCodeCount)
+        public void CompareJump(uint opCodeCount)
         {
             _opcodes.Add(NanTags.EncodeLongOpcode('c', 'c', opCodeCount));
         }
@@ -255,7 +266,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Jump relative up
         /// </summary>
-        public void UnconditionalJump(int opCodeCount)
+        public void UnconditionalJump(uint opCodeCount)
         {
             _opcodes.Add(NanTags.EncodeLongOpcode('c', 'j', opCodeCount));
         }

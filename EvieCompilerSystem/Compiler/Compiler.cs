@@ -100,9 +100,9 @@ namespace EvieCompilerSystem.Compiler
                 if (debug) {
                     wr.Comment("// treating '"+valueName+"' as an implicit get()");
                 }
-                if (substitute) wr.RawToken(leafValue);
-                else wr.VariableReference(valueName);
-                wr.Memory('g');
+                if (substitute) wr.Memory('g', leafValue);
+                else wr.Memory('g', valueName);
+
                 return;
             }
 
@@ -226,8 +226,9 @@ namespace EvieCompilerSystem.Compiler
 
             int nb = node.Text == "set" ? 1 : 0;
             var child = new Node(false);
-            child.Text = container.Children.ElementAt(0).Text;
-            for (int i = nb; i >= 0; i--)
+            //child.Text = container.Children.ElementAt(0).Text;
+            child.Text = container.Children.First.Value.Text;
+            for (int i = nb; i > 0; i--) // skip the first element
             {
                 child.Children.AddLast(container.Children.ElementAt(i));
             }
@@ -239,7 +240,7 @@ namespace EvieCompilerSystem.Compiler
                 wr.Comment("// Memory function : " + node.Text);
             }
 
-            wr.Memory(node.Text[0]);
+            wr.Memory(node.Text[0], child.Text);
         }
 
         
@@ -341,7 +342,7 @@ namespace EvieCompilerSystem.Compiler
                 }
 
                 var distance = wr.Position() - topOfBlock;
-                wr.UnconditionalJump(distance);
+                wr.UnconditionalJump((uint)distance);
             }
             else
             {
