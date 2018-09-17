@@ -12,9 +12,8 @@ namespace EvieCompilerSystem.Runtime
     public class ByteCodeInterpreter
     {
         private List<double> program;
-        public Dictionary<int, FunctionDefinition>  Functions;
-        public static Dictionary<int, string> BuiltInFunctions;
-        public static Dictionary<int, string> DebugSymbols;
+        public HashTable<FunctionDefinition>  Functions;
+        public static HashTable<string> DebugSymbols;
         public Scope Variables;
         public static Random rnd = new Random();
        
@@ -24,18 +23,15 @@ namespace EvieCompilerSystem.Runtime
         private RuntimeMemoryModel _memory;
         private bool runningVerbose;
 
-        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null, Dictionary<int, string> debugSymbols = null)
+        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null, HashTable<string> debugSymbols = null)
         {
             _memory = bin;
 
-            if (BuiltInFunctions == null) {
-                BuiltInFunctions = BuiltInFunctionSymbols();
-            }
+            Functions = BuiltInFunctionSymbols();
 
             program = bin.Tokens();
 
             Variables = new Scope(importVariables);
-            Functions = new Dictionary<int, FunctionDefinition>();
             DebugSymbols = debugSymbols;
 
             _input  = input;
@@ -45,17 +41,36 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Symbol mapping for built-in functions
         /// </summary>
-        public static Dictionary<int, string> BuiltInFunctionSymbols()
+        public static HashTable<FunctionDefinition> BuiltInFunctionSymbols()
         {
-            var tmp = new Dictionary<int, string>();
-            Action<string> add = s => tmp.Add(NanTags.GetCrushedName(s), s);
+            var tmp = new HashTable<FunctionDefinition>(64);
+            Action<string, FuncKind> add = (name, type) => {
+                tmp.Add(NanTags.GetCrushedName(name), new FunctionDefinition{ Kind = type});
+            };
+
+            add("=", FuncKind.Equal); add("equals", FuncKind.Equal); add(">", FuncKind.GreaterThan);
+            add("<", FuncKind.LessThan); add("<>", FuncKind.NotEqual); add("not-equal", FuncKind.NotEqual);
+            add("assert", FuncKind.Assert); add("random", FuncKind.Random); add("eval", FuncKind.Eval);
+            add("call", FuncKind.Call); add("not", FuncKind.LogicNot); add("or", FuncKind.LogicOr);
+            add("and", FuncKind.LogicAnd); add("readkey", FuncKind.ReadKey); add("readline", FuncKind.ReadLine);
+            add("print", FuncKind.Print); add("substring", FuncKind.Substring);
+            add("length", FuncKind.Length); add("replace", FuncKind.Replace); add("concat", FuncKind.Concat);
+            add("+", FuncKind.MathAdd); add("-", FuncKind.MathSub); add("*", FuncKind.MathProd);
+            add("/", FuncKind.MathDiv); add("%", FuncKind.MathMod);
+            add("()", FuncKind.UnitEmpty); // empty value marker
+            return tmp;
+        }
+
+        public static HashTable<string> DebugSymbolsForBuiltIns()
+        {
+            var tmp = new HashTable<string>(64);
+            Action<string> add = name => { tmp.Add(NanTags.GetCrushedName(name), name); };
 
             add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
             add("assert"); add("random"); add("eval"); add("call"); add("not"); add("or");
             add("and"); add("readkey"); add("readline"); add("print"); add("substring");
-            add("length"); add("replace"); add("concat"); add("return"); add("+"); add("-");
-            add("*"); add("/"); add("%");
-            add("()"); // empty value marker
+            add("length"); add("replace"); add("concat"); add("+"); add("-"); add("*");
+            add("/"); add("%"); add("()");
             return tmp;
         }
 
@@ -238,14 +253,14 @@ namespace EvieCompilerSystem.Runtime
 
                 // ret - pop return stack and jump to absolute position
                 case 'r':
-                    HandleReturn(ref position, valueStack, returnStack, Variables, opCodeCount);
+                    HandleReturn(ref position, returnStack);
                     break;
             }
 
             return position;
         }
 
-        private void HandleReturn(ref int position, Stack<double> valueStack, Stack<int> returnStack, Scope Variables, int returnParamCount)
+        private void HandleReturn(ref int position, Stack<int> returnStack)
         {
             if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
             Variables.DropScope();
@@ -286,32 +301,31 @@ namespace EvieCompilerSystem.Runtime
         }
 
         // Evaluate a function call
-	    public double EvaluateFunctionCall(ref int position, int functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
+	    public double EvaluateFunctionCall(ref int position, uint functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
         {
-            if (BuiltInFunctions.ContainsKey(functionNameHash))
-            {
-                return EvaluateBuiltInFunction(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
+            var found = Functions.TryGetValue(functionNameHash, out var fun);
+
+            if (!found) {
+                throw new Exception("Tried to call an undefined function '"
+                                    + DbgStr(functionNameHash)
+                                    + "' at position " + position
+                                    + "\r\nKnown functions: " + string.Join(", ", Functions.Keys.Select(DbgStr))
+                                    + "\r\nAs a string: " + TryDeref(functionNameHash) + "?"
+                                    + "\r\nKnown symbols: " + string.Join(", ", DebugSymbols.Keys.Select(DbgStr)));
             }
 
-            if (Functions.ContainsKey(functionNameHash))
-            {
-                // handle functions that are defined in the program
-                Variables.PushScope(param); // write parameters into new scope
-                returnStack.Push(position); // set position for 'cret' call
-                position = Functions[functionNameHash].StartPosition; // move pointer to start of function
-                return NanTags.VoidReturn(); // return no value, continue execution elsewhere
-            }
+            if (fun.Kind != FuncKind.Custom)
+                return EvaluateBuiltInFunction(ref position, fun.Kind, nbParams, param, returnStack, valueStack);
 
-            // TODO: use a symbols file to get source names back?
-            throw new Exception("Tried to call an undefined function '"
-                                + DbgStr(functionNameHash) 
-                                + "' at position " + position
-                                + "\r\nKnown functions: " + string.Join(", ", Functions.Keys.Select(DbgStr))
-                                + "\r\nAs a string: " + TryDeref(functionNameHash) + "?"
-                                + "\r\nKnown symbols: " + string.Join(", ", DebugSymbols.Keys.Select(DbgStr)));
+            // handle functions that are defined in the program
+            Variables.PushScope(param); // write parameters into new scope
+            returnStack.Push(position); // set position for 'cret' call
+            position = Functions[functionNameHash].StartPosition; // move pointer to start of function
+            return NanTags.VoidReturn(); // return no value, continue execution elsewhere
+
         }
 
-        private string TryDeref(int functionNameHash)
+        private string TryDeref(uint functionNameHash)
         {
             try
             {
@@ -323,7 +337,7 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private string DbgStr(int hash)
+        private string DbgStr(uint hash)
         {
             if (DebugSymbols == null) return hash.ToString("X");
             if ( ! DebugSymbols.ContainsKey(hash)) return "<unknown> " + hash.ToString("X");
@@ -331,11 +345,9 @@ namespace EvieCompilerSystem.Runtime
             return DebugSymbols[hash] + " ("+hash.ToString("X")+")";
         }
 
-        private double EvaluateBuiltInFunction(ref int position, int functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
+        private double EvaluateBuiltInFunction(ref int position, FuncKind kind, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
         {
-            var functionName = BuiltInFunctions[functionNameHash];
-
-            if (IsMathFunc(functionName))
+            /*if (IsMathFunc(functionName))
             {
                 // handle math functions
                 try
@@ -346,33 +358,31 @@ namespace EvieCompilerSystem.Runtime
                 {
                     throw new Exception("Math Error : " + e.Message);
                 }
-            }
+            }*/
 
-            switch (functionName)
+            switch (kind)
             {
                 // each element equal to the last
-                case "=":
-                case "equals":
+                case FuncKind.Equal:
                     if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
                     return FoldInequality(param, (a, b) => Math.Abs(a - b) <= double.Epsilon);
 
                 // Each element smaller than the last
-                case ">":
+                case FuncKind.GreaterThan:
                     if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
                     return FoldInequality(param, (a, b) => a > b);
 
                 // Each element larger than the last
-                case "<":
+                case FuncKind.LessThan:
                     if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
                     return FoldInequality(param, (a, b) => a < b);
 
                 // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
-                case "<>":
-                case "not-equal":
+                case FuncKind.NotEqual:
                     if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
                     return FoldInequality(param, (a, b) => Math.Abs(a - b) > double.Epsilon);
 
-                case "assert":
+                case FuncKind.Assert:
                     if (nbParams < 1) return NanTags.VoidReturn(); // assert nothing passes
                     var condition = param.ElementAt(0);
                     if (_memory.CastBoolean(condition) == false)
@@ -380,15 +390,14 @@ namespace EvieCompilerSystem.Runtime
                         var msg = ConcatLinkedList(param.First.Next);
                         throw new Exception("Assertion failed: " + msg);
                     }
+                    return NanTags.VoidReturn();
 
-                    break;
-
-                case "random":
+                case FuncKind.Random:
                     if (nbParams < 1) return rnd.NextDouble(); // 0 params - any size
                     if (nbParams < 2) return rnd.Next(_memory.CastInt(param.ElementAt(0))); // 1 param  - max size
                     return rnd.Next(_memory.CastInt(param.ElementAt(0)), _memory.CastInt(param.ElementAt(1))); // 2 params - range
 
-                case "eval":
+                case FuncKind.Eval:
                     var reader = new SourceCodeTokeniser();
                     var statements = _memory.CastString(param.ElementAt(0));
                     var programTmp = reader.Read(statements);
@@ -397,21 +406,22 @@ namespace EvieCompilerSystem.Runtime
                     interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables, DebugSymbols); // todo: optional other i/o for eval?
                     return interpreter.Execute(false, runningVerbose);
 
-                case "call":
+                case FuncKind.Call:
                     NanTags.DecodePointer(param.ElementAt(0), out var target, out var type);
                     if (type != DataType.PtrString) throw new Exception("Tried to call a function by name, but passed a '" + type + "' at " + position);
                     // this should be a string, but we need a function name hash -- so calculate it:
                     var strName = _memory.DereferenceString(target);
-                    functionNameHash = NanTags.GetCrushedName(strName);
+                    var functionNameHash = NanTags.GetCrushedName(strName);
                     nbParams--;
                     param.RemoveFirst();
                     return EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
 
-                case "not" when nbParams == 1:
+                case FuncKind.LogicNot:
+                    if (nbParams != 1) throw new Exception("'not' should be called with one argument");
                     var bval = _memory.CastBoolean(param.ElementAt(0));
                     return NanTags.EncodeBool(!bval);
 
-                case "or":
+                case FuncKind.LogicOr:
                 {
                     bool more = nbParams > 0;
                     int i = 0;
@@ -427,7 +437,7 @@ namespace EvieCompilerSystem.Runtime
                     return NanTags.EncodeBool(false);
                 }
 
-                case "and":
+                case FuncKind.LogicAnd:
                 {
                     bool more = nbParams > 0;
                     int i = 0;
@@ -443,61 +453,55 @@ namespace EvieCompilerSystem.Runtime
                     return NanTags.EncodeBool(true);
                 }
 
-                case "readkey":
+                case FuncKind.ReadKey:
                     return _memory.StoreStringAndGetReference(((char) _input.Read()).ToString());
 
-                case "readline":
+                case FuncKind.ReadLine:
                     return _memory.StoreStringAndGetReference(_input.ReadLine());
 
-                case "print":
-                {
-                    string lastStr = null;
-                    foreach (var v in param)
+                case FuncKind.Print:
                     {
-                        lastStr = _memory.CastString(v);
-                        _output.Write(lastStr);
+                        string lastStr = null;
+                        foreach (var v in param)
+                        {
+                            lastStr = _memory.CastString(v);
+                            _output.Write(lastStr);
+                        }
+
+                        if (lastStr != "") _output.WriteLine();
                     }
+                    return NanTags.VoidReturn();
 
-                    if (lastStr != "") _output.WriteLine();
-                }
-                    break;
+                case FuncKind.Substring:
+                    if (nbParams == 2)
+                    {
 
-                case "substring" when nbParams == 2:
-                {
-                    var newString = _memory.CastString(param.ElementAt(0)).Substring(_memory.CastInt(param.ElementAt(1)));
-                    return _memory.StoreStringAndGetReference(newString);
-                }
-
-                case "substring":
-                    if (nbParams == 3)
+                        var newString = _memory.CastString(param.ElementAt(0)).Substring(_memory.CastInt(param.ElementAt(1)));
+                        return _memory.StoreStringAndGetReference(newString);
+                    }
+                    else if (nbParams == 3)
                     {
                         int start = _memory.CastInt(param.ElementAt(1));
                         int length = _memory.CastInt(param.ElementAt(2));
 
-                        try
-                        {
-                            string s = _memory.CastString(param.ElementAt(0)).Substring(start, length);
-                            return _memory.StoreStringAndGetReference(s);
-                        }
-                        catch (Exception ex)
-                        {
-                            _output.WriteLine("Runner error: " + ex);
-                        }
+                        string s = _memory.CastString(param.ElementAt(0)).Substring(start, length);
+                        return _memory.StoreStringAndGetReference(s);
+                    } else {
+                        throw new Exception("'Substring' should be called with 2 or 3 parameters");
                     }
 
-                    break;
-
-                case "length" when nbParams == 1:
+                case FuncKind.Length:
                     return _memory.CastString(param.ElementAt(0)).Length; // TODO: lengths of other things
 
-                case "replace" when nbParams == 3:
+                case FuncKind.Replace:
+                    if (nbParams != 3) throw new Exception("'Replace' should be called with 3 parameters");
                     string exp = _memory.CastString(param.ElementAt(0));
                     string oldValue = _memory.CastString(param.ElementAt(1));
                     string newValue = _memory.CastString(param.ElementAt(2));
                     exp = exp.Replace(oldValue, newValue);
                     return _memory.StoreStringAndGetReference(exp);
 
-                case "concat":
+                case FuncKind.Concat:
                     var builder = new StringBuilder();
 
                     foreach (var v in param)
@@ -507,13 +511,35 @@ namespace EvieCompilerSystem.Runtime
 
                     return _memory.StoreStringAndGetReference(builder.ToString());
 
-                case "()":
+                case FuncKind.UnitEmpty:
                     { // valueless marker (like an empty object)
                         return NanTags.EncodeNonValue(NonValueType.Unit);
                     }
-            }
 
-            return NanTags.VoidReturn();
+                
+                case FuncKind.MathAdd:
+                    if (nbParams == 1) return param.First.Value;
+                    return param.Sum();
+
+                case FuncKind.MathSub:
+                    if (nbParams == 1) return -param.First.Value;
+                    return param.ChainDifference();
+
+                case FuncKind.MathProd:
+                    if (nbParams == 1) throw new Exception("Uniary '*' is not supported");
+                    return param.ChainProduct();
+
+                case FuncKind.MathDiv:
+                    if (nbParams == 1) throw new Exception("Uniary '/' is not supported");
+                    return param.ChainDivide();
+
+                case FuncKind.MathMod:
+                    if (nbParams == 1) return param.First.Value % 2;
+                    return param.ChainRemainder();
+
+                default:
+                    throw new Exception("Unrecognised built-in! Type = "+((int)kind));
+            }
         }
 
         private string ConcatLinkedList(LinkedListNode<double> list)
@@ -543,66 +569,5 @@ namespace EvieCompilerSystem.Runtime
             }
             return NanTags.EncodeBool(true);
         }
-
-        private static bool IsMathFunc(string functionName)
-        {
-            if (functionName.Length != 1) return false;
-            switch (functionName[0])
-            {
-                case '+':
-                case '-':
-                case '*':
-                case '/':
-                case '%':
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-	    private static double EvalMath(char op, LinkedList<double> args)
-        {
-            var argCount = args.Count;
-
-            if (argCount == 0) throw new Exception("Math funtion called with no arguments");
-
-            var arg0 = args.First();
-
-            if (argCount == 1) {
-                switch (op) {
-                    case '+': // uniary plus: no-op
-                        return arg0;
-
-                    case '-': // uniary minus: value negation
-                        return -arg0;
-
-                    case '%': // uniary remainder: common case, odd/even
-                        return arg0 % 2;
-
-                    default:
-                        throw new Exception("Uniary '"+op+"' is not supported");
-                }
-            }
-
-		    switch (op)
-            {
-		        case '+':
-			        return args.Sum();
-
-		        case '-':
-			        return args.ChainDifference();
-
-		        case '*':
-		            return args.ChainProduct();
-
-		        case '/':
-		            return args.ChainDivide();
-
-		        case '%':
-		            return args.ChainRemainder();
-		    }
-
-            throw new Exception("Error Math : unknown op : " + op); // this should never happen. It would be an error in the interpreter
-	    }
     }
 }

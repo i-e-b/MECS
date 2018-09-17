@@ -10,12 +10,12 @@ namespace EvieCompilerSystem.Runtime
     /// </summary>
     public class Scope
     {
-        readonly LinkedList<Dictionary<int, double>> scopes;
+        readonly LinkedList<HashTable<double>> scopes;
 
-        private static readonly int[] posParamHash;
+        private static readonly uint[] posParamHash;
 
         static Scope() {
-            posParamHash = new int[128]; // this limits the number of parameters, so is quite high
+            posParamHash = new uint[128]; // this limits the number of parameters, so is quite high
             for (int i = 0; i < 128; i++)
             {
                 posParamHash[i] = NanTags.GetCrushedName("__p" + i);
@@ -27,8 +27,8 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public Scope()
         {
-            scopes = new LinkedList<Dictionary<int, double>>();
-            scopes.AddLast(new Dictionary<int, double>()); // global scope
+            scopes = new LinkedList<HashTable<double>>();
+            scopes.AddLast(new HashTable<double>()); // global scope
         }
 
         /// <summary>
@@ -38,8 +38,8 @@ namespace EvieCompilerSystem.Runtime
         /// <param name="importVariables">Variables to copy. All will be added to the global level.</param>
         public Scope(Scope importVariables)
         {
-            scopes = new LinkedList<Dictionary<int, double>>();
-            var global = new Dictionary<int, double>();
+            scopes = new LinkedList<HashTable<double>>();
+            var global = new HashTable<double>();
 
             if (importVariables != null)
             {
@@ -55,10 +55,10 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// List all values in the scope
         /// </summary>
-        private IEnumerable<KeyValuePair<int, double>> ListAllVisible()
+        private IEnumerable<KeyValuePair<uint, double>> ListAllVisible()
         {
             unchecked {
-            var seen = new HashSet<int>();
+            var seen = new HashSet<uint>();
             var scope = scopes.Last;
             while (scope != null)
             {
@@ -80,7 +80,7 @@ namespace EvieCompilerSystem.Runtime
         public void PushScope(ICollection<double> parameters = null) {
             unchecked
             {
-                var sd = new Dictionary<int, double>();
+                var sd = new HashTable<double>();
                 var i = 0;
                 if (parameters != null)
                 {
@@ -104,7 +104,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Read a value by name
         /// </summary>
-        public double Resolve(int crushedName){
+        public double Resolve(uint crushedName){
             unchecked
             {
                 var current = scopes.Last;
@@ -127,7 +127,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Set a value by name. If no scope has it, then it will be defined in the innermost scope
         /// </summary>
-        public void SetValue(int crushedName, double value) {
+        public void SetValue(uint crushedName, double value) {
             unchecked
             {
                 var current = scopes.Last;
@@ -151,13 +151,13 @@ namespace EvieCompilerSystem.Runtime
         public void Clear()
         {
             scopes.Clear();
-            scopes.AddLast(new Dictionary<int, double>()); // global scope
+            scopes.AddLast(new HashTable<double>()); // global scope
         }
 
         /// <summary>
         /// Does this name exist in any scopes?
         /// </summary>
-        public bool CanResolve(int crushedName)
+        public bool CanResolve(uint crushedName)
         {
             unchecked
             {
@@ -178,7 +178,7 @@ namespace EvieCompilerSystem.Runtime
         /// </para>
         /// It's expected that this will be used mostly on globals. They will be removed in preference to locals.
         /// </summary>
-        public void Remove(int crushedName)
+        public void Remove(uint crushedName)
         {
             if (scopes.First.Value.Remove(crushedName)) return;
             scopes.Last.Value.Remove(crushedName);
@@ -188,7 +188,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Get the name for a positional argument
         /// </summary>
-        public static int NameFor(int i)
+        public static uint NameFor(int i)
         {
             return posParamHash[i];
         }
@@ -197,7 +197,7 @@ namespace EvieCompilerSystem.Runtime
         /// Does this name exist in the top level scope?
         /// Will ignore other scopes, including global.
         /// </summary>
-        public bool InScope(int crushedName)
+        public bool InScope(uint crushedName)
         {
             return scopes.Last.Value.ContainsKey(crushedName);
         }

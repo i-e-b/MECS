@@ -165,7 +165,7 @@ namespace EvieCompilerSystem.InputOutput
                       | ((ulong)cc << 40)
                       | ((ulong)ca << 32)
                       | ((ulong)p1 << 16)
-                      | (ulong)p2
+                      | p2
                     ;
                 return *(double*)&encoded;
             }
@@ -239,13 +239,12 @@ namespace EvieCompilerSystem.InputOutput
         /// <param name="fullName">Full name of the identifier</param>
         /// <param name="crushedName">Output crushed name</param>
         /// <returns>Encoded data</returns>
-        public static unsafe double EncodeVariableRef(string fullName, out int crushedName)
+        public static unsafe double EncodeVariableRef(string fullName, out uint crushedName)
         {
             unchecked
             {
-                uint hash = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
-                crushedName = (int)hash;
-                ulong raw = NAN_FLAG | TAG_VAR_REF | hash;
+                crushedName = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
+                ulong raw = NAN_FLAG | TAG_VAR_REF | crushedName;
                 
                 return *(double*)&raw;
             }
@@ -254,36 +253,32 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Encode an already crushed name as a variable ref
         /// </summary>
-        public static unsafe double EncodeVariableRef(int crushedName)
+        public static unsafe double EncodeVariableRef(uint crushedName)
         {
-            unchecked
-            {
-                uint nse = (uint)crushedName;
-                ulong raw = NAN_FLAG | TAG_VAR_REF | nse;
+            uint nse = crushedName;
+            ulong raw = NAN_FLAG | TAG_VAR_REF | nse;
 
-                return *(double*)&raw;
-            }
+            return *(double*)&raw;
         }
 
         /// <summary>
         /// Get hash code of names, as created by variable reference op codes
         /// </summary>
-        public static int GetCrushedName(string fullName) {
+        public static uint GetCrushedName(string fullName) {
             unchecked
             {
-                uint hash = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
-                return (int)hash;
+                return prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
             }
         }
 
         /// <summary>
         /// Extract an encoded reference name from a double
         /// </summary>
-        public static unsafe int DecodeVariableRef(double encoded)
+        public static unsafe uint DecodeVariableRef(double encoded)
         {
             unchecked{
                 var raw = LOWER_32 & (*(ulong*)&encoded);
-                return (int)raw;
+                return (uint)raw;
             }
         }
 

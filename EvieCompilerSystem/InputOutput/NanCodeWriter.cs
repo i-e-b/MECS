@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using EvieCompilerSystem.Runtime;
 
 namespace EvieCompilerSystem.InputOutput
 {
@@ -24,7 +25,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Names that we've hashed
         /// </summary>
-        private readonly Dictionary<int, string> _symbols;
+        private readonly HashTable<string> _symbols;
 
         /// <summary>
         /// The program fragment expects to produce result values. Defaults to false.
@@ -39,7 +40,7 @@ namespace EvieCompilerSystem.InputOutput
             ReturnsValues = false;
             _stringTable = new List<string>(100);
             _opcodes = new List<double>(1024);
-            _symbols = new Dictionary<int, string>();
+            _symbols = new HashTable<string>();
         }
 
         
@@ -206,7 +207,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Add a symbol set to the known symbols table
         /// </summary>
-        public void AddSymbols(Dictionary<int, string> sym)
+        public void AddSymbols(HashTable<string> sym)
         {
             foreach (var symbol in sym)
             {
@@ -217,7 +218,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Add a single symbol reference
         /// </summary>
-        public void AddSymbol(int crushed, string name)
+        public void AddSymbol(uint crushed, string name)
         {
             try {
                 _symbols.Add(crushed, name);
@@ -292,7 +293,7 @@ namespace EvieCompilerSystem.InputOutput
         /// Return the original names of variable references we've hashed.
         /// Keys are the Variable Ref byte codes
         /// </summary>
-        public Dictionary<int, string> GetSymbols()
+        public HashTable<string> GetSymbols()
         {
             return _symbols;
         }
