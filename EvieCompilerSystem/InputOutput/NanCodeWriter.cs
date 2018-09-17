@@ -24,7 +24,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Names that we've hashed
         /// </summary>
-        private readonly Dictionary<ulong, string> _symbols;
+        private readonly Dictionary<int, string> _symbols;
 
         /// <summary>
         /// The program fragment expects to produce result values. Defaults to false.
@@ -39,7 +39,7 @@ namespace EvieCompilerSystem.InputOutput
             ReturnsValues = false;
             _stringTable = new List<string>(100);
             _opcodes = new List<double>(1024);
-            _symbols = new Dictionary<ulong, string>();
+            _symbols = new Dictionary<int, string>();
         }
 
         
@@ -206,7 +206,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Add a symbol set to the known symbols table
         /// </summary>
-        public void AddSymbols(Dictionary<ulong, string> sym)
+        public void AddSymbols(Dictionary<int, string> sym)
         {
             foreach (var symbol in sym)
             {
@@ -217,7 +217,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Add a single symbol reference
         /// </summary>
-        public void AddSymbol(ulong crushed, string name)
+        public void AddSymbol(int crushed, string name)
         {
             try {
                 _symbols.Add(crushed, name);
@@ -292,7 +292,7 @@ namespace EvieCompilerSystem.InputOutput
         /// Return the original names of variable references we've hashed.
         /// Keys are the Variable Ref byte codes
         /// </summary>
-        public Dictionary<ulong, string> GetSymbols()
+        public Dictionary<int, string> GetSymbols()
         {
             return _symbols;
         }

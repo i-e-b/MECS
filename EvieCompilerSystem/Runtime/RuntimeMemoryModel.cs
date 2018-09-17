@@ -38,7 +38,7 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        public string ToString(Dictionary<ulong, string> debugSymbols)
+        public string ToString(Dictionary<int, string> debugSymbols)
         {
             int index = 0;
             var sb = new StringBuilder();
@@ -92,7 +92,7 @@ namespace EvieCompilerSystem.Runtime
             return ToString(null);
         }
 
-        private string Stringify(double token, DataType type, Dictionary<ulong, string> debugSymbols)
+        private string Stringify(double token, DataType type, Dictionary<int, string> debugSymbols)
         {
             switch (type){
                 case DataType.Invalid: return "";
@@ -321,7 +321,7 @@ namespace EvieCompilerSystem.Runtime
             return NanTags.EncodePointer(location, DataType.PtrString);
         }
 
-        public string DiagnosticString(double token, Dictionary<ulong, string> symbols = null)
+        public string DiagnosticString(double token, Dictionary<int, string> symbols = null)
         {
             return Stringify(token, NanTags.TypeOf(token), symbols);
         }

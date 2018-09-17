@@ -12,9 +12,9 @@ namespace EvieCompilerSystem.Runtime
     public class ByteCodeInterpreter
     {
         private List<double> program;
-        public Dictionary<ulong, FunctionDefinition>  Functions;
-        public static Dictionary<ulong, string> BuiltInFunctions;
-        public static Dictionary<ulong, string> DebugSymbols;
+        public Dictionary<int, FunctionDefinition>  Functions;
+        public static Dictionary<int, string> BuiltInFunctions;
+        public static Dictionary<int, string> DebugSymbols;
         public Scope Variables;
         public static Random rnd = new Random();
        
@@ -24,7 +24,7 @@ namespace EvieCompilerSystem.Runtime
         private RuntimeMemoryModel _memory;
         private bool runningVerbose;
 
-        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null, Dictionary<ulong, string> debugSymbols = null)
+        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, Scope importVariables = null, Dictionary<int, string> debugSymbols = null)
         {
             _memory = bin;
 
@@ -35,7 +35,7 @@ namespace EvieCompilerSystem.Runtime
             program = bin.Tokens();
 
             Variables = new Scope(importVariables);
-            Functions = new Dictionary<ulong, FunctionDefinition>();
+            Functions = new Dictionary<int, FunctionDefinition>();
             DebugSymbols = debugSymbols;
 
             _input  = input;
@@ -45,9 +45,9 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Symbol mapping for built-in functions
         /// </summary>
-        public static Dictionary<ulong, string> BuiltInFunctionSymbols()
+        public static Dictionary<int, string> BuiltInFunctionSymbols()
         {
-            var tmp = new Dictionary<ulong, string>();
+            var tmp = new Dictionary<int, string>();
             Action<string> add = s => tmp.Add(NanTags.GetCrushedName(s), s);
 
             add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
@@ -286,7 +286,7 @@ namespace EvieCompilerSystem.Runtime
         }
 
         // Evaluate a function call
-	    public double EvaluateFunctionCall(ref int position, ulong functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
+	    public double EvaluateFunctionCall(ref int position, int functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
         {
             if (BuiltInFunctions.ContainsKey(functionNameHash))
             {
@@ -311,11 +311,11 @@ namespace EvieCompilerSystem.Runtime
                                 + "\r\nKnown symbols: " + string.Join(", ", DebugSymbols.Keys.Select(DbgStr)));
         }
 
-        private string TryDeref(ulong functionNameHash)
+        private string TryDeref(int functionNameHash)
         {
             try
             {
-                return _memory.DereferenceString((long)functionNameHash);
+                return _memory.DereferenceString(functionNameHash);
             }
             catch
             {
@@ -323,7 +323,7 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private string DbgStr(ulong hash)
+        private string DbgStr(int hash)
         {
             if (DebugSymbols == null) return hash.ToString("X");
             if ( ! DebugSymbols.ContainsKey(hash)) return "<unknown> " + hash.ToString("X");
@@ -331,7 +331,7 @@ namespace EvieCompilerSystem.Runtime
             return DebugSymbols[hash] + " ("+hash.ToString("X")+")";
         }
 
-        private double EvaluateBuiltInFunction(ref int position, ulong functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
+        private double EvaluateBuiltInFunction(ref int position, int functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
         {
             var functionName = BuiltInFunctions[functionNameHash];
 

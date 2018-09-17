@@ -16,6 +16,7 @@ namespace EvieCompilerSystem.InputOutput
         Invalid               = 1,
         Number                = 2,
 
+        NoValue               = 0x00000000,
         VariableRef           = 0x80000000,
         Opcode                = 0x80010000,
         PtrString             = 0x80020000,
@@ -24,12 +25,11 @@ namespace EvieCompilerSystem.InputOutput
         PtrArray_Int32        = 0x80050000,
         PtrArray_UInt32       = 0x80060000,
         PtrArray_String       = 0x80070000,
-        PtrArray_Double       = 0x00000000,
+        PtrArray_Double       = 0x00050000,
         PtrSet_String         = 0x00010000,
         PtrSet_Int32          = 0x00020000,
         PtrLinkedList         = 0x00030000,
         PtrDiagnosticString   = 0x00040000,
-        NoValue               = 0x00050000,
         ValInt32              = 0x00060000,
         ValUInt32             = 0x00070000
     }
@@ -37,7 +37,7 @@ namespace EvieCompilerSystem.InputOutput
     public static class NanTags
     {
         const ulong NAN_FLAG = 0x7FF8000000000000;      // Bits to make a quiet NaN
-        const ulong ALL_DATA = 0x8007FFFFFFFFFFFF;      // 51 bits (all non NaN flags)
+        //const ulong ALL_DATA = 0x8007FFFFFFFFFFFF;      // 51 bits (all non NaN flags)
         const ulong UPPER_FOUR = 0x8007000000000000;    // mask for top 4 available bits
         const ulong LOWER_32 = 0x00000000FFFFFFFF;      // low 32 bits
         const ulong LOWER_48 = 0x0000FFFFFFFFFFFF;      // 48 bits for pointers, all non TAG data
@@ -53,7 +53,9 @@ namespace EvieCompilerSystem.InputOutput
         const ulong TAG_PTR_ARR_INT32  = 0x8005000000000000;    // Memory pointer to ARRAY of int32
         const ulong TAG_PTR_ARR_UINT32 = 0x8006000000000000;    // Memory pointer to ARRAY of uint32
         const ulong TAG_ARR_STR        = 0x8007000000000000;    // Memory pointer to ARRAY of string
-        const ulong TAG_ARR_DOUBLE     = 0x0000000000000000;    // Memory pointer to ARRAY of double
+        const ulong TAG_ARR_DOUBLE     = 0x0005000000000000;    // Memory pointer to ARRAY of double
+
+        const ulong TAG_NAR            = 0x0000000000000000;    // NoValue - specifically not-a-value / not-a-result. Holds general runtime flags.
 
         const ulong TAG_PTR_SET_STR    = 0x0001000000000000;    // Memory pointer to SET of string header
         const ulong TAG_PTR_SET_INT32  = 0x0002000000000000;    // Memory pointer to SET of 32 signed integer
@@ -61,7 +63,6 @@ namespace EvieCompilerSystem.InputOutput
         const ulong TAG_PTR_LINKLIST   = 0x0003000000000000;    // Memory pointer to double-linked list node
 
         const ulong TAG_PTR_DEBUG      = 0x0004000000000000;    // Memory pointer to Diagnostic string
-        const ulong TAG_NAR            = 0x0005000000000000;    // NoValue - specifically not-a-value / not-a-result. Holds general runtime flags.
 
         const ulong TAG_INT32_VAL      = 0x0006000000000000;    // Signed 32 bit integer / single boolean
         const ulong TAG_UINT32_VAL     = 0x0007000000000000;    // Unsigned integer 32
@@ -164,7 +165,7 @@ namespace EvieCompilerSystem.InputOutput
                       | ((ulong)cc << 40)
                       | ((ulong)ca << 32)
                       | ((ulong)p1 << 16)
-                      | ((ulong)p2)
+                      | (ulong)p2
                     ;
                 return *(double*)&encoded;
             }
@@ -238,56 +239,51 @@ namespace EvieCompilerSystem.InputOutput
         /// <param name="fullName">Full name of the identifier</param>
         /// <param name="crushedName">Output crushed name</param>
         /// <returns>Encoded data</returns>
-        public static double EncodeVariableRef(string fullName, out ulong crushedName)
+        public static unsafe double EncodeVariableRef(string fullName, out int crushedName)
         {
             unchecked
             {
-                ulong hash = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
-                byte f = (byte)fullName[fullName.Length - 1];
-                byte l = (byte)fullName.Length;
-
-                crushedName = ((ulong)f << 40) | ((ulong)l << 32) | hash;
-                ulong raw = NAN_FLAG | TAG_VAR_REF | crushedName;
-
-                return BitConverter.Int64BitsToDouble((long)raw);
+                uint hash = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
+                crushedName = (int)hash;
+                ulong raw = NAN_FLAG | TAG_VAR_REF | hash;
+                
+                return *(double*)&raw;
             }
         }
         
         /// <summary>
         /// Encode an already crushed name as a variable ref
         /// </summary>
-        public static double EncodeVariableRef(ulong crushedName)
+        public static unsafe double EncodeVariableRef(int crushedName)
         {
             unchecked
             {
-                ulong raw = NAN_FLAG | TAG_VAR_REF | crushedName;
+                uint nse = (uint)crushedName;
+                ulong raw = NAN_FLAG | TAG_VAR_REF | nse;
 
-                return BitConverter.Int64BitsToDouble((long)raw);
+                return *(double*)&raw;
             }
         }
 
         /// <summary>
         /// Get hash code of names, as created by variable reference op codes
         /// </summary>
-        public static ulong GetCrushedName(string fullName) {
+        public static int GetCrushedName(string fullName) {
             unchecked
             {
-                ulong hash = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
-                byte f = (byte)fullName[fullName.Length - 1];
-                byte l = (byte)fullName.Length;
-
-                return ((ulong)f << 40) | ((ulong)l << 32) | hash;
+                uint hash = prospector32s(fullName.ToCharArray(), (uint)fullName.Length);
+                return (int)hash;
             }
         }
 
         /// <summary>
         /// Extract an encoded reference name from a double
         /// </summary>
-        public static unsafe ulong DecodeVariableRef(double encoded)
+        public static unsafe int DecodeVariableRef(double encoded)
         {
-            unchecked
-            {
-                return LOWER_48 & (*(ulong*)&encoded);
+            unchecked{
+                var raw = LOWER_32 & (*(ulong*)&encoded);
+                return (int)raw;
             }
         }
 
@@ -343,7 +339,7 @@ namespace EvieCompilerSystem.InputOutput
         {
             unchecked
             {
-                return BitConverter.Int64BitsToDouble((long)(NAN_FLAG | TAG_UINT32_VAL | ((ulong)original & LOWER_32)));
+                return BitConverter.Int64BitsToDouble((long)(NAN_FLAG | TAG_UINT32_VAL | (original & LOWER_32)));
             }
         }
 

@@ -2,10 +2,6 @@
 using System.Collections.Generic;
 using EvieCompilerSystem.InputOutput;
 
-// TODO: This currently is faking `int` keys.
-// It seems to really improve run time.
-// TODO: move scope resolution out to the compiler
-
 namespace EvieCompilerSystem.Runtime
 {
     /// <summary>
@@ -16,10 +12,10 @@ namespace EvieCompilerSystem.Runtime
     {
         readonly LinkedList<Dictionary<int, double>> scopes;
 
-        private static readonly ulong[] posParamHash;
+        private static readonly int[] posParamHash;
 
         static Scope() {
-            posParamHash = new ulong[128]; // this limits the number of parameters, so is quite high
+            posParamHash = new int[128]; // this limits the number of parameters, so is quite high
             for (int i = 0; i < 128; i++)
             {
                 posParamHash[i] = NanTags.GetCrushedName("__p" + i);
@@ -45,14 +41,11 @@ namespace EvieCompilerSystem.Runtime
             scopes = new LinkedList<Dictionary<int, double>>();
             var global = new Dictionary<int, double>();
 
-            unchecked
+            if (importVariables != null)
             {
-                if (importVariables != null)
+                foreach (var value in importVariables.ListAllVisible())
                 {
-                    foreach (var value in importVariables.ListAllVisible())
-                    {
-                        global.Add((int)value.Key, value.Value);
-                    }
+                    global.Add(value.Key, value.Value);
                 }
             }
 
@@ -85,18 +78,19 @@ namespace EvieCompilerSystem.Runtime
         /// Parameters are specially named by index (like "__p0", "__p1"). The compiler must match this.
         /// </summary>
         public void PushScope(ICollection<double> parameters = null) {
-            unchecked {
-            var sd = new Dictionary<int, double>();
-            var i = 0;
-            if (parameters != null)
+            unchecked
             {
-                foreach (var parameter in parameters)
+                var sd = new Dictionary<int, double>();
+                var i = 0;
+                if (parameters != null)
                 {
-                    sd.Add((int)posParamHash[i], parameter);
-                    i++;
+                    foreach (var parameter in parameters)
+                    {
+                        sd.Add(posParamHash[i], parameter);
+                        i++;
+                    }
                 }
-            }
-            scopes.AddLast(sd);
+                scopes.AddLast(sd);
             }
         }
 
@@ -110,36 +104,44 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Read a value by name
         /// </summary>
-        public double Resolve(ulong crushedName){
-            unchecked {
-            var current = scopes.Last;
-            while (current != null) {
-                try {
-                    return current.Value[(int)crushedName];
-                } catch {
-                    current = current.Previous;
+        public double Resolve(int crushedName){
+            unchecked
+            {
+                var current = scopes.Last;
+                while (current != null)
+                {
+                    try
+                    {
+                        return current.Value[crushedName];
+                    }
+                    catch
+                    {
+                        current = current.Previous;
+                    }
                 }
-            }
 
-            throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");
+                throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");
             }
         }
 
         /// <summary>
         /// Set a value by name. If no scope has it, then it will be defined in the innermost scope
         /// </summary>
-        public void SetValue(ulong crushedName, double value) {
-            unchecked {
-            var current = scopes.Last;
-            while (current != null) {
-                if (current.Value.ContainsKey((int)crushedName)) {
-                    current.Value[(int)crushedName] = value;
-                    return;
+        public void SetValue(int crushedName, double value) {
+            unchecked
+            {
+                var current = scopes.Last;
+                while (current != null)
+                {
+                    if (current.Value.ContainsKey(crushedName))
+                    {
+                        current.Value[crushedName] = value;
+                        return;
+                    }
+                    current = current.Previous;
                 }
-                current = current.Previous;
-            }
 
-            scopes.Last.Value.Add((int)crushedName, value);
+                scopes.Last.Value.Add(crushedName, value);
             }
         }
 
@@ -155,15 +157,17 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Does this name exist in any scopes?
         /// </summary>
-        public bool CanResolve(ulong crushedName)
+        public bool CanResolve(int crushedName)
         {
-            unchecked{
-            var current = scopes.Last;
-            while (current != null) {
-                if (current.Value.ContainsKey((int)crushedName)) return true;
-                current = current.Previous;
-            }
-            return false;
+            unchecked
+            {
+                var current = scopes.Last;
+                while (current != null)
+                {
+                    if (current.Value.ContainsKey(crushedName)) return true;
+                    current = current.Previous;
+                }
+                return false;
             }
         }
 
@@ -174,19 +178,17 @@ namespace EvieCompilerSystem.Runtime
         /// </para>
         /// It's expected that this will be used mostly on globals. They will be removed in preference to locals.
         /// </summary>
-        public void Remove(ulong crushedName)
+        public void Remove(int crushedName)
         {
-            unchecked{
-            if (scopes.First.Value.Remove((int)crushedName)) return;
-            scopes.Last.Value.Remove((int)crushedName);
-            }
+            if (scopes.First.Value.Remove(crushedName)) return;
+            scopes.Last.Value.Remove(crushedName);
         }
 
 
         /// <summary>
         /// Get the name for a positional argument
         /// </summary>
-        public static ulong NameFor(int i)
+        public static int NameFor(int i)
         {
             return posParamHash[i];
         }
@@ -195,11 +197,9 @@ namespace EvieCompilerSystem.Runtime
         /// Does this name exist in the top level scope?
         /// Will ignore other scopes, including global.
         /// </summary>
-        public bool InScope(ulong crushedName)
+        public bool InScope(int crushedName)
         {
-            unchecked{
-            return scopes.Last.Value.ContainsKey((int)crushedName);
-            }
+            return scopes.Last.Value.ContainsKey(crushedName);
         }
     }
 }
