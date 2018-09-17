@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace EvieCompilerSystem.InputOutput
 {
@@ -70,6 +71,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Read tagged type
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe DataType TypeOf(double unknown)
         {
             unchecked
@@ -171,7 +173,6 @@ namespace EvieCompilerSystem.InputOutput
             }
         }
 
-        
         /// <summary>
         /// Encode an op-code with one 32 bit param
         /// </summary>

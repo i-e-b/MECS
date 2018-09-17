@@ -84,7 +84,6 @@ namespace EvieCompilerSystem.Runtime
 		    var valueStack = new Stack<double>();
             var returnStack = new Stack<int>(); // absolute position for call and return
 		    
-            var param = new LinkedList<double>();
             int position = 0; // the PC. This is in TOKEN positions, not bytes
 		    int programCount = program.Count;
 		    
@@ -119,7 +118,7 @@ namespace EvieCompilerSystem.Runtime
                     case DataType.Opcode:
                         // decode opcode and do stuff
                         NanTags.DecodeOpCode(word, out var codeClass, out var codeAction, out var p1, out var p2);
-                        ProcessOpCode(codeClass, codeAction, p1, p2, ref position, param, valueStack, returnStack, word);
+                        ProcessOpCode(codeClass, codeAction, p1, p2, ref position, valueStack, returnStack, word);
                         break;
 
                     default:
@@ -145,13 +144,13 @@ namespace EvieCompilerSystem.Runtime
 		    return evalResult;
 	    }
 
-        private void ProcessOpCode(char codeClass, char codeAction, ushort p1, ushort p2, ref int position, LinkedList<double> param, Stack<double> valueStack, Stack<int> returnStack, double word)
+        private void ProcessOpCode(char codeClass, char codeAction, ushort p1, ushort p2, ref int position, Stack<double> valueStack, Stack<int> returnStack, double word)
         {
             switch (codeClass)
             {
                 case 'f': // Function *CALLS*
                     if (codeAction == 'c') {
-                        position = PrepareFunctionCall(position, param, p1, valueStack, returnStack);
+                        position = PrepareFunctionCall(position, p1, valueStack, returnStack);
                     }
                     else if (codeAction == 'd') {
                         position = HandleFunctionDefinition(p1, p2, position, valueStack);
@@ -161,7 +160,7 @@ namespace EvieCompilerSystem.Runtime
                 case 'c': // flow Control -- conditions, jumps etc
                     {
                         int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
-                        position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position, param);
+                        position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position);
                     }
                     break;
 
@@ -220,7 +219,7 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private int HandleControlSignal(char action, int opCodeCount, Stack<double> valueStack, Stack<int> returnStack, int position, LinkedList<double> param)
+        private int HandleControlSignal(char action, int opCodeCount, Stack<double> valueStack, Stack<int> returnStack, int position)
         {
             switch (action)
             {
@@ -267,23 +266,21 @@ namespace EvieCompilerSystem.Runtime
             position = returnStack.Pop();
         }
 
-        private int PrepareFunctionCall(int position, LinkedList<double> param, ushort nbParams, Stack<double> valueStack, Stack<int> returnStack)
+        private int PrepareFunctionCall(int position, ushort nbParams, Stack<double> valueStack, Stack<int> returnStack)
         {
-            param.Clear();
-
             var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
 
-            // Pop values from stack.
-            for (int i = 0; i < nbParams; i++)
+            var param = new double[nbParams];
+            // Pop values from stack into a param cache
+            try
             {
-                try
-                {
-                    param.AddFirst(valueStack.Pop());
+                for (int i = nbParams - 1; i >= 0; i--) {
+                    param[i] = valueStack.Pop();
                 }
-                catch (Exception ex)
-                {
-                    throw new Exception("Stack underflow. Ran out of values before function call at " + position, ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Stack underflow. Ran out of values before function call at " + position, ex);
             }
 
             // Evaluate function.
@@ -301,7 +298,7 @@ namespace EvieCompilerSystem.Runtime
         }
 
         // Evaluate a function call
-	    public double EvaluateFunctionCall(ref int position, uint functionNameHash, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
+	    public double EvaluateFunctionCall(ref int position, uint functionNameHash, int nbParams, double[] param, Stack<int> returnStack, Stack<double> valueStack)
         {
             var found = Functions.TryGetValue(functionNameHash, out var fun);
 
@@ -345,21 +342,8 @@ namespace EvieCompilerSystem.Runtime
             return DebugSymbols[hash] + " ("+hash.ToString("X")+")";
         }
 
-        private double EvaluateBuiltInFunction(ref int position, FuncKind kind, int nbParams, LinkedList<double> param, Stack<int> returnStack, Stack<double> valueStack)
+        private double EvaluateBuiltInFunction(ref int position, FuncKind kind, int nbParams, double[] param, Stack<int> returnStack, Stack<double> valueStack)
         {
-            /*if (IsMathFunc(functionName))
-            {
-                // handle math functions
-                try
-                {
-                    return EvalMath(functionName[0], param);
-                }
-                catch (Exception e)
-                {
-                    throw new Exception("Math Error : " + e.Message);
-                }
-            }*/
-
             switch (kind)
             {
                 // each element equal to the last
@@ -387,7 +371,7 @@ namespace EvieCompilerSystem.Runtime
                     var condition = param.ElementAt(0);
                     if (_memory.CastBoolean(condition) == false)
                     {
-                        var msg = ConcatLinkedList(param.First.Next);
+                        var msg = ConcatList(param, 1);
                         throw new Exception("Assertion failed: " + msg);
                     }
                     return NanTags.VoidReturn();
@@ -413,8 +397,8 @@ namespace EvieCompilerSystem.Runtime
                     var strName = _memory.DereferenceString(target);
                     var functionNameHash = NanTags.GetCrushedName(strName);
                     nbParams--;
-                    param.RemoveFirst();
-                    return EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
+                    var newParam = param.Skip(1).ToArray();
+                    return EvaluateFunctionCall(ref position, functionNameHash, nbParams, newParam, returnStack, valueStack);
 
                 case FuncKind.LogicNot:
                     if (nbParams != 1) throw new Exception("'not' should be called with one argument");
@@ -518,11 +502,11 @@ namespace EvieCompilerSystem.Runtime
 
                 
                 case FuncKind.MathAdd:
-                    if (nbParams == 1) return param.First.Value;
+                    if (nbParams == 1) return param[0];
                     return param.Sum();
 
                 case FuncKind.MathSub:
-                    if (nbParams == 1) return -param.First.Value;
+                    if (nbParams == 1) return -param[0];
                     return param.ChainDifference();
 
                 case FuncKind.MathProd:
@@ -534,7 +518,7 @@ namespace EvieCompilerSystem.Runtime
                     return param.ChainDivide();
 
                 case FuncKind.MathMod:
-                    if (nbParams == 1) return param.First.Value % 2;
+                    if (nbParams == 1) return param[0] % 2;
                     return param.ChainRemainder();
 
                 default:
@@ -542,12 +526,12 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private string ConcatLinkedList(LinkedListNode<double> list)
+        private string ConcatList(double[] list, int startIndex)
         {
             var sb = new StringBuilder();
-            while (list != null) {
-                sb.Append(_memory.CastString(list.Value));
-                list = list.Next;
+            for (int i = startIndex; i < list.Length; i++)
+            {
+                sb.Append(_memory.CastString(list[i]));
             }
             return sb.ToString();
         }

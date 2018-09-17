@@ -23,6 +23,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 * [x] Underscores in numbers
 * [x] String interning / deduplication (compiler)
+* [ ] optimise get/set memory instructions
 * [ ] Automatic formatter/prettifier
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
 * [ ] Circular buffer in the repl console (steal from WebJony?)
