@@ -177,7 +177,7 @@ namespace EvieCompilerSystem.Runtime
 
                     case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
                         varRef = p2 + ((uint)p1 << 16);
-                        HandleDirectIncrement((sbyte)codeAction, varRef);
+                        Variables.MutateNumber(varRef, (sbyte)codeAction);
                         break;
 
                     case 's': // reserved for System operation.
@@ -187,12 +187,6 @@ namespace EvieCompilerSystem.Runtime
                         throw new Exception("Unexpected op code at " + position + " : " + _memory.DiagnosticString(word, DebugSymbols));
                 }
             }
-        }
-
-        private void HandleDirectIncrement(sbyte incr, uint varRef)
-        {
-            var inp = _memory.CastDouble(Variables.Resolve(varRef));
-            Variables.SetValue(varRef, inp + incr);
         }
 
         private int HandleFunctionDefinition(ushort argCount, ushort tokenCount, int position, Stack<double> valueStack)

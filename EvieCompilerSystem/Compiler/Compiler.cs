@@ -45,8 +45,8 @@ namespace EvieCompilerSystem.Compiler
             }
             else
             {
-                Node rootContainer = root;
-                foreach (Node node in rootContainer.Children.ToList())
+                var rootContainer = root;
+                foreach (var node in rootContainer.Children.ToList())
                 {
 				    node.Text = node.Text;
 				    if (!node.IsLeaf)
@@ -246,7 +246,6 @@ namespace EvieCompilerSystem.Compiler
             wr.Memory(node.Text[0], child.Text);
         }
 
-
         private static bool IsSmallIncrement(Node node, out sbyte incr, out string varName)
         {
             incr = 0;
@@ -312,7 +311,6 @@ namespace EvieCompilerSystem.Compiler
             return false;
         }
 
-
         private static void CompileExternalFile(int level, bool debug, Node node, NanCodeWriter wr, Scope parameterNames, HashSet<string> includedFiles)
         {
             //     1) Check against import list. If already done, warn and skip.
@@ -363,7 +361,7 @@ namespace EvieCompilerSystem.Compiler
 
             bool isLoop = node.Text == "while";
             var context = isLoop ? Context.Loop : Context.Condition;
-            Node condition = new Node(false);
+            var condition = new Node(false);
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
@@ -377,7 +375,8 @@ namespace EvieCompilerSystem.Compiler
             var topOfBlock = wr.Position() - 1;
             wr.Merge(conditionCode);
 
-            Node body = new Node(false);
+            var body = new Node(false);
+
             for (int i = 1; i < container.Children.Count; i++)
             {
                 body.Children.AddLast(container.Children.ElementAt(i));
@@ -392,6 +391,7 @@ namespace EvieCompilerSystem.Compiler
                 wr.Comment("// Compare condition for : " + node.Text +", If false, skip " + compiledBody.OpCodeCount() + " element(s)");
             }
 
+            // TODO: find a way to make a fused ineqFun+cmpJmp
             if (isLoop)
             {
                 wr.CompareJump(compiledBody.OpCodeCount() + 1); // also skip the end unconditional jump
@@ -450,7 +450,6 @@ namespace EvieCompilerSystem.Compiler
 
             return (funcName == "return") && (node.Children.Count > 0); // is there a value return?
         }
-
 
         /// <summary>
         /// Compile a custom function definition

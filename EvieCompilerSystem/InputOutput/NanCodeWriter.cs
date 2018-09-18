@@ -208,7 +208,6 @@ namespace EvieCompilerSystem.InputOutput
             _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
         }
 
-
         public void FunctionCall(string functionName, int parameterCount)
         {
             _opcodes.Add(NanTags.EncodeVariableRef(functionName, out _));

@@ -27,10 +27,10 @@ namespace VisualREPL
             {
                 SetStatus("Running");
                 sw.Start();
-                Repl.BuildAndRun(text, streamIn, streamOut,
+                var coreTime = Repl.BuildAndRun(text, streamIn, streamOut,
                     traceCheckbox.Checked, showBytecodeCheck.Checked);
                 sw.Stop();
-                SetStatus("Complete: "+sw.Elapsed);
+                SetStatus("Complete: " + sw.Elapsed + " (execution: " + coreTime + ")");
             })
             { IsBackground = true };
 

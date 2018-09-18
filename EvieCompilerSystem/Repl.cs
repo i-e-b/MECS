@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using EvieCompilerSystem.InputOutput;
 using EvieCompilerSystem.Runtime;
@@ -11,7 +12,7 @@ namespace EvieCompilerSystem
         private static string baseDirectory = "";
 
         // ReSharper disable once UnusedMember.Global
-        public static void BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL) {
+        public static TimeSpan BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL) {
             
             var contents = SourceCodeReader.ReadContent(languageInput, true);
             
@@ -35,6 +36,7 @@ namespace EvieCompilerSystem
             }
 
             // Execute
+            var sw = new Stopwatch();
             try
             {
                 var interpreter = new ByteCodeInterpreter();
@@ -49,12 +51,17 @@ namespace EvieCompilerSystem
                 }
                 */
 
+                sw.Start();
                 interpreter.Execute(false, trace);
+                sw.Stop();
+                return sw.Elapsed;
             }
             catch (Exception e)
             {
                 output.WriteLine("Exception : " + e.Message);
                 output.WriteLine("\r\n\r\n" + e.StackTrace);
+                sw.Stop();
+                return sw.Elapsed;
             }
         }
 

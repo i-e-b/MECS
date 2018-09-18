@@ -201,5 +201,30 @@ namespace EvieCompilerSystem.Runtime
         {
             return scopes.Last.Value.ContainsKey(crushedName);
         }
+
+        /// <summary>
+        /// Add an increment to a stored number
+        /// </summary>
+        public void MutateNumber(uint crushedName, sbyte increment)
+        {
+            unchecked
+            {
+                var current = scopes.Last;
+                while (current != null)
+                {
+                    try
+                    {
+                        current.Value.DirectChange(crushedName, a => a + increment);
+                        return;
+                    }
+                    catch
+                    {
+                        current = current.Previous;
+                    }
+                }
+
+                throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");
+            }
+        }
     }
 }

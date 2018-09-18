@@ -1,10 +1,4 @@
-// The ever present Fibonacci sequence
 
-def (
-    next-fib (a b) (
-        return( +( a b ) )
-    )
-)
 
 print("running stress test")
 set(i 0)
@@ -20,7 +14,7 @@ while ( <(i 640)
     
     			set(x get(y))
     			set(y get(z))
-    			set(z next-fib(x y))
+    			set(z +(x y))
 		)
 		set(j +(j 1))
 	)

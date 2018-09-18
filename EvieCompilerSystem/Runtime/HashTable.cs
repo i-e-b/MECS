@@ -77,6 +77,17 @@ namespace EvieCompilerSystem.Runtime
             return false;
         }
 
+        /// <summary>
+        /// Find and directly change a stored value
+        /// </summary>
+        public void DirectChange(uint key, Func<TValue, TValue> mut) {
+            
+            if (Find(key, out var index))
+            {
+                buckets[index].value = mut(buckets[index].value);
+            }
+        }
+
         private void Put(uint key, TValue val, bool canReplace)
         {
             if (countUsed == growAt) ResizeNext();
@@ -193,7 +204,7 @@ namespace EvieCompilerSystem.Runtime
             }
 
             public readonly uint key;
-            public readonly TValue value;
+            public TValue value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
