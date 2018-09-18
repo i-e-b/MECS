@@ -12,7 +12,7 @@ namespace EvieCompilerSystem.Runtime
     /// </summary>
     public class HashTable<TValue> : IDictionary<uint, TValue>
     {
-        private const float LOAD_FACTOR = 0.5f; // Lower = more memory, less collisions.
+        //private const float LOAD_FACTOR = 0.5f; // Lower = more memory, less collisions.
 
         private Entry[] buckets;
         private uint count;
@@ -25,12 +25,12 @@ namespace EvieCompilerSystem.Runtime
 
         public HashTable(uint size) : this()
         {
-            Resize(NextPow2(size), false);
+            Resize(NextPow2(size));
         }
 
         public HashTable()
         {
-            Resize(32, false);
+            Resize(32);
         }
 
         private IEnumerable<KeyValuePair<uint, TValue>> Entries
@@ -41,7 +41,7 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
-        private void Resize(uint newSize, bool auto = true)
+        private void Resize(uint newSize)
         {
             var oldCount = count;
             var oldBuckets = buckets;
@@ -50,8 +50,8 @@ namespace EvieCompilerSystem.Runtime
             countMod = newSize - 1;
             buckets = new Entry[newSize];
 
-            growAt = auto ? Convert.ToUInt32(newSize * LOAD_FACTOR) : newSize;
-            shrinkAt = auto ? newSize >> 2 : 0;
+            growAt = newSize; //auto ? Convert.ToUInt32(newSize * LOAD_FACTOR) : newSize;
+            shrinkAt = 0;//auto ? newSize >> 2 : 0;
 
             if ((countUsed > 0) && (newSize != 0))
             {
