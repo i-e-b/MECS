@@ -147,35 +147,52 @@ namespace EvieCompilerSystem.Runtime
 
         private void ProcessOpCode(char codeClass, char codeAction, ushort p1, ushort p2, ref int position, Stack<double> valueStack, Stack<int> returnStack, double word)
         {
-            switch (codeClass)
+            unchecked
             {
-                case 'f': // Function *CALLS*
-                    if (codeAction == 'c') {
-                        position = PrepareFunctionCall(position, p1, valueStack, returnStack);
-                    }
-                    else if (codeAction == 'd') {
-                        position = HandleFunctionDefinition(p1, p2, position, valueStack);
-                    }
-                    break;
+                uint varRef;
+                switch (codeClass)
+                {
+                    case 'f': // Function *CALLS*
+                        if (codeAction == 'c')
+                        {
+                            position = PrepareFunctionCall(position, p1, valueStack, returnStack);
+                        }
+                        else if (codeAction == 'd')
+                        {
+                            position = HandleFunctionDefinition(p1, p2, position, valueStack);
+                        }
+                        break;
 
-                case 'c': // flow Control -- conditions, jumps etc
-                    {
-                        int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
-                        position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position);
-                    }
-                    break;
+                    case 'c': // flow Control -- conditions, jumps etc
+                        {
+                            int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
+                            position = HandleControlSignal(codeAction, opCodeCount, valueStack, returnStack, position);
+                        }
+                        break;
 
-                case 'm': // Memory access - get|set|isset|unset
-                    uint varRef = (uint) (p2 + (p1 << 16)); // the reference to read/write
-                    HandleMemoryAccess(codeAction, valueStack, position, varRef);
-                    break;
+                    case 'm': // Memory access - get|set|isset|unset
+                        varRef = p2 + ((uint)p1 << 16);
+                        HandleMemoryAccess(codeAction, valueStack, position, varRef);
+                        break;
 
-                case 's': // reserved for System operation.
-                    break;
+                    case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
+                        varRef = p2 + ((uint)p1 << 16);
+                        HandleDirectIncrement((sbyte)codeAction, varRef);
+                        break;
 
-                default:
-                    throw new Exception("Unexpected op code at " + position + " : " + _memory.DiagnosticString(word, DebugSymbols));
+                    case 's': // reserved for System operation.
+                        break;
+
+                    default:
+                        throw new Exception("Unexpected op code at " + position + " : " + _memory.DiagnosticString(word, DebugSymbols));
+                }
             }
+        }
+
+        private void HandleDirectIncrement(sbyte incr, uint varRef)
+        {
+            var inp = _memory.CastDouble(Variables.Resolve(varRef));
+            Variables.SetValue(varRef, inp + incr);
         }
 
         private int HandleFunctionDefinition(ushort argCount, ushort tokenCount, int position, Stack<double> valueStack)

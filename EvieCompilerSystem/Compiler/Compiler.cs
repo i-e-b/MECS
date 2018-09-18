@@ -83,6 +83,9 @@ namespace EvieCompilerSystem.Compiler
 		    return wr;
 	    }
 
+        /// <summary>
+        /// Output atom values
+        /// </summary>
         private static void EmitLeafNode(Node root, bool debug, Scope parameterNames, Context compileContext, NanCodeWriter wr)
         {
             double leafValue = 0;
@@ -209,17 +212,17 @@ namespace EvieCompilerSystem.Compiler
             switch (node.Text)
             {
                 case "set":
-                    if (container.Children.Count != 2)
+                    if (container.Children.Count != 2) { throw new Exception(node.Text + " required 2 parameters"); }
+
+                    if (IsSmallIncrement(node, out var incr, out var target))
                     {
-                        throw new Exception(node.Text + " required 2 parameters");
+                        wr.Increment(incr, target);
+                        return;
                     }
 
                     break;
                 default:
-                    if (container.Children.Count != 1)
-                    {
-                        throw new Exception(node.Text + " required 1 parameter");
-                    }
+                    if (container.Children.Count != 1) { throw new Exception(node.Text + " required 1 parameter"); }
 
                     break;
             }
@@ -227,6 +230,7 @@ namespace EvieCompilerSystem.Compiler
             int nb = node.Text == "set" ? 1 : 0;
             var child = new Node(false);
             child.Text = container.Children.First.Value.Text;
+
             for (int i = nb; i > 0; i--) // skip the first element
             {
                 child.Children.AddLast(container.Children.ElementAt(i));
@@ -242,7 +246,73 @@ namespace EvieCompilerSystem.Compiler
             wr.Memory(node.Text[0], child.Text);
         }
 
-        
+
+        private static bool IsSmallIncrement(Node node, out sbyte incr, out string varName)
+        {
+            incr = 0;
+            varName = null;
+
+            // These cases are handled:
+            // 1)  set(x +(x n))
+            // 2)  set(x +(get(x) n))
+            // 3)  set(x +(n x))
+            // 4)  set(x +(n get(x))
+            // 5)  set(x -(x n))
+            // 6)  set(x -(get(x) n)
+            //
+            // Where `x` is any reference name, and n is a literal integer between -100 and 100
+
+            if (node.Text != "set") return false;
+            if (node.Children.Count != 2) return false;
+            var target = node.Children.First.Value.Text;
+            var operation = node.Children.Last.Value;
+            if (operation.Children.Count != 2) return false;
+            
+            if (operation.Text != "+" && operation.Text != "-") return false;
+
+            if (operation.Text == "-") { // the operands can only be one way around
+                if (!IsGet(operation.Children.First.Value, target)) return false;
+                var incrNode = operation.Children.Last.Value;
+                if (incrNode.NodeType != NodeType.Numeric) return false;
+                if (! int.TryParse(incrNode.Text, out var incrV)) return false;
+                if (incrV < -100 || incrV > 100 || incrV == 0) return false;
+                unchecked{
+                    incr = (sbyte)(-incrV); // negate to account for subtraction
+                    varName = target;
+                }
+                return true;
+            }
+
+            if (operation.Text == "+") { // +- operands can be either way
+                Node incrNode;
+                if (IsGet(operation.Children.First.Value, target)) {
+                    incrNode = operation.Children.Last.Value;
+                } else if (IsGet(operation.Children.Last.Value, target)) {
+                    incrNode = operation.Children.First.Value;
+                } else return false;
+                
+                if (incrNode.NodeType != NodeType.Numeric) return false;
+                if (! int.TryParse(incrNode.Text, out var incrV)) return false;
+                if (incrV < -100 || incrV > 100 || incrV == 0) return false;
+                unchecked{
+                    incr = (sbyte)incrV;
+                    varName = target;
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsGet(Node node, string target)
+        {
+            if (node.NodeType == NodeType.Atom && node.Text == target) return true;
+            if (node.Text == "get" && node.Children.Count == 1 && node.Children.First.Value.Text == target) return true;
+
+            return false;
+        }
+
+
         private static void CompileExternalFile(int level, bool debug, Node node, NanCodeWriter wr, Scope parameterNames, HashSet<string> includedFiles)
         {
             //     1) Check against import list. If already done, warn and skip.

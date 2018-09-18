@@ -43,7 +43,17 @@ namespace EvieCompilerSystem.InputOutput
             _symbols = new HashTable<string>();
         }
 
-        
+        /// <summary>
+        /// Read opcode at index
+        /// </summary>
+        public double this[int idx]
+        {
+            get
+            {
+                return _opcodes[idx];
+            }
+        }
+
 
         /// <summary>
         /// Current written opcode position (relative only, for calculating relative jumps)
@@ -183,6 +193,13 @@ namespace EvieCompilerSystem.InputOutput
             NanTags.EncodeVariableRef(targetName, out var crush);
             AddSymbol(crush, targetName);
             _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
+        }
+        
+        public void Increment(sbyte incr, string targetName)
+        {
+            NanTags.EncodeVariableRef(targetName, out var crush);
+            AddSymbol(crush, targetName);
+            _opcodes.Add(NanTags.EncodeLongOpcode('i', (char)incr, crush));
         }
 
         public void Memory(char action, double opcode)

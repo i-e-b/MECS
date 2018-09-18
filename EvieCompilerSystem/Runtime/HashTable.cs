@@ -7,11 +7,12 @@ using System.Runtime.CompilerServices;
 namespace EvieCompilerSystem.Runtime
 {
     /// <summary>
-    /// An experimental, tunable hash table
+    /// A robin-hood strategy hash table.
+    /// Always keys on uint, please BYO hash algorithm.
     /// </summary>
     public class HashTable<TValue> : IDictionary<uint, TValue>
     {
-        private const float LOAD_FACTOR = 0.5f;
+        private const float LOAD_FACTOR = 0.5f; // Lower = more memory, less collisions.
 
         private Entry[] buckets;
         private uint count;

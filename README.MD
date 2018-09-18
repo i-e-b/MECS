@@ -24,7 +24,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Underscores in numbers
 * [x] String interning / deduplication (compiler)
 * [x] Optimise get/set memory instructions
-* [ ] Compiler & runtime optimise for increment and decrement
+* [x] Compiler & runtime optimise for increment and decrement
 * [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match. Reformat on enter)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
 * [ ] Circular buffer in the repl console (steal from WebJony?)
@@ -332,72 +332,39 @@ call(i "Hello, world")
 
 ## Byte code
 
-** THIS SECTION IS OUT OF DATE **
-*The system now uses a NaN-tagging format*
-
-The byte code is white-space delimited and string-based. Each operation has an op-code prefix, and potentially some values.
+The compiled output is encoded in NaN-valued 64-bit IEEE754 tags. Each tag has an type prefix, and potentially some values.
 The runtime has a value-stack, from where parameters are pulled, and return values added.
 There is also a return-stack for tracking function calls.
-The byte code may be commented using line comments (`//`)
-In the op-code descriptions, `[]` are used to make the parts obvious. They are not included in bytecode.
 
-### `[v][value]`
-Adds a value to the value-stack. Strings MUST be URL-encoded if they contain any whitespace, and may be URL-encoded in any case.
-```
-v0              // push a zero to the value-stack
-vHello%20world  // push the string "Hello world" to the value-stack
-```
+### VariableRef `[name hash: uint32]`
+Adds a variable reference to the value-stack. This can relate to functions (both built-in and custom), to variable name, or to function parameters
 
-### `[f][function name]  [param count]`
+### Opcode `[f][c]  [param count: uint16]`
 Call a function. The param count MUST be given, but can be zero.
+The function name-hash will be popped from the value-stack.
 Parameters will be popped from the value-stack in order (so the last pushed value will be the first parameter)
 Any values returned by the function will be pushed to the value-stack
 If this is a custom function (not reserved by the runtime) the exit position will be pushed to the return-stack.
-```
-vWorld         // push 'World' to value-stack
-vHello%20      // push 'Hello ' to value-stack
-fprint 2       // call 'print' with params ("Hello ", "World")
-```
 
-### `[ccmp]  [token count]`
+### Opcode `[f][d] [parameter count: uint16]  [tag count: uint16]`
+Define a function.
+The function name-hash to bind will be popped from the value-stack.
+Adds a function name to the function table, at the present location. Sets the expected number of parameters and the number of tokens of the function.
+
+### Opcode `[c][c]  [token count: uint32]`
 Pops a value from the value-stack. Makes a relative jump **forward** if that value is zero or false.
 Token count is the number of white-space delimited tokens in the byte code to skip.
-```
-. . .       // calculate some result
-ccmp 1      // was the result true?
-vWorld      // if it was true, put "World" on the value-stack
-vHello%20   // in either case, put "Hello " on the value-stack
-fprint 2    // print...
-```
 
-### `[cjmp]  [token count]`
+### Opcode `[c][j]  [token count: uint32]`
 Make an unconditional jump **backward**.
-```
-...         // loop body
-ccmp 1      // if false, skip the jump-back and exit the loop
-cjmp 10     // else jump back 10 tokens
-...         // outside of loop
-```
 
-### `[cskip]  [token count]`
+### Opcode `[c][s]  [token count: uint32]`
 Make an unconditional jump **forward**.
-```
-cskip 50    // skip some binary or scratch data
-... 50 chunks ...   
-[next code]
-```
 
-### `[cret]`
+### Opcode `[c][r]`
 Return from a function call. A absolute token position value is popped from the return-stack and program flow continues from there.
-```
-dmyProc 0 4         // define a function
-vHello%20world      //     push a string value
-fprint 2            //     print it
-cret                // return from the function
-...                 // rest of the code
-```
 
-### `[ct][function name]`
+### Opcode `[c][t] [name hash: uint32]`
 Runtime error: Function exit without value.
 This is emitted by the compiler to trap functions where some but not all paths in a function return values
 ```
@@ -409,53 +376,22 @@ freturn 1           //     return from function, taking top 1 stack values
 ctmyFunc            // if flow gets here, the function was bad, and the runtime will error
 ```
 
-### `[mg]` or `[mget]`
-Memory get. Pops a name from the value-stack. Looks up a variable with that name, pushes its value to the value-stack
-```
-vi            // push "i"
-mg            // find value of variable named "i"
-fprint 1      // print the value of variable named "i"
-```
+### Opcode `[mg] [name hash: uint32]`
+Memory get. Looks up a variable with the given name-hash, pushes its value to the value-stack
 
-### `[ms]` or `[mset]`
-Memory set. Pops two values from the value-stack. First is the name of a variable, second is a value. That value is stored against the variable name
-```
-v123        // push 123
-vx          // push "x"
-ms          // set x = 123. Value-stack no longer contains either.
-```
+### Opcode `[ms] [name hash: uint32]`
+Memory set. Pops a value from the value-stack. That value is stored against the variable with the given name-hash
 
-### `[mi]` or `[misset]`
-Test varible scope. Pops a name from the value-stack.
-If there is a variable in scope with that name,
-`true` is pushed to the value-stack (regardless of the *actual* value of the variable)
-```
-v0 vx ms    // set x = 0
-vx          // push "x"
-mi          // is "x" set? Pushes "true"
-vy          // push "y"
-mi          // is "y" set? Pushes "false"
-```
+### Opcode `[mi] [name hash: uint32]`
+Test varible scope.
+If there is a variable in scope with the given name-hash, `true` is
+pushed to the value-stack (regardless of the *actual* value of the variable)
 
-### `[mu]` or `[munset]`
-Remove a variable from scope. Pops a name from the value-stack. If there is a variable in scope with that name, it is removed.
+### Opcode `[mu] [name hash: uint32]`
+Remove a variable from scope. If there is a variable in scope with that name, it is removed.
 This only works for the most local scope, or the global scope.
-```
-v0 vx ms    // set x = 0
-vx mi       // is "x" set? Pushes "true"
-vx          // push "x"
-mu          // unset "x"
-vx mi       // is "x" set? Pushes "false"
-```
 
-### `[d][FunctionName]  [parameter count]  [skip length]`
-Define a function.
-Adds a function name to the function table, at the present location. Sets the expected number of parameters and the number of tokens of the function.
-```
-dmyFunc 2 8         // define a function. Expects 2 parameters (renamed as __p0 and __p1). Contains 8 opcodes (not including `cret` or `ct`)
-v__p0 mg            //     get first parameter
-v__p1 mg            //     get second parameter
-f%2B  2             //     add two numbers (result goes on stack)
-fprint 1            //     print the result
-cret                // return from function.
-```
+### Opcode `[i] [inc: int8] [name hash: uint32]`
+Increment/decrement by a fixed value.
+Looks up a variable with the given name-hash, adds the value of `inc` and stores it back.
+No value is added or removed from the value-stack.

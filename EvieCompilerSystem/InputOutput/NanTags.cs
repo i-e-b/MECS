@@ -44,7 +44,7 @@ namespace EvieCompilerSystem.InputOutput
         const ulong LOWER_48 = 0x0000FFFFFFFFFFFF;      // 48 bits for pointers, all non TAG data
 
         // Mask with "UPPER_FOUR" then check against these:    // Possible assignments:
-        const ulong TAG_VAR_REF        = 0x8000000000000000;    // Variable ref (2 char + 32 bit hash?)
+        const ulong TAG_VAR_REF        = 0x8000000000000000;    // Variable ref (32 bit hash)
         const ulong TAG_OPCODE         = 0x8001000000000000;    // Opcode (3 x 16bit: code, first param, second param)
 
         const ulong TAG_PTR_STR        = 0x8002000000000000;    // Memory pointer to STRING header
@@ -65,6 +65,7 @@ namespace EvieCompilerSystem.InputOutput
 
         const ulong TAG_PTR_DEBUG      = 0x0004000000000000;    // Memory pointer to Diagnostic string
 
+                                                                // I'm not sure these two are actually required.
         const ulong TAG_INT32_VAL      = 0x0006000000000000;    // Signed 32 bit integer / single boolean
         const ulong TAG_UINT32_VAL     = 0x0007000000000000;    // Unsigned integer 32
 

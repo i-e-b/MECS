@@ -57,11 +57,11 @@ while ( not (=(10 i) ) // handles any quantity of white-space
 )
 
 // Demonstrate value returning functions:
-print("Calling with 'true'" ())
+print("Calling with 'true': " ())
 set(i FunctionThatReturns(true))
 
 // This should *not* store a value, and should not push onto the stack (as it would be leaked)
-print("Calling with 'false'" ())
+print("Calling with 'false': " ())
 FunctionThatReturns(false)
 
 print("'i' is now " i)
