@@ -57,10 +57,12 @@
             this.scriptInputBox.HideSelection = false;
             this.scriptInputBox.Location = new System.Drawing.Point(0, 0);
             this.scriptInputBox.Name = "scriptInputBox";
+            this.scriptInputBox.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.ForcedVertical;
             this.scriptInputBox.ShowSelectionMargin = true;
             this.scriptInputBox.Size = new System.Drawing.Size(797, 180);
             this.scriptInputBox.TabIndex = 0;
-            this.scriptInputBox.Text = "";
+            this.scriptInputBox.Text = "// Enter your program here";
+            this.scriptInputBox.TextChanged += new System.EventHandler(this.scriptInputBox_TextChanged);
             // 
             // consoleTextBox
             // 

@@ -12,7 +12,7 @@ namespace EvieCompilerSystem.Compiler
 		    this.text = text;
 	    }
 
-        public string ReadUntilCharFromList(string target)
+        public string ReadUntilSubstring(string target)
         {
 		    int indexFound = text.IndexOf(target, cursorPosition, StringComparison.Ordinal);
 		    if (indexFound == -1)

@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 using EvieCompilerSystem;
+using EvieCompilerSystem.InputOutput;
 
 namespace VisualREPL
 {
@@ -73,6 +74,26 @@ namespace VisualREPL
                 case DialogResult.Yes:
                     File.WriteAllText(saveFileDialog1.FileName, scriptInputBox.Text);
                     break;
+            }
+        }
+
+        private readonly object _textLock = new object();
+        private bool _textChanging;
+        private void scriptInputBox_TextChanged(object sender, EventArgs e)
+        {
+            if (_textChanging) return;
+            lock (_textLock) {
+                try
+                {
+                    _textChanging = true;
+                    var selectionStart = scriptInputBox.SelectionStart;
+                    scriptInputBox.Text = AutoFormat.Reformat(scriptInputBox.Text, ref selectionStart);
+                    scriptInputBox.SelectionStart = selectionStart;
+                }
+                finally
+                {
+                    _textChanging = false;
+                }
             }
         }
     }

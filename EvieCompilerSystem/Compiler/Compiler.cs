@@ -319,7 +319,7 @@ namespace EvieCompilerSystem.Compiler
             includedFiles.Add(targetFile);
             
             var reader = new SourceCodeTokeniser();
-            var parsed = reader.Read(SourceCodeReader.ReadContent(text, true));
+            var parsed = reader.Read(text, false);
             var programFragment = Compile(parsed, level, debug, parameterNames, includedFiles, Context.External);
 
 

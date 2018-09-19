@@ -6,14 +6,19 @@ namespace EvieCompilerSystem.Compiler
 {
     class SourceCodeTokeniser
     {
-        public Node Read(string source)
+        /// <summary>
+        /// Read an source string and output node tree
+        /// </summary>
+        /// <param name="source">Input text</param>
+        /// <param name="preserveMetadata">if true, comments and spacing will be included</param>
+        public Node Read(string source, bool preserveMetadata)
         {
             var root = new Node(false) {Text = "root"};
-            Read(source, root, 0);
+            Read(source, root, 0, preserveMetadata);
             return root;
         }
 
-        private void Read(string source, Node root, int position)
+        private void Read(string source, Node root, int position, bool preserveMetadata)
         {
             int i = position;
             int length = source.Length;
@@ -21,7 +26,7 @@ namespace EvieCompilerSystem.Compiler
 
             while (i < length)
             {
-                i = Skip(source, i, new[] { ' ', '\t', '\n', ';', '\r' });
+                i = SkipWhitespace(source, i, preserveMetadata, current);
 
                 if (i >= length)
                 {
@@ -52,6 +57,10 @@ namespace EvieCompilerSystem.Compiler
                         break;
                     case ',': // optional separator
                         // Ignore.
+                        if (preserveMetadata) {
+                            tmp = new Node(true) {Text = ",", NodeType = NodeType.Whitespace};
+                            current.Children.AddLast(tmp);
+                        }
                         break;
 
                     case '"': // start of strings
@@ -64,6 +73,15 @@ namespace EvieCompilerSystem.Compiler
                             break;
                         }
 
+                    case '/': //maybe a comment?
+                        {
+                            if (!TryCaptureComment(source, ref i, preserveMetadata, current))
+                            {
+                                goto default;
+                            }
+                            break;
+                        }
+
                     default:
 
                         {
@@ -72,11 +90,10 @@ namespace EvieCompilerSystem.Compiler
                             {
                                 i += word.Length;
 
-                                i = Skip(source, i, new[] { ' ', '\t', '\n', '\r' });
+                                i = SkipWhitespace(source, i, preserveMetadata, current);
                                 if (i >= length)
                                 {
-                                    //break;
-                                    throw new Exception("Unexpected end of input");
+                                    throw new Exception("Unexpected end of input. Check syntax.");
                                 }
                                 car = source.ElementAt(i);
                                 if (car == '(')
@@ -109,29 +126,110 @@ namespace EvieCompilerSystem.Compiler
             }
         }
 
+        private static readonly char[] newLines = {'\r','\n' };
+        private bool TryCaptureComment(string source, ref int i, bool preserveMetadata, Node mdParent)
+        {
+            int end;
+            if (i >= source.Length) return false;
+            var k = source[i + 1];
+            Node tmp;
+            switch (k)
+            {
+                case '/': // line comment
+                    end = source.IndexOfAny(newLines, i);
+                    if (preserveMetadata) {
+                        tmp = new Node(true) { Text = source.Substring(i, (end - i)), NodeType = NodeType.Comment};
+                        mdParent.Children.AddLast(tmp);
+                    }
+                    i = end;
+                    return true;
+                case '*': // block comment
+                    end = source.IndexOf("*/", i+2, StringComparison.Ordinal);
+                    if (preserveMetadata) {
+                        tmp = new Node(true) { Text = source.Substring(i, (end - i) + 2), NodeType = NodeType.Comment };
+                        mdParent.Children.AddLast(tmp);
+                    }
+                    i = end + 1;
+                    return true;
+                default: return false;
+            }
+        }
+
         private bool IsNumeric(string word)
         {
             return double.TryParse(word.Replace("_",""), out _);
         }
 
-        public static int Skip(string exp, int position, char[] cars)
+        public static int SkipWhitespace(string exp, int position, bool preserveMetadata, Node mdParent)
         {
+            int lastcap = position;
             int i = position;
             int length = exp.Length;
 
+            bool capWS = false;
+            bool capNL = false;
+
             while (i < length)
             {
-                var car = exp.ElementAt(i);
+                var c = exp.ElementAt(i);
                 var found = false;
 
-                if (cars.Any(c => c == car))
+                switch (c)
                 {
-                    i++;
-                    found = true;
+                    case ' ':
+                    case '\t':
+                        found = true;
+                        if (preserveMetadata)
+                        {
+                            if (capNL)
+                            { // switch from newlines to regular space
+                              // output NL so far
+                                var tmp = new Node(true) { Text = exp.Substring(lastcap, i - lastcap), NodeType = NodeType.Newline };
+                                mdParent.Children.AddLast(tmp);
+                                lastcap = i + 1;
+                            }
+                        }
+                        capNL = false;
+                        capWS = true;
+                        i++;
+                        break;
+
+                    case '\r':
+                    case '\n':
+                        found = true;
+                        if (preserveMetadata)
+                        {
+                            if (capWS)
+                            { // switch from regular space to newlines
+                                // output WS so far
+                                var tmp = new Node(true) { Text = exp.Substring(lastcap, i - lastcap), NodeType = NodeType.Whitespace };
+                                mdParent.Children.AddLast(tmp);
+                                lastcap = i + 1;
+                            }
+                        }
+                        i++;
+                        capNL = true;
+                        capWS = false;
+                        break;
                 }
                 if (!found)
                 {
                     break;
+                }
+            }
+
+            
+            if (preserveMetadata)
+            {
+                if (capNL)
+                {
+                    var tmp = new Node(true) { Text = exp.Substring(lastcap, i - lastcap), NodeType = NodeType.Newline };
+                    mdParent.Children.AddLast(tmp);
+                }
+                if (capWS)
+                {
+                    var tmp = new Node(true) { Text = exp.Substring(lastcap, i - lastcap), NodeType = NodeType.Whitespace };
+                    mdParent.Children.AddLast(tmp);
                 }
             }
 

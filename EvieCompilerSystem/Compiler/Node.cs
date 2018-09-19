@@ -30,11 +30,17 @@ namespace EvieCompilerSystem.Compiler
         }
 
         // ReSharper disable once UnusedMember.Global
+        /// <summary>
+        /// Render the node tree with a specific starting index
+        /// </summary>
         public string Show()
         {
             return Show(0);
         }
 
+        /// <summary>
+        /// Render the node tree with a specific starting index
+        /// </summary>
         public virtual string Show(int i)
         {
             var builder = new StringBuilder();
@@ -42,7 +48,7 @@ namespace EvieCompilerSystem.Compiler
             {
                 builder.Append("    ");
             }
-            builder.Append(Text).Append('\n');
+            builder.Append(Text).Append("\r\n");
 
             if (_children == null) return builder.ToString();
 

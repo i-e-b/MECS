@@ -14,19 +14,22 @@ namespace EvieCompilerSystem
         // ReSharper disable once UnusedMember.Global
         public static TimeSpan BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL) {
             
-            var contents = SourceCodeReader.ReadContent(languageInput, true);
-            
             // Compile
             var sourceCodeReader = new Compiler.SourceCodeTokeniser();
-            var program = sourceCodeReader.Read(contents);
+
+            var program = sourceCodeReader.Read(languageInput, true);
+            output.WriteLine(program.Show());
+
+            program = sourceCodeReader.Read(languageInput, false);
             Compiler.Compiler.BaseDirectory = baseDirectory;
             var compiledOutput = Compiler.Compiler.CompileRoot(program, debug: false);
 
+            // Load
             var stream = new MemoryStream();
             compiledOutput.WriteToStream(stream);
             stream.Seek(0,SeekOrigin.Begin);
             var byteCodeReader = new RuntimeMemoryModel(stream);
-
+            
             if (printIL)
             {
                 output.WriteLine("======= BYTE CODE SUMMARY ==========");

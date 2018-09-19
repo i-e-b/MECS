@@ -27,7 +27,8 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Compiler & runtime optimise for increment and decrement
 * [x] Iteration of strings (maybe `get(str idx)`?)
 * [x] Circular buffer in the repl console
-* [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match. Reformat on enter. Maybe option to supply styling?)
+* [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match)
+* [ ] Highlighting for current parenthesis scope
 * [ ] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
 * [ ] Single step in repl gui
