@@ -144,7 +144,8 @@ namespace EvieCompilerSystem.Runtime
 
 		    return evalResult;
 	    }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessOpCode(char codeClass, char codeAction, ushort p1, ushort p2, ref int position, Stack<double> valueStack, Stack<int> returnStack, double word)
         {
             unchecked
@@ -152,7 +153,7 @@ namespace EvieCompilerSystem.Runtime
                 uint varRef;
                 switch (codeClass)
                 {
-                    case 'f': // Function *CALLS*
+                    case 'f': // Function operations
                         if (codeAction == 'c')
                         {
                             position = PrepareFunctionCall(position, p1, valueStack, returnStack);
@@ -172,7 +173,7 @@ namespace EvieCompilerSystem.Runtime
 
                     case 'm': // Memory access - get|set|isset|unset
                         varRef = p2 + ((uint)p1 << 16);
-                        HandleMemoryAccess(codeAction, valueStack, position, varRef);
+                        HandleMemoryAccess(codeAction, valueStack, position, varRef, p1);
                         break;
 
                     case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
@@ -202,7 +203,7 @@ namespace EvieCompilerSystem.Runtime
             return position + tokenCount + 1; // + definition length + terminator
         }
 
-        private void HandleMemoryAccess(char action, Stack<double> valueStack, int position, uint varRef)
+        private void HandleMemoryAccess(char action, Stack<double> valueStack, int position, uint varRef, ushort paramCount)
         {
             switch (action)
             {
@@ -222,6 +223,43 @@ namespace EvieCompilerSystem.Runtime
                 case 'u': // unset
                     Variables.Remove(varRef);
                     break;
+
+                case 'G': // indexed get
+                    DoIndexedGet(valueStack, paramCount);
+                    break;
+
+                default:
+                    throw new Exception("Unknown memory opcode: '" + action + "'");
+            }
+        }
+
+        private void DoIndexedGet(Stack<double> valueStack, ushort paramCount)
+        {
+            var target = valueStack.Pop();
+            var value = Variables.Resolve(NanTags.DecodeVariableRef(target));
+            var type = NanTags.TypeOf(value);
+            switch (type)
+            {
+                // Note: Numeric types should read the bit at index
+                // Hashes and arrays do the obvious lookup
+                // Sets return true/false for occupancy
+                case DataType.PtrString:
+                    // get the other indexes. If more than one, build a string out of the bits?
+                    // What to do with out-of-range?
+                    var str = _memory.DereferenceString(NanTags.DecodePointer(value));
+                    var sb = new StringBuilder(paramCount - 1);
+                    for (int i = 0; i < paramCount; i++)
+                    {
+                        var idx = _memory.CastInt(valueStack.Pop());
+                        if (idx >= 0 && idx < str.Length) sb.Append(str[idx]);
+                    }
+
+                    var result = _memory.StoreStringAndGetReference(sb.ToString());
+                    valueStack.Push(result);
+                    return;
+
+                default:
+                    throw new Exception("Indexing of type '" + type + "' is not yet supported");
             }
         }
 
@@ -260,6 +298,9 @@ namespace EvieCompilerSystem.Runtime
                 case 'r':
                     HandleReturn(ref position, returnStack);
                     break;
+
+                default:
+                    throw new Exception("Unknown control signal '" + action + "'");
             }
 
             return position;

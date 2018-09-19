@@ -8,13 +8,13 @@ namespace VisualREPL
 {
     public class TextBoxStreamOutput: TextWriter {
         private readonly TextBox _consoleTextBox;
-        private readonly StringBuilder _cache;
-        private readonly object _lock;
+        private readonly CircularString _cache;
+        private bool _dirty;
 
         public TextBoxStreamOutput(TextBox consoleTextBox)
         {
-            _cache = new StringBuilder();
-            _lock = new object();
+            _cache = new CircularString(4096);
+            _dirty = false;
             _consoleTextBox = consoleTextBox;
 
             var writerThread = new Thread(WriterWorker){IsBackground = true };
@@ -25,19 +25,15 @@ namespace VisualREPL
         {
             while (true)
             {
-                if (_cache.Length < 1) {
+                if (!_dirty) {
                     Thread.Sleep(500);
                     continue;
                 }
-                string next;
-                lock(_lock) {
-                    next = _cache.ToString();
-                    _cache.Clear();
-                }
+                _dirty = false;
                 _consoleTextBox.Parent.Invoke(new Action(() =>
                 {
-                    _consoleTextBox.AppendText(next);
-                    _consoleTextBox.SelectionStart = _consoleTextBox.Text.Length - 1;
+                    _consoleTextBox.Text = _cache.ReadAll();
+                    _consoleTextBox.SelectionStart = Math.Max(0, _consoleTextBox.Text.Length - 1);
                     _consoleTextBox.ScrollToCaret();
                 }));
             }
@@ -46,9 +42,8 @@ namespace VisualREPL
 
         public override void Write(char value)
         {
-            lock(_lock) {
-                _cache.Append(value);
-            }
+            _cache.Write(value);
+            _dirty = true;
         }
 
         public override Encoding Encoding { get; } = Encoding.UTF8;

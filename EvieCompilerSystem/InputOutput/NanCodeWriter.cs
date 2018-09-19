@@ -188,13 +188,33 @@ namespace EvieCompilerSystem.InputOutput
             AddSymbol(crushed, valueName);
         }
 
-        public void Memory(char action, string targetName)
+        public void Memory(char action, string targetName, int paramCount)
         {
-            NanTags.EncodeVariableRef(targetName, out var crush);
-            AddSymbol(crush, targetName);
-            _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
+            //TODO: indexing
+            uint crush;
+            switch (action)
+            {
+                case 's' when paramCount > 1: //set indexed
+                    _opcodes.Add(NanTags.EncodeVariableRef(targetName, out crush));
+                    AddSymbol(crush, targetName);
+                    _opcodes.Add(NanTags.EncodeOpcode('m', 'S', (ushort)paramCount,0));
+
+                    break;
+
+                case 'g' when paramCount > 0: // get indexed
+                    _opcodes.Add(NanTags.EncodeVariableRef(targetName, out crush));
+                    AddSymbol(crush, targetName);
+                    _opcodes.Add(NanTags.EncodeOpcode('m', 'G', (ushort)paramCount,0));
+                    break;
+
+                default:
+                    NanTags.EncodeVariableRef(targetName, out crush);
+                    AddSymbol(crush, targetName);
+                    _opcodes.Add(NanTags.EncodeLongOpcode('m', action, crush));
+                    break;
+            }
         }
-        
+
         public void Increment(sbyte incr, string targetName)
         {
             NanTags.EncodeVariableRef(targetName, out var crush);

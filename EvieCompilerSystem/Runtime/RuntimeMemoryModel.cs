@@ -114,6 +114,13 @@ namespace EvieCompilerSystem.Runtime
                             return ccls+""+cact+" '" + debugSymbols[refr] + "' (" + refr.ToString("X") + ")";
                         }
                     }
+                    if (ccls == 'i')
+                    {
+                        if (debugSymbols?.ContainsKey(refr) == true)
+                        {
+                            return "Incr " + ((sbyte)cact) + " '" + debugSymbols[refr] + "' (" + refr.ToString("X") + ")";
+                        }
+                    }
                     NanTags.DecodeOpCode(token, out _, out _, out var p1, out var p2);
                     return ccls+""+cact+" ("+p1+", "+p2+")";
 

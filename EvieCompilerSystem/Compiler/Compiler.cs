@@ -104,7 +104,7 @@ namespace EvieCompilerSystem.Compiler
                     wr.Comment("// treating '"+valueName+"' as an implicit get()");
                 }
                 if (substitute) wr.Memory('g', leafValue);
-                else wr.Memory('g', valueName);
+                else wr.Memory('g', valueName, 0);
 
                 return;
             }
@@ -209,32 +209,17 @@ namespace EvieCompilerSystem.Compiler
 
         private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, NanCodeWriter wr, Scope parameterNames)
         {
-            switch (node.Text)
+            // Check for special increment mode
+            if (node.Text == "set" && IsSmallIncrement(node, out var incr, out var target))
             {
-                case "set":
-                    if (container.Children.Count != 2) { throw new Exception(node.Text + " required 2 parameters"); }
-
-                    if (IsSmallIncrement(node, out var incr, out var target))
-                    {
-                        wr.Increment(incr, target);
-                        return;
-                    }
-
-                    break;
-                default:
-                    if (container.Children.Count != 1) { throw new Exception(node.Text + " required 1 parameter"); }
-
-                    break;
+                wr.Increment(incr, target);
+                return;
             }
 
-            int nb = node.Text == "set" ? 1 : 0;
             var child = new Node(false);
             child.Text = container.Children.First.Value.Text;
-
-            for (int i = nb; i > 0; i--) // skip the first element
-            {
-                child.Children.AddLast(container.Children.ElementAt(i));
-            }
+            var paramCount = container.Children.Count - 1;
+            for (int i = paramCount; i > 0; i--) { child.Children.AddLast(container.Children.ElementAt(i)); }
 
             wr.Merge(Compile(child, level + 1, debug, parameterNames, null, Context.MemoryAccess));
 
@@ -243,7 +228,7 @@ namespace EvieCompilerSystem.Compiler
                 wr.Comment("// Memory function : " + node.Text);
             }
 
-            wr.Memory(node.Text[0], child.Text);
+            wr.Memory(node.Text[0], child.Text, paramCount);
         }
 
         private static bool IsSmallIncrement(Node node, out sbyte incr, out string varName)

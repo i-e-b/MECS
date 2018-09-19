@@ -1,0 +1,16 @@
+
+// `get` with indexes
+
+// Pick a single character
+set(str "Hello, world!")
+print(
+	"Lo" get(str 5)
+)
+
+// Pick multiple characters, concats into one string
+print(
+	get(str 7 8 9 11 12)
+)
+
+// Invalid indices are ignored
+print( '"' get( str -1 0 100 ) '"' )

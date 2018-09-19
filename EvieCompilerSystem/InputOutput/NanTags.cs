@@ -306,6 +306,17 @@ namespace EvieCompilerSystem.InputOutput
                 target = (long)((*(ulong*)&encoded) & LOWER_48);
             }
         }
+        
+        /// <summary>
+        /// Decode a pointer
+        /// </summary>
+        public static unsafe long DecodePointer(double encoded)
+        {
+            unchecked
+            {
+                return (long)((*(ulong*)&encoded) & LOWER_48);
+            }
+        }
 
         /// <summary>
         /// Encode an int32

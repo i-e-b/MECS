@@ -25,23 +25,25 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] String interning / deduplication (compiler)
 * [x] Optimise get/set memory instructions
 * [x] Compiler & runtime optimise for increment and decrement
+* [x] Iteration of strings (maybe `get(str idx)`?)
+* [x] Circular buffer in the repl console
+* [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match. Reformat on enter. Maybe option to supply styling?)
 * [ ] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
-* [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match. Reformat on enter)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
-* [ ] Circular buffer in the repl console (steal from WebJony?)
 * [ ] Single step in repl gui
 * [ ] Runtime interpreter exceptions to give position
 
-* [ ] Basic types
+* [x] Basic types
 * [ ] Memory model (heap, arrays)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
+* [ ] String builder in memory model
 * [ ] Move value definitions into memory
 
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity)
 * [ ] String interning / deduplication (runtime)
 
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
-* [ ] More math: list support, abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
+* [ ] More math: abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] More math: useful constants (pi, e, inf, neg-inf)
 * [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Make sure (de)serialisation is available
@@ -106,6 +108,14 @@ print("My value is " get(val))
 print("My value is "     val )  // this is the same as above
 
 set(dst get(src)) // copy src into dst (can't use implicit get here)
+```
+
+### get (2 params)
+Get a subvalue of a variable by key. For strings, this returns a character. Also to be used for hash tables and sets (later)
+Indexes are zero-based.
+```javascript
+set(str "Hello, world")
+print(get(str 5))       // ","
 ```
 
 ### set (2 params)
@@ -340,7 +350,7 @@ There is also a return-stack for tracking function calls.
 ### VariableRef `[name hash: uint32]`
 Adds a variable reference to the value-stack. This can relate to functions (both built-in and custom), to variable name, or to function parameters
 
-### Opcode `[f][c]  [param count: uint16]`
+### Opcode `[f][c] [param count: uint16]`
 Call a function. The param count MUST be given, but can be zero.
 The function name-hash will be popped from the value-stack.
 Parameters will be popped from the value-stack in order (so the last pushed value will be the first parameter)
@@ -377,18 +387,24 @@ freturn 1           //     return from function, taking top 1 stack values
 ctmyFunc            // if flow gets here, the function was bad, and the runtime will error
 ```
 
-### Opcode `[mg] [name hash: uint32]`
+### Opcode `[m][g] [name hash: uint32]`
 Memory get. Looks up a variable with the given name-hash, pushes its value to the value-stack
 
-### Opcode `[ms] [name hash: uint32]`
+### Opcode `[m][s] [name hash: uint32]`
 Memory set. Pops a value from the value-stack. That value is stored against the variable with the given name-hash
 
-### Opcode `[mi] [name hash: uint32]`
+### Opcode `[m][G] [param count: uint16]`
+Extended get. Looks up a variable that uses indexes. Pushes the returned value to the value-stack
+
+### Opcode `[m][S] [param count: uint16]`
+Extended set. Sets a subvalue in a variable that uses indexes.
+
+### Opcode `[m][i] [name hash: uint32]`
 Test varible scope.
 If there is a variable in scope with the given name-hash, `true` is
 pushed to the value-stack (regardless of the *actual* value of the variable)
 
-### Opcode `[mu] [name hash: uint32]`
+### Opcode `[m][u] [name hash: uint32]`
 Remove a variable from scope. If there is a variable in scope with that name, it is removed.
 This only works for the most local scope, or the global scope.
 
