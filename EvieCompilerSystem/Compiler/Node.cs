@@ -31,7 +31,7 @@ namespace EvieCompilerSystem.Compiler
 
         // ReSharper disable once UnusedMember.Global
         /// <summary>
-        /// Render the node tree with a specific starting index
+        /// Render the node tree, specifically for diagnostics
         /// </summary>
         public string Show()
         {
@@ -39,14 +39,14 @@ namespace EvieCompilerSystem.Compiler
         }
 
         /// <summary>
-        /// Render the node tree with a specific starting index
+        /// Render the node tree with a specific starting indent, specifically for diagnostics
         /// </summary>
         public virtual string Show(int i)
         {
             var builder = new StringBuilder();
             for (int j = 0; j < i; j++)
             {
-                builder.Append("    ");
+               builder.Append("    ");
             }
             builder.Append(Text).Append("\r\n");
 
@@ -57,6 +57,27 @@ namespace EvieCompilerSystem.Compiler
                 builder.Append(node.Show(i + 1));
             }
             return builder.ToString();
+        }
+
+        /// <summary>
+        /// Render the node tree with a specific starting index, specifically for diagnostics
+        /// </summary>
+        public virtual string Reformat(int i)
+        {
+            var builder = new StringBuilder();
+            for (int j = 0; j < i; j++)
+            {
+                // builder.Append("    ");
+            }
+            builder.Append(Text);//.Append("\r\n");
+
+            if (_children == null) return builder.ToString().Replace("\n","\r\n");
+
+            foreach (var node in _children)
+            {
+                builder.Append(node.Show(i + 1));
+            }
+            return builder.ToString().Replace("\n","\r\n");
         }
     }
 }

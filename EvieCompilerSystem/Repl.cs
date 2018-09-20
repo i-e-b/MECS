@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using EvieCompilerSystem.Compiler;
 using EvieCompilerSystem.InputOutput;
 using EvieCompilerSystem.Runtime;
 
@@ -17,10 +18,11 @@ namespace EvieCompilerSystem
             // Compile
             var sourceCodeReader = new Compiler.SourceCodeTokeniser();
 
-            var program = sourceCodeReader.Read(languageInput, true);
-            output.WriteLine(program.Show());
-
+            Node program;
+           // program = sourceCodeReader.Read(languageInput, true);
+            //output.WriteLine(program.Show());
             program = sourceCodeReader.Read(languageInput, false);
+
             Compiler.Compiler.BaseDirectory = baseDirectory;
             var compiledOutput = Compiler.Compiler.CompileRoot(program, debug: false);
 

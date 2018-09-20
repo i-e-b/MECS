@@ -141,7 +141,7 @@ namespace EvieCompilerSystem.Compiler
                         tmp = new Node(true) { Text = source.Substring(i, (end - i)), NodeType = NodeType.Comment};
                         mdParent.Children.AddLast(tmp);
                     }
-                    i = end;
+                    i = end - 1;
                     return true;
                 case '*': // block comment
                     end = source.IndexOf("*/", i+2, StringComparison.Ordinal);
