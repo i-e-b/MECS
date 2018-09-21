@@ -7,7 +7,7 @@ using EvieCompilerSystem.Runtime;
 
 namespace EvieCompilerSystem.Compiler
 {
-    public class Compiler
+    public class ToNanCodeCompiler
     {
         public static string BaseDirectory = "";
 

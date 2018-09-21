@@ -54,5 +54,16 @@ namespace VisualREPL
             Write(state.ToString());
             Write("\r\n");
         }
+
+        public void Clear()
+        {
+            lock (writeLock)
+            {
+                for (int i = 0; i < _b.Length; i++)
+                {
+                    _b[i] = 0;
+                }
+            }
+        }
     }
 }

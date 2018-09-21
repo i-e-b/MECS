@@ -64,7 +64,7 @@ namespace VisualREPL
 
         private void clearLogButton_Click(object sender, EventArgs e)
         {
-            consoleTextBox.Clear();
+            streamOut.Clear();
         }
 
         private void saveFileButton_Click(object sender, EventArgs e)

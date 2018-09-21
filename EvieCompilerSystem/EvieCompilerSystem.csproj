@@ -43,13 +43,12 @@
     <Compile Include="InputOutput\NanCodeWriter.cs" />
     <Compile Include="InputOutput\NanTags.cs" />
     <Compile Include="Repl.cs" />
-    <Compile Include="Compiler\Compiler.cs" />
+    <Compile Include="Compiler\ToNanCodeCompiler.cs" />
     <Compile Include="Compiler\Context.cs" />
     <Compile Include="Compiler\Desugar.cs" />
     <Compile Include="Compiler\Node.cs" />
     <Compile Include="Compiler\NodeType.cs" />
     <Compile Include="Compiler\SourceCodeTokeniser.cs" />
-    <Compile Include="Compiler\StringReader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Runtime\ByteCodeInterpreter.cs" />
     <Compile Include="Runtime\FunctionDefinition.cs" />

@@ -47,5 +47,11 @@ namespace VisualREPL
         }
 
         public override Encoding Encoding { get; } = Encoding.UTF8;
+
+        public void Clear()
+        {
+            _cache.Clear();
+            _dirty = true;
+        }
     }
-}
+}   

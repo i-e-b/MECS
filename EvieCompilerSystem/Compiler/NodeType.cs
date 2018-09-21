@@ -23,6 +23,13 @@
         Atom = 3,
 
         /// <summary>
+        /// The root of a parsed document
+        /// </summary>
+        Root = 4,
+
+        // Negatives are only expressed if meta-data is retained
+
+        /// <summary>
         /// A comment block (including delimiters)
         /// </summary>
         Comment = -1,
@@ -40,6 +47,11 @@
         /// <summary>
         /// Marker for the position of the editor caret
         /// </summary>
-        Caret = -4
+        Caret = -4,
+
+        /// <summary>
+        /// String delimiter or similar
+        /// </summary>
+        Delimiter = -5
     }
 }

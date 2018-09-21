@@ -22,6 +22,7 @@ namespace EvieCompilerSystem.Compiler
         public string Text { get; set; }
         public bool IsLeaf { get; set; }
         public NodeType NodeType { get; set; }
+        public string Unescaped { get; set; }
 
         public Node(bool isLeaf)
         {
@@ -60,24 +61,29 @@ namespace EvieCompilerSystem.Compiler
         }
 
         /// <summary>
-        /// Render the node tree with a specific starting index, specifically for diagnostics
+        /// Render the node tree with a specific starting indent, as close to original input as possible
         /// </summary>
-        public virtual string Reformat(int i)
+        public virtual void Reformat(int i, StringBuilder builder)
         {
-            var builder = new StringBuilder();
-            for (int j = 0; j < i; j++)
-            {
-                // builder.Append("    ");
-            }
-            builder.Append(Text);//.Append("\r\n");
+            builder.Append(Unescaped ?? Text);
 
-            if (_children == null) return builder.ToString().Replace("\n","\r\n");
+            if (_children == null) return;// builder.ToString().Replace("\n", "\r\n");
 
+            bool leadingWhite = false;
             foreach (var node in _children)
             {
-                builder.Append(node.Show(i + 1));
+                // Handle re-indenting
+                if (leadingWhite) {
+                    if (node.NodeType == NodeType.Whitespace) continue;
+                    leadingWhite = false;
+                    if (node.NodeType == NodeType.Delimiter) builder.Append(' ', (i - 1) * 4);
+                    else builder.Append(' ', i * 4);
+                }
+                if (node.NodeType == NodeType.Newline) leadingWhite = true;
+                
+                // otherwise write node text
+                node.Reformat(i + 1, builder);
             }
-            return builder.ToString().Replace("\n","\r\n");
         }
     }
 }

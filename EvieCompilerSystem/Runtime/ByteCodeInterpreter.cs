@@ -433,7 +433,7 @@ namespace EvieCompilerSystem.Runtime
                     var reader = new SourceCodeTokeniser();
                     var statements = _memory.CastString(param.ElementAt(0));
                     var programTmp = reader.Read(statements, false);
-                    var bin = Compiler.Compiler.CompileRoot(programTmp, false);
+                    var bin = Compiler.ToNanCodeCompiler.CompileRoot(programTmp, false);
                     var interpreter = new ByteCodeInterpreter();
                     interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables, DebugSymbols); // todo: optional other i/o for eval?
                     return interpreter.Execute(false, runningVerbose);

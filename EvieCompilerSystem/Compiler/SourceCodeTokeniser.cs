@@ -4,7 +4,7 @@ using System.Text;
 
 namespace EvieCompilerSystem.Compiler
 {
-    class SourceCodeTokeniser
+    public class SourceCodeTokeniser
     {
         /// <summary>
         /// Read an source string and output node tree
@@ -13,7 +13,7 @@ namespace EvieCompilerSystem.Compiler
         /// <param name="preserveMetadata">if true, comments and spacing will be included</param>
         public Node Read(string source, bool preserveMetadata)
         {
-            var root = new Node(false) {Text = "root"};
+            var root = new Node(false) {Text = "", NodeType = NodeType.Root};
             Read(source, root, 0, preserveMetadata);
             return root;
         }
@@ -44,11 +44,18 @@ namespace EvieCompilerSystem.Compiler
                         current = new Node(false)
                         {
                             Text = "()",
-                            Parent = parent
+                            Unescaped = "(",
+                            Parent = parent,
                         };
                         parent.Children.AddLast(current);
                         break;
                     case ')': // end of call
+                        
+                        if (preserveMetadata) {
+                            tmp = new Node(true) {Text = ")", NodeType = NodeType.Delimiter};
+                            current.Children.AddLast(tmp);
+                        }
+
                         if (current.Parent != null)
                         {
                             current = current.Parent;
@@ -67,9 +74,17 @@ namespace EvieCompilerSystem.Compiler
                     case '\'':
                         {
                             i++;
+                            var oldI = i;
                             var words = ReadString(source, ref i, car);
+                            if (preserveMetadata) current.Children.AddLast(new Node(true) { Text = car.ToString(), NodeType = NodeType.Delimiter });
+
                             tmp = new Node(true) {Text = words, NodeType = NodeType.StringLiteral};
+                            if (preserveMetadata) {
+                                tmp.Unescaped = source.Substring(oldI, i - oldI);
+                            }
                             current.Children.AddLast(tmp);
+
+                            if (preserveMetadata) current.Children.AddLast(new Node(true) { Text = car.ToString(), NodeType = NodeType.Delimiter });
                             break;
                         }
 
@@ -90,7 +105,8 @@ namespace EvieCompilerSystem.Compiler
                             {
                                 i += word.Length;
 
-                                i = SkipWhitespace(source, i, preserveMetadata, current);
+                                var wsNode = new Node(false){ NodeType = NodeType.Whitespace};
+                                i = SkipWhitespace(source, i, preserveMetadata, wsNode);
                                 if (i >= length)
                                 {
                                     throw new Exception("Unexpected end of input. Check syntax.");
@@ -107,6 +123,10 @@ namespace EvieCompilerSystem.Compiler
                                         NodeType = NodeType.Atom
                                     };
 
+                                    if (preserveMetadata){
+                                        foreach (var ws in wsNode.Children) { current.Children.AddLast(ws); }
+                                        current.Children.AddLast(new Node(true) { Text = "(", NodeType = NodeType.Delimiter });
+                                    }
                                     parent.Children.AddLast(current);
                                 }
                                 else
@@ -114,7 +134,11 @@ namespace EvieCompilerSystem.Compiler
                                     i--;
                                     tmp = new Node(true) { Text = word, NodeType = NodeType.Atom};
                                     if (IsNumeric(word)) tmp.NodeType = NodeType.Numeric;
+
                                     current.Children.AddLast(tmp);
+                                    if (preserveMetadata) {
+                                        foreach (var ws in wsNode.Children) { current.Children.AddLast(ws); }
+                                    }
                                 }
                             }
                         }
@@ -186,7 +210,7 @@ namespace EvieCompilerSystem.Compiler
                               // output NL so far
                                 var tmp = new Node(true) { Text = exp.Substring(lastcap, i - lastcap), NodeType = NodeType.Newline };
                                 mdParent.Children.AddLast(tmp);
-                                lastcap = i + 1;
+                                lastcap = i ;
                             }
                         }
                         capNL = false;
@@ -204,7 +228,7 @@ namespace EvieCompilerSystem.Compiler
                                 // output WS so far
                                 var tmp = new Node(true) { Text = exp.Substring(lastcap, i - lastcap), NodeType = NodeType.Whitespace };
                                 mdParent.Children.AddLast(tmp);
-                                lastcap = i + 1;
+                                lastcap = i;
                             }
                         }
                         i++;
@@ -219,7 +243,7 @@ namespace EvieCompilerSystem.Compiler
             }
 
             
-            if (preserveMetadata)
+            if (preserveMetadata && i != lastcap)
             {
                 if (capNL)
                 {

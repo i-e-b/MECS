@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using EvieCompilerSystem.Compiler;
-using EvieCompilerSystem.InputOutput;
 using EvieCompilerSystem.Runtime;
 
 namespace EvieCompilerSystem
@@ -16,15 +16,19 @@ namespace EvieCompilerSystem
         public static TimeSpan BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL) {
             
             // Compile
-            var sourceCodeReader = new Compiler.SourceCodeTokeniser();
+            var sourceCodeReader = new SourceCodeTokeniser();
 
             Node program;
-           // program = sourceCodeReader.Read(languageInput, true);
-            //output.WriteLine(program.Show());
+
+                // Example of reformatting:
+                program = sourceCodeReader.Read(languageInput, true);
+                var sb = new StringBuilder(); program.Reformat(0, sb);
+                output.WriteLine(sb.ToString().Replace("\n","\r\n"));
+
             program = sourceCodeReader.Read(languageInput, false);
 
-            Compiler.Compiler.BaseDirectory = baseDirectory;
-            var compiledOutput = Compiler.Compiler.CompileRoot(program, debug: false);
+            ToNanCodeCompiler.BaseDirectory = baseDirectory;
+            var compiledOutput = ToNanCodeCompiler.CompileRoot(program, debug: false);
 
             // Load
             var stream = new MemoryStream();
