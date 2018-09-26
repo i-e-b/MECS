@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using EvieCompilerSystem.Compiler;
 
 namespace EvieCompilerSystem.InputOutput
 {
@@ -11,10 +12,22 @@ namespace EvieCompilerSystem.InputOutput
 
         public static string Reformat(string input, ref int cursorPosition)
         {
-            return input;
-            //TODO: SourceCodeTokeniser.Read, then Node.Reformat
-            // Also todo: inject cursor/caret position. Maybe only reformat when caret is between tokens?
-            // maybe don't reformat if tokenising fails.
+            //return input; // uncomment to disable
+            var oldCaret = cursorPosition;
+            try
+            {
+                // Example of reformatting:
+                var sourceCodeReader = new SourceCodeTokeniser();
+                var program = sourceCodeReader.Read(input, true);
+                var sb = new StringBuilder();
+                program.Reformat(0, sb, ref cursorPosition);
+                return sb.ToString();
+            }
+            catch
+            {
+                cursorPosition = oldCaret;
+                return null;
+            }
         }
     }
 }

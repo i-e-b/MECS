@@ -211,6 +211,7 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.ValUInt32:
                     return NanTags.DecodeUInt32(encoded);
 
+                // TODO: parse strings?
                 // All the things that can't be meaningfully cast
                 default: return double.NaN;
             }

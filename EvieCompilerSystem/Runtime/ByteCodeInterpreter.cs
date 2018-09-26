@@ -12,6 +12,11 @@ namespace EvieCompilerSystem.Runtime
 {
     public class ByteCodeInterpreter
     {
+        /// <summary>
+        /// Any difference less than or equal to this, are considered equal numbers
+        /// </summary>
+        public const double ComparisonPrecision = 1e-20;
+
         private List<double> program;
         public HashTable<FunctionDefinition>  Functions;
         public static HashTable<string> DebugSymbols;
@@ -397,7 +402,7 @@ namespace EvieCompilerSystem.Runtime
                 // each element equal to the last
                 case FuncKind.Equal:
                     if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
-                    return FoldInequality(param, (a, b) => Math.Abs(a - b) <= double.Epsilon);
+                    return NanTags.EncodeBool(ListEquals(param));
 
                 // Each element smaller than the last
                 case FuncKind.GreaterThan:
@@ -412,7 +417,7 @@ namespace EvieCompilerSystem.Runtime
                 // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
                 case FuncKind.NotEqual:
                     if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
-                    return FoldInequality(param, (a, b) => Math.Abs(a - b) > double.Epsilon);
+                    return NanTags.EncodeBool(! ListEquals(param));
 
                 case FuncKind.Assert:
                     if (nbParams < 1) return NanTags.VoidReturn(); // assert nothing passes
@@ -433,7 +438,7 @@ namespace EvieCompilerSystem.Runtime
                     var reader = new SourceCodeTokeniser();
                     var statements = _memory.CastString(param.ElementAt(0));
                     var programTmp = reader.Read(statements, false);
-                    var bin = Compiler.ToNanCodeCompiler.CompileRoot(programTmp, false);
+                    var bin = ToNanCodeCompiler.CompileRoot(programTmp, false);
                     var interpreter = new ByteCodeInterpreter();
                     interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, Variables, DebugSymbols); // todo: optional other i/o for eval?
                     return interpreter.Execute(false, runningVerbose);
@@ -571,6 +576,70 @@ namespace EvieCompilerSystem.Runtime
 
                 default:
                     throw new Exception("Unrecognised built-in! Type = "+((int)kind));
+            }
+        }
+
+        /// <summary>
+        /// First param is compared all others. If *any* are equal, the function returns true.
+        /// </summary>
+        private bool ListEquals(double[] list)
+        {
+            var type = NanTags.TypeOf(list[0]);
+            switch (type)
+            {
+                // Non-comparable types
+                case DataType.Invalid:
+                case DataType.NoValue:
+                case DataType.Opcode:
+                    return false;
+
+                // Numeric types
+                case DataType.Number:
+                case DataType.ValInt32:
+                case DataType.ValUInt32:
+                    {
+                        var target = _memory.CastDouble(list[0]);
+                        for (int i = 1; i < list.Length; i++)
+                        {
+                            if (Math.Abs(target - _memory.CastDouble(list[i])) <= ComparisonPrecision) return true;
+                        }
+                        return false;
+                    }
+
+                // String types
+                case DataType.PtrDiagnosticString:
+                case DataType.PtrString:
+                    {
+                        var target = _memory.CastString(list[0]);
+                        for (int i = 1; i < list.Length; i++)
+                        {
+                            if (target == _memory.CastString(list[i])) return true;
+                        }
+                        return false;
+                    }
+
+                // Pointer equality
+                case DataType.VariableRef:
+                case DataType.PtrHashtable:
+                case DataType.PtrGrid:
+                case DataType.PtrArray_Int32:
+                case DataType.PtrArray_UInt32:
+                case DataType.PtrArray_String:
+                case DataType.PtrArray_Double:
+                case DataType.PtrSet_String:
+                case DataType.PtrSet_Int32:
+                case DataType.PtrLinkedList:
+                    {
+                        var target = NanTags.DecodeRaw(list[0]);
+                        for (int i = 1; i < list.Length; i++)
+                        {
+                            if (target == NanTags.DecodeRaw(list[i])) return true;
+                        }
+                        return false;
+                    }
+
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 

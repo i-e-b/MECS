@@ -32,19 +32,23 @@ print("\r\n")
 print("List logic (more than two values)")
 print("all operations short-circuit")
 print("---------------------------------")
+// Less-than: sequence is in ascending order
 print("List < :    " show("<(5 15 100)")) // should be true
 print("List < :    " show("<(5 1 100)")) // should be false
 print("List < :    " show("<(100 50 0)")) // should be false
 
+// Greater-then: sequence is in descending order
 print("List > :    " show(">(5 15 100)")) // should be false
 print("List > :    " show(">(5 1 100)")) // should be false
 print("List > :    " show(">(100 50 0)")) // should be true
 
+// Equals: at least one element is equal to the first
 print("List = :    " show("=(5 15 100)")) // should be false
 print("List = :    " show("=(1 1 1)")) // should be true
-print("List = :    " show("=(1 1 1 0)")) // should be false
+print("List = :    " show("=(1 1 1 0)")) // should be true
 
+// Not-equal: no elements are equal to the first
 print("List <> :   " show("<>(5 15 100)")) // should be true
 print("List <> :   " show("<>(1 1 1)")) // should be false
 print("List <> :   " show("<>(1 1 1 0)")) // should be false
-print("List <> :   " show("<>(1 0 1 0)")) // should be TRUE (checks sequential inequality, not set uniqueness)
+print("List <> :   " show("<>(1 0 1 0)")) // should be false (some are equal)

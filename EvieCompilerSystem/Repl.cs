@@ -13,7 +13,7 @@ namespace EvieCompilerSystem
         private static string baseDirectory = "";
 
         // ReSharper disable once UnusedMember.Global
-        public static TimeSpan BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL) {
+        public static TimeSpan BuildAndRun(string languageInput, TextReader input, TextWriter output, bool trace, bool printIL, int caret) {
             
             // Compile
             var sourceCodeReader = new SourceCodeTokeniser();
@@ -22,7 +22,10 @@ namespace EvieCompilerSystem
 
                 // Example of reformatting:
                 program = sourceCodeReader.Read(languageInput, true);
-                var sb = new StringBuilder(); program.Reformat(0, sb);
+                var sb = new StringBuilder();
+                var newCaret = caret;
+                program.Reformat(0, sb, ref newCaret);
+                output.WriteLine("Caret moved from "+caret+" to "+newCaret);
                 output.WriteLine(sb.ToString().Replace("\n","\r\n"));
 
             program = sourceCodeReader.Read(languageInput, false);

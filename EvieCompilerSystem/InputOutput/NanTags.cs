@@ -397,6 +397,13 @@ namespace EvieCompilerSystem.InputOutput
             return EncodeInt32(b ? -1 : 0);
         }
 
+        /// <summary>
+        /// Get raw data of tags
+        /// </summary>
+        public static unsafe ulong DecodeRaw(double d)
+        {
+            return *(ulong*)&d;
+        }
     }
 
 }

@@ -216,7 +216,7 @@ namespace EvieCompilerSystem.Compiler
                 return;
             }
 
-            var child = new Node(false);
+            var child = new Node(false, -2);
             child.Text = container.Children.First.Value.Text;
             var paramCount = container.Children.Count - 1;
             for (int i = paramCount; i > 0; i--) { child.Children.AddLast(container.Children.ElementAt(i)); }
@@ -346,7 +346,7 @@ namespace EvieCompilerSystem.Compiler
 
             bool isLoop = node.Text == "while";
             var context = isLoop ? Context.Loop : Context.Condition;
-            var condition = new Node(false);
+            var condition = new Node(false, -2);
             condition.Children.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
@@ -360,7 +360,7 @@ namespace EvieCompilerSystem.Compiler
             var topOfBlock = wr.Position() - 1;
             wr.Merge(conditionCode);
 
-            var body = new Node(false);
+            var body = new Node(false, -2);
 
             for (int i = 1; i < container.Children.Count; i++)
             {

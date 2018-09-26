@@ -23,13 +23,14 @@ namespace VisualREPL
         private void runButton_Click(object sender, EventArgs e)
         {
             var text = scriptInputBox.Text;
+            var caret = scriptInputBox.SelectionStart;
             var sw = new Stopwatch();
             var runner = new Thread(() =>
             {
                 SetStatus("Running");
                 sw.Start();
                 var coreTime = Repl.BuildAndRun(text, streamIn, streamOut,
-                    traceCheckbox.Checked, showBytecodeCheck.Checked);
+                    traceCheckbox.Checked, showBytecodeCheck.Checked, caret);
                 sw.Stop();
                 SetStatus("Complete: " + sw.Elapsed + " (execution: " + coreTime + ")");
             })
@@ -86,9 +87,17 @@ namespace VisualREPL
                 try
                 {
                     _textChanging = true;
+
+                    var loc = scriptInputBox.Location;
                     var selectionStart = scriptInputBox.SelectionStart;
-                    scriptInputBox.Text = AutoFormat.Reformat(scriptInputBox.Text, ref selectionStart);
+                    var updated = AutoFormat.Reformat(scriptInputBox.Text, ref selectionStart);
+
+                    if (updated == null) return;
+
+                    scriptInputBox.Text = updated;
                     scriptInputBox.SelectionStart = selectionStart;
+                    
+                    scriptInputBox.Location = loc;
                 }
                 finally
                 {
