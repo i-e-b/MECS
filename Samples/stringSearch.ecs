@@ -1,0 +1,24 @@
+
+// Find first numeral in a string
+set(haystack "Four score and 7 years ago")
+
+set(i 0)
+while (
+    and(
+        not-equal(get(haystack i) "0" "1" "2" "3" "4" "5" "6" "7" "8" "9")
+        <(i length(haystack))
+    )
+
+    print( i " -> " get(haystack i) )
+
+    set(i +(i 1))
+)
+pick (
+    if (<(i length(haystack))
+        print("Found a number at position " i)
+        print("It was '" get(haystack i) "'")
+    )
+    if (true
+        print("Not found (" i ")")
+    )
+)

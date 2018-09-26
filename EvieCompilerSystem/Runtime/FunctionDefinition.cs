@@ -2,12 +2,12 @@
 {
     public struct FunctionDefinition
     {
-        public FuncKind Kind;
+        public FuncDef Kind;
         public int ParamCount;
         public int StartPosition;
     }
 
-    public enum FuncKind
+    public enum FuncDef
     {
         /// <summary>
         /// A custom function (defined by the script)

@@ -112,18 +112,23 @@ namespace EvieCompilerSystem.Compiler
                                 i = SkipWhitespace(source, i, preserveMetadata, wsNode);
                                 if (i >= length)
                                 {
-                                    //throw new Exception("Unexpected end of input. Check syntax.");
+                                    // Unexpected end of input
+                                    // To help formatting and diagnosis, write the last bits.
                                     current.Children.AddLast(new Node(false, startLoc)
                                     {
                                         Text = word,
                                         NodeType = NodeType.Atom
                                     });
+                                    if (preserveMetadata){
+                                        foreach (var ws in wsNode.Children) { current.Children.AddLast(ws); }
+                                    }
                                     return false;
                                 }
                                 car = source.ElementAt(i);
                                 if (car == '(')
                                 {
-                                    if (IsNumeric(word)) throw new Exception("Parser error: '" + word + "' looks like a function name, but starts with a number");
+                                    if (IsNumeric(word))
+                                        throw new Exception("Parser error: '" + word + "' used like a function name, but looks like a number");
                                     parent = current;
                                     current = new Node(false, startLoc)
                                     {

@@ -10,10 +10,12 @@ namespace EvieCompilerSystem.Runtime
 {
     public class RuntimeMemoryModel
     {
+        public readonly Scope Variables;
         private readonly List<double> encodedTokens;
 
         public RuntimeMemoryModel(NanCodeWriter writer)
         {
+            Variables = new Scope();
             var ms = new MemoryStream((int)writer.OpCodeCount() * 16);
             writer.WriteToStream(ms);
             ms.Seek(0, SeekOrigin.Begin);
@@ -29,6 +31,7 @@ namespace EvieCompilerSystem.Runtime
 
         public RuntimeMemoryModel(MemoryStream stream)
         {
+            Variables = new Scope();
             encodedTokens = new List<double>((int)(stream.Length / 8));
             var raw = stream.ToArray();
 
@@ -263,10 +266,14 @@ namespace EvieCompilerSystem.Runtime
             var type = NanTags.TypeOf(encoded);
             switch (type){
                 case DataType.Invalid:
-                case DataType.VariableRef:
                 case DataType.Opcode:
                 case DataType.NoValue:
                     return 0;
+
+                case DataType.VariableRef:
+                    // Follow scope
+                    var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+                    return CastInt(next);
 
                 case DataType.PtrDiagnosticString:
                 case DataType.PtrString:
