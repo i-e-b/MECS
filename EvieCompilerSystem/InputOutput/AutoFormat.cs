@@ -8,11 +8,9 @@ namespace EvieCompilerSystem.InputOutput
     /// </summary>
     public class AutoFormat
     {
-        private const int SpacesPerTab = 4;
-
         public static string Reformat(string input, ref int cursorPosition)
         {
-            //return input; // uncomment to disable
+            //return null; // uncomment to disable formatting
             var oldCaret = cursorPosition;
             try
             {

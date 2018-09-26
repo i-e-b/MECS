@@ -38,11 +38,16 @@ namespace EvieCompilerSystem.Compiler
         /// </summary>
         public int SourceLocation { get; set; }
 
+        /// <summary>
+        /// If false, the parse tree was not successful
+        /// </summary>
+        public bool IsValid { get; set; }
 
         public Node(bool isLeaf, int sourceLoc)
         {
             NodeType = NodeType.Default;
             IsLeaf = isLeaf;
+            IsValid = true;
             SourceLocation = sourceLoc;
         }
 

@@ -18,17 +18,11 @@ namespace EvieCompilerSystem
             // Compile
             var sourceCodeReader = new SourceCodeTokeniser();
 
-            Node program;
-
-                // Example of reformatting:
-                program = sourceCodeReader.Read(languageInput, true);
-                var sb = new StringBuilder();
-                var newCaret = caret;
-                program.Reformat(0, sb, ref newCaret);
-                output.WriteLine("Caret moved from "+caret+" to "+newCaret);
-                output.WriteLine(sb.ToString().Replace("\n","\r\n"));
-
-            program = sourceCodeReader.Read(languageInput, false);
+            var program = sourceCodeReader.Read(languageInput, false);
+            if ( ! program.IsValid) {
+                output.WriteLine("Program is not well formed"); // TODO: be more helpful
+                return TimeSpan.Zero;
+            }
 
             ToNanCodeCompiler.BaseDirectory = baseDirectory;
             var compiledOutput = ToNanCodeCompiler.CompileRoot(program, debug: false);

@@ -21,16 +21,19 @@ Parse and compile a prefix expression (source code) to a simple byte code.
       - Tagged basic type (NaN-tagging)
       - All non-numbers are pointers to type
 
-* [ ] ### NOW: ### Change list-equals to compare all to *first* item, so you can do like `equals(0 a b c d)` to check if *any* equal zero. Same for not-equal.
+* [x] Change list-equals to compare all to *first* item, so you can do like `equals(0 a b c d)` to check if *any* equal zero. Same for not-equal.
 
 * [x] Underscores in numbers
 * [x] String interning / deduplication (compiler)
 * [x] Optimise get/set memory instructions
 * [x] Compiler & runtime optimise for increment and decrement
 * [x] Iteration of strings (maybe `get(str idx)`?)
+
 * [x] Circular buffer in the repl console
 * [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match)
 * [ ] Highlighting for current parenthesis scope
+* [ ] Handle malformed source code correctly
+
 * [ ] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
 * [ ] Single step in repl gui

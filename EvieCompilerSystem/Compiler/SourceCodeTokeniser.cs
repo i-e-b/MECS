@@ -14,11 +14,14 @@ namespace EvieCompilerSystem.Compiler
         public Node Read(string source, bool preserveMetadata)
         {
             var root = Node.RootNode();
-            Read(source, root, 0, preserveMetadata);
+            var valid = Read(source, root, 0, preserveMetadata);
+            if (!valid) {
+                root.IsValid = false;
+            }
             return root;
         }
 
-        private void Read(string source, Node root, int position, bool preserveMetadata)
+        private bool Read(string source, Node root, int position, bool preserveMetadata)
         {
             int i = position;
             int length = source.Length;
@@ -109,7 +112,13 @@ namespace EvieCompilerSystem.Compiler
                                 i = SkipWhitespace(source, i, preserveMetadata, wsNode);
                                 if (i >= length)
                                 {
-                                    throw new Exception("Unexpected end of input. Check syntax.");
+                                    //throw new Exception("Unexpected end of input. Check syntax.");
+                                    current.Children.AddLast(new Node(false, startLoc)
+                                    {
+                                        Text = word,
+                                        NodeType = NodeType.Atom
+                                    });
+                                    return false;
                                 }
                                 car = source.ElementAt(i);
                                 if (car == '(')
@@ -154,6 +163,7 @@ namespace EvieCompilerSystem.Compiler
 
                 i++;
             }
+            return true;
         }
 
         private bool TryCaptureComment(string source, ref int i, bool preserveMetadata, Node mdParent)

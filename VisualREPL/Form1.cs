@@ -27,12 +27,16 @@ namespace VisualREPL
             var sw = new Stopwatch();
             var runner = new Thread(() =>
             {
+                try {
                 SetStatus("Running");
                 sw.Start();
                 var coreTime = Repl.BuildAndRun(text, streamIn, streamOut,
                     traceCheckbox.Checked, showBytecodeCheck.Checked, caret);
                 sw.Stop();
                 SetStatus("Complete: " + sw.Elapsed + " (execution: " + coreTime + ")");
+                } catch (Exception ex) {
+                    MessageBox.Show(ex.ToString(), "REPL error");
+                }
             })
             { IsBackground = true };
 
