@@ -23,7 +23,6 @@ namespace VisualREPL
         private void runButton_Click(object sender, EventArgs e)
         {
             var text = scriptInputBox.Text;
-            var caret = scriptInputBox.SelectionStart;
             var sw = new Stopwatch();
             var runner = new Thread(() =>
             {
@@ -31,11 +30,11 @@ namespace VisualREPL
                 SetStatus("Running");
                 sw.Start();
                 var coreTime = Repl.BuildAndRun(text, streamIn, streamOut,
-                    traceCheckbox.Checked, showBytecodeCheck.Checked, caret);
+                    traceCheckbox.Checked, showBytecodeCheck.Checked, traceMemory: true); // TODO: checkbox for this
                 sw.Stop();
                 SetStatus("Complete: " + sw.Elapsed + " (execution: " + coreTime + ")");
                 } catch (Exception ex) {
-                    MessageBox.Show(ex.ToString(), "REPL error");
+                    MessageBox.Show(ex.Message, "REPL error");
                 }
             })
             { IsBackground = true };

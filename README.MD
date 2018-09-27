@@ -30,10 +30,11 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Iteration of strings (maybe `get(str idx)`?)
 
 * [x] Circular buffer in the repl console
-* [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match) TODO: terminal line indent
+* [ ] Automatic formatter/prettifier (indent if more opens than closes, unindent on match) TODO: terminal line indent?
 * [ ] Highlighting for current parenthesis scope
 * [ ] Handle malformed source code correctly
 
+* [ ] Try optimised 'top n' references in Scope?
 * [ ] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
 * [ ] Single step in repl gui

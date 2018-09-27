@@ -10,7 +10,11 @@ namespace EvieCompilerSystem.Runtime
 {
     public class RuntimeMemoryModel
     {
+        /// <summary>
+        /// Scope for parameters and variables
+        /// </summary>
         public readonly Scope Variables;
+
         private readonly List<double> encodedTokens;
 
         public RuntimeMemoryModel(NanCodeWriter writer)
@@ -41,6 +45,9 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
+        /// <summary>
+        /// Produce a diagnostic description of the memory layout
+        /// </summary>
         public string ToString(HashTable<string> debugSymbols)
         {
             int index = 0;
@@ -338,7 +345,11 @@ namespace EvieCompilerSystem.Runtime
                     encodedTokens.Add(BitConverter.Int64BitsToDouble((long)pack));
                 }
             }
-            return NanTags.EncodePointer(location, DataType.PtrString);
+            var token = NanTags.EncodePointer(location, DataType.PtrString);
+
+            Variables.PotentialGarbage.Add(token);
+
+            return token;
         }
 
         public string DiagnosticString(double token, HashTable<string> symbols = null)

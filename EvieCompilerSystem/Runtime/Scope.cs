@@ -10,6 +10,13 @@ namespace EvieCompilerSystem.Runtime
     /// </summary>
     public class Scope
     {
+        /// <summary>
+        /// Reference tags that have gone out of scope.
+        /// </summary>
+        /// <remarks>This should be written to whenever a pointer
+        /// becomes from one reference. It may be available from another location.</remarks>
+        public readonly HashSet<double> PotentialGarbage;
+
         readonly LinkedList<HashTable<double>> scopes;
 
         private static readonly uint[] posParamHash;
@@ -27,49 +34,30 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public Scope()
         {
+            PotentialGarbage = new HashSet<double>();
             scopes = new LinkedList<HashTable<double>>();
             scopes.AddLast(new HashTable<double>()); // global scope
         }
 
         /// <summary>
-        /// Create a new scope, copying values (read-only) from another scope stack.
-        /// If there are name conflicts in the scope, only the visible values will be copied
-        /// </summary>
-        /// <param name="importVariables">Variables to copy. All will be added to the global level.</param>
-        public Scope(Scope importVariables)
-        {
-            scopes = new LinkedList<HashTable<double>>();
-            var global = new HashTable<double>();
-
-            if (importVariables != null)
-            {
-                foreach (var value in importVariables.ListAllVisible())
-                {
-                    global.Add(value.Key, value.Value);
-                }
-            }
-
-            scopes.AddLast(global);
-        }
-
-        /// <summary>
         /// List all values in the scope
         /// </summary>
-        private IEnumerable<KeyValuePair<uint, double>> ListAllVisible()
+        public IEnumerable<KeyValuePair<uint, double>> ListAllVisible()
         {
-            unchecked {
-            var seen = new HashSet<uint>();
-            var scope = scopes.Last;
-            while (scope != null)
+            unchecked
             {
-                foreach (var pair in scope.Value)
+                var seen = new HashSet<uint>();
+                var scope = scopes.Last;
+                while (scope != null)
                 {
-                    if (seen.Contains(pair.Key)) continue;
-                    seen.Add(pair.Key);
-                    yield return pair;
+                    foreach (var pair in scope.Value)
+                    {
+                        if (seen.Contains(pair.Key)) continue;
+                        seen.Add(pair.Key);
+                        yield return pair;
+                    }
+                    scope = scope.Previous;
                 }
-                scope = scope.Previous;
-            }
             }
         }
 
@@ -98,7 +86,14 @@ namespace EvieCompilerSystem.Runtime
         /// Remove innermost scope, and drop back to the previous one
         /// </summary>
         public void DropScope() {
+            var last = scopes.Last.Value;
             scopes.RemoveLast();
+
+            // this could be done on another thread
+            foreach (var token in last.Values)
+            {
+                if (NanTags.IsAllocated(token)) PotentialGarbage.Add(token);
+            }
         }
 
         /// <summary>
@@ -127,7 +122,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Set a value by name. If no scope has it, then it will be defined in the innermost scope
         /// </summary>
-        public void SetValue(uint crushedName, double value) {
+        public void SetValue(uint crushedName, double newValue) {
             unchecked
             {
                 var current = scopes.Last;
@@ -135,13 +130,19 @@ namespace EvieCompilerSystem.Runtime
                 {
                     if (current.Value.ContainsKey(crushedName))
                     {
-                        current.Value[crushedName] = value;
+                        var oldValue = current.Value[crushedName];
+                        // ReSharper disable once CompareOfFloatsByEqualityOperator
+                        if (oldValue != newValue)
+                        {
+                            if (NanTags.IsAllocated(oldValue)) PotentialGarbage.Add(newValue);
+                            current.Value[crushedName] = newValue;
+                        }
                         return;
                     }
                     current = current.Previous;
                 }
 
-                scopes.Last.Value.Add(crushedName, value);
+                scopes.Last.Value.Add(crushedName, newValue);
             }
         }
 

@@ -44,6 +44,15 @@ namespace EvieCompilerSystem.InputOutput
         const ulong LOWER_48 = 0x0000FFFFFFFFFFFF;      // 48 bits for pointers, all non TAG data
 
         // Mask with "UPPER_FOUR" then check against these:    // Possible assignments:
+        const ulong TAG_NAR            = 0x0000000000000000;    // NoValue - specifically not-a-value / not-a-result. Holds general runtime flags.
+
+        const ulong TAG_PTR_SET_STR    = 0x0001000000000000;    // Memory pointer to SET of string header
+        const ulong TAG_PTR_SET_INT32  = 0x0002000000000000;    // Memory pointer to SET of 32 signed integer
+        const ulong TAG_PTR_LINKLIST   = 0x0003000000000000;    // Memory pointer to double-linked list node
+        const ulong TAG_PTR_DEBUG      = 0x0004000000000000;    // Memory pointer to Diagnostic string
+        const ulong TAG_INT32_VAL      = 0x0006000000000000;    // Signed 32 bit integer / single boolean
+        const ulong TAG_UINT32_VAL     = 0x0007000000000000;    // Unsigned integer 32
+
         const ulong TAG_VAR_REF        = 0x8000000000000000;    // Variable ref (32 bit hash)
         const ulong TAG_OPCODE         = 0x8001000000000000;    // Opcode (3 x 16bit: code, first param, second param)
 
@@ -56,18 +65,6 @@ namespace EvieCompilerSystem.InputOutput
         const ulong TAG_ARR_STR        = 0x8007000000000000;    // Memory pointer to ARRAY of string
         const ulong TAG_ARR_DOUBLE     = 0x0005000000000000;    // Memory pointer to ARRAY of double
 
-        const ulong TAG_NAR            = 0x0000000000000000;    // NoValue - specifically not-a-value / not-a-result. Holds general runtime flags.
-
-        const ulong TAG_PTR_SET_STR    = 0x0001000000000000;    // Memory pointer to SET of string header
-        const ulong TAG_PTR_SET_INT32  = 0x0002000000000000;    // Memory pointer to SET of 32 signed integer
-
-        const ulong TAG_PTR_LINKLIST   = 0x0003000000000000;    // Memory pointer to double-linked list node
-
-        const ulong TAG_PTR_DEBUG      = 0x0004000000000000;    // Memory pointer to Diagnostic string
-
-                                                                // I'm not sure these two are actually required.
-        const ulong TAG_INT32_VAL      = 0x0006000000000000;    // Signed 32 bit integer / single boolean
-        const ulong TAG_UINT32_VAL     = 0x0007000000000000;    // Unsigned integer 32
 
         /// <summary>
         /// Read tagged type
@@ -81,6 +78,44 @@ namespace EvieCompilerSystem.InputOutput
                 if ((bits & NAN_FLAG) != NAN_FLAG) return DataType.Number;
                 var tag = (bits & UPPER_FOUR) >> 32;
                 return (DataType)tag;
+            }
+        }
+
+        
+        /// <summary>
+        /// Returns true if this token is a pointer to allocated data.
+        /// Returns false if this token is a direct value
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsAllocated(double token)
+        {
+            // Nice-to-have -- check a specific bit pattern rather than having another switch table
+            var type = TypeOf(token);
+            switch (type){
+                case DataType.Invalid:
+                case DataType.Number:
+                case DataType.NoValue:
+                case DataType.VariableRef:
+                case DataType.Opcode:
+                case DataType.ValInt32:
+                case DataType.ValUInt32:
+                    return false;
+
+                case DataType.PtrString:
+                case DataType.PtrHashtable:
+                case DataType.PtrGrid:
+                case DataType.PtrArray_Int32:
+                case DataType.PtrArray_UInt32:
+                case DataType.PtrArray_String:
+                case DataType.PtrArray_Double:
+                case DataType.PtrSet_String:
+                case DataType.PtrSet_Int32:
+                case DataType.PtrLinkedList:
+                case DataType.PtrDiagnosticString:
+                    return true;
+
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
@@ -403,6 +438,40 @@ namespace EvieCompilerSystem.InputOutput
         public static unsafe ulong DecodeRaw(double d)
         {
             return *(ulong*)&d;
+        }
+
+        /// <summary>
+        /// Diagnostic description of a token
+        /// </summary>
+        public static string Describe(double token)
+        {
+            var type = TypeOf(token);
+            switch (type){
+                case DataType.NoValue: return "Non value";
+                case DataType.Opcode: return "Opcode";
+                case DataType.VariableRef:  return "VariableNameRef ["+DecodeVariableRef(token)+"]";
+
+                case DataType.PtrString: return "Pointer: String ["+DecodePointer(token)+"]"; 
+                case DataType.PtrDiagnosticString: return "Pointer: Diag Str ["+DecodePointer(token)+"]"; 
+                case DataType.PtrHashtable: return "Pointer: Hashtable ["+DecodePointer(token)+"]";
+                case DataType.PtrGrid: return "Pointer: Grid ["+DecodePointer(token)+"]";
+                case DataType.PtrLinkedList: return "Pointer: Linked List ["+DecodePointer(token)+"]";
+
+                case DataType.PtrArray_Int32:  return "Pointer: Int32 Array ["+DecodePointer(token)+"]";
+                case DataType.PtrArray_UInt32: return "Pointer: UInt32 Array ["+DecodePointer(token)+"]";
+                case DataType.PtrArray_String: return "Pointer: String Array ["+DecodePointer(token)+"]";
+                case DataType.PtrArray_Double: return "Pointer: Double Array ["+DecodePointer(token)+"]";
+
+                case DataType.PtrSet_String: return "Pointer: String Set ["+DecodePointer(token)+"]";
+                case DataType.PtrSet_Int32: return "Pointer: Int32 Set ["+DecodePointer(token)+"]";
+
+                case DataType.Number: return "Double ["+token+"]";
+                case DataType.ValInt32: return "Int32 ["+DecodeInt32(token)+"]";
+                case DataType.ValUInt32: return "UInt32 [" + DecodeUInt32(token) + "]";
+
+                default:
+                    return "Invalid token";
+            }
         }
     }
 
