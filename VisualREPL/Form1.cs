@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
@@ -95,7 +96,7 @@ namespace VisualREPL
 
                     // Try reformatting
                     var caret = scriptInputBox.SelectionStart;
-                    var updated = AutoFormat.Reformat(scriptInputBox.Text, ref caret);
+                    var updated = AutoFormat.Reformat(scriptInputBox.Text, ref caret, out var scopeStart, out var scopeLength);
 
                     // If failed, change nothing
                     if (updated == null) return;
@@ -104,9 +105,16 @@ namespace VisualREPL
                     var scroll = ControlHelper.GetScrollPos(scriptInputBox);
                     ControlHelper.Suspend(scriptInputBox);
 
-                    // Update text and caret
+                    // Update text and styling
                     scriptInputBox.Text = updated;
-                    scriptInputBox.SelectionStart = caret;
+
+                    try {
+                        scriptInputBox.Select(scopeStart, scopeLength);
+                        scriptInputBox.SelectionBackColor = Color.Cyan;
+                    } catch {/*ignore*/}
+
+                    // Set caret
+                    scriptInputBox.Select(caret, 0);
 
                     // Restore scroll, enable rendering, trigger a refresh
                     ControlHelper.SetScrollPos(scriptInputBox, scroll);

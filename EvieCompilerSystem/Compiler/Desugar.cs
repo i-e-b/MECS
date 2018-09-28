@@ -46,13 +46,14 @@ namespace EvieCompilerSystem.Compiler
             // The entire lot then gets wrapped in a function def and immediately called
             var newFuncName = SugarName(funcName);
 
-            var defineBlock = new Node(false, -1) { Text = "def" };
-            defineBlock.Children.AddLast(new Node(true, -1) { Text = newFuncName }); // name, empty param list
+            var wrapper = new Node(false, -1, null);
+            var defineBlock = new Node(false, -1, wrapper) { Text = "def" };
+
+            defineBlock.Children.AddLast(new Node(true, -1, defineBlock) { Text = newFuncName }); // name, empty param list
             defineBlock.Children.AddLast(sourceNode); // modified pick block
 
-            var wrapper = new Node(false, -1);
             wrapper.Children.AddFirst(defineBlock); // function def
-            wrapper.Children.AddLast(new Node(false, -1){ Text = newFuncName  }); // call the function
+            wrapper.Children.AddLast(new Node(false, -1, wrapper){ Text = newFuncName  }); // call the function
 
             return wrapper;
         }
@@ -65,7 +66,7 @@ namespace EvieCompilerSystem.Compiler
 
         private static Node MakeReturnNode()
         {
-            return new Node(false, -1) { Text = "return" };
+            return new Node(false, -1, null) { Text = "return" };
         }
     }
 }

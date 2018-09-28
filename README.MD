@@ -59,6 +59,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
 * [ ] Iterators/Generators?
+* [ ] Replace scope with registers and spill?
 
 ### Data types
 
