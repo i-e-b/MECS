@@ -81,7 +81,12 @@ namespace EvieCompilerSystem.Compiler
             return builder.ToString();
         }
 
-        
+        public override string ToString()
+        {
+            var ccount = _children == null ? "0" : _children.Count.ToString();
+            return $"[{SourceLocation}, {NodeType}]{Text} ({ccount} children)";
+        }
+
         /// <summary>
         /// Render the node tree with a specific starting indent, as close to original input as possible
         /// </summary>

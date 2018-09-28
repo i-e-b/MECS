@@ -40,6 +40,7 @@
             this.saveFileButton = new System.Windows.Forms.Button();
             this.traceCheckbox = new System.Windows.Forms.CheckBox();
             this.showBytecodeCheck = new System.Windows.Forms.CheckBox();
+            this.memTraceCheckBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -180,11 +181,23 @@
             this.showBytecodeCheck.Text = "Show bytecode";
             this.showBytecodeCheck.UseVisualStyleBackColor = true;
             // 
+            // memTraceCheckBox
+            // 
+            this.memTraceCheckBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.memTraceCheckBox.AutoSize = true;
+            this.memTraceCheckBox.Location = new System.Drawing.Point(138, 421);
+            this.memTraceCheckBox.Name = "memTraceCheckBox";
+            this.memTraceCheckBox.Size = new System.Drawing.Size(90, 17);
+            this.memTraceCheckBox.TabIndex = 10;
+            this.memTraceCheckBox.Text = "Memory trace";
+            this.memTraceCheckBox.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.memTraceCheckBox);
             this.Controls.Add(this.showBytecodeCheck);
             this.Controls.Add(this.traceCheckbox);
             this.Controls.Add(this.saveFileButton);
@@ -219,6 +232,7 @@
         private System.Windows.Forms.Button saveFileButton;
         private System.Windows.Forms.CheckBox traceCheckbox;
         private System.Windows.Forms.CheckBox showBytecodeCheck;
+        private System.Windows.Forms.CheckBox memTraceCheckBox;
     }
 }
 

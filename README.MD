@@ -35,6 +35,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Handle malformed source code correctly
 
 * [ ] Try optimised 'top n' references in Scope?
+* [ ] Short-string stack value to reduce GC gunk
 * [ ] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
 * [ ] Single step in repl gui
@@ -46,7 +47,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] String builder in memory model
 * [ ] Move value definitions into memory
 
-* [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity)
+* [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
 * [ ] String interning / deduplication (runtime)
 
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)

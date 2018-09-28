@@ -38,6 +38,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="InputOutput\AutoFormat.cs" />
+    <Compile Include="InputOutput\DataType.cs" />
+    <Compile Include="InputOutput\NonValueType.cs" />
     <Compile Include="Runtime\HashTable.cs" />
     <Compile Include="Runtime\RuntimeMemoryModel.cs" />
     <Compile Include="InputOutput\NanCodeWriter.cs" />

@@ -55,19 +55,11 @@ namespace EvieCompilerSystem
 
             // Execute
             var sw = new Stopwatch();
+            var interpreter = new ByteCodeInterpreter();
             try
             {
-                var interpreter = new ByteCodeInterpreter();
-
                 // Init the interpreter.
                 interpreter.Init(memoryModel, input, output, debugSymbols: compiledOutput.GetSymbols());
-
-                /* TODO later: ability to pass in args
-                foreach (var pair in argsVariables.ToArray())
-                {
-                    interpreter.Variables.SetValue(pair.Key, pair.Value);
-                }
-                */
 
                 sw.Start();
                 interpreter.Execute(false, trace);
@@ -85,6 +77,7 @@ namespace EvieCompilerSystem
             }
             catch (Exception e)
             {
+                output.WriteLine("Interpreter stopped at "+interpreter.LastPosition());
                 output.WriteLine("Exception : " + e.Message);
                 output.WriteLine("\r\n\r\n" + e.StackTrace);
                 sw.Stop();

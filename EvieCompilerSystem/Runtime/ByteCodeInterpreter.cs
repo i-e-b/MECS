@@ -27,6 +27,7 @@ namespace EvieCompilerSystem.Runtime
         private TextWriter _output;
         private RuntimeMemoryModel _memory;
         private bool runningVerbose;
+        private int position = 0; // the PC. This is in TOKEN positions, not bytes
 
         public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, HashTable<string> debugSymbols = null)
         {
@@ -40,6 +41,13 @@ namespace EvieCompilerSystem.Runtime
 
             _input  = input;
             _output = output;
+        }
+
+        /// <summary>
+        /// Last interpreter position
+        /// </summary>
+        public int LastPosition() {
+            return position;
         }
 
         /// <summary>
@@ -88,7 +96,6 @@ namespace EvieCompilerSystem.Runtime
 		    var valueStack = new Stack<double>();
             var returnStack = new Stack<int>(); // absolute position for call and return
 		    
-            int position = 0; // the PC. This is in TOKEN positions, not bytes
 		    int programCount = program.Count;
 		    
 		    while (position < programCount)
@@ -438,7 +445,7 @@ namespace EvieCompilerSystem.Runtime
                     var programTmp = reader.Read(statements, false);
                     var bin = ToNanCodeCompiler.CompileRoot(programTmp, false);
                     var interpreter = new ByteCodeInterpreter();
-                    interpreter.Init(new RuntimeMemoryModel(bin), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
+                    interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
                     return interpreter.Execute(false, runningVerbose);
 
                 case FuncDef.Call:
@@ -589,6 +596,8 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.Invalid:
                 case DataType.NoValue:
                 case DataType.Opcode:
+                case DataType.UNUSED_1:
+                case DataType.UNUSED_2:
                     return false;
 
                 // Numeric types
@@ -620,8 +629,6 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.VariableRef:
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_Int32:
-                case DataType.PtrArray_UInt32:
                 case DataType.PtrArray_String:
                 case DataType.PtrArray_Double:
                 case DataType.PtrSet_String:

@@ -3,67 +3,35 @@ using System.Runtime.CompilerServices;
 
 namespace EvieCompilerSystem.InputOutput
 {
-    public enum NonValueType
-    {
-        /// <summary>Nothing returned</summary>
-        Void = 0,
-
-        /// <summary>No result, but as part of a return</summary>
-        Unit = 1
-    }
-
-    public enum DataType : uint
-    {
-        Invalid               = 1,
-        Number                = 2,
-
-        NoValue               = 0x00000000,
-        VariableRef           = 0x80000000,
-        Opcode                = 0x80010000,
-        PtrString             = 0x80020000,
-        PtrHashtable          = 0x80030000,
-        PtrGrid               = 0x80040000,
-        PtrArray_Int32        = 0x80050000,
-        PtrArray_UInt32       = 0x80060000,
-        PtrArray_String       = 0x80070000,
-        PtrArray_Double       = 0x00050000,
-        PtrSet_String         = 0x00010000,
-        PtrSet_Int32          = 0x00020000,
-        PtrLinkedList         = 0x00030000,
-        PtrDiagnosticString   = 0x00040000,
-        ValInt32              = 0x00060000,
-        ValUInt32             = 0x00070000
-    }
-
     public static class NanTags
     {
-        const ulong NAN_FLAG = 0x7FF8000000000000;      // Bits to make a quiet NaN
-        //const ulong ALL_DATA = 0x8007FFFFFFFFFFFF;      // 51 bits (all non NaN flags)
+        const ulong NAN_FLAG   = 0x7FF8000000000000;      // Bits to make a quiet NaN
         const ulong UPPER_FOUR = 0x8007000000000000;    // mask for top 4 available bits
-        const ulong LOWER_32 = 0x00000000FFFFFFFF;      // low 32 bits
-        const ulong LOWER_48 = 0x0000FFFFFFFFFFFF;      // 48 bits for pointers, all non TAG data
+        const ulong LOWER_32   = 0x00000000FFFFFFFF;      // low 32 bits
+        const ulong LOWER_48   = 0x0000FFFFFFFFFFFF;      // 48 bits for pointers, all non TAG data
 
-        // Mask with "UPPER_FOUR" then check against these:    // Possible assignments:
-        const ulong TAG_NAR            = 0x0000000000000000;    // NoValue - specifically not-a-value / not-a-result. Holds general runtime flags.
+        // Mask with "UPPER_FOUR" then check against these:
+        const ulong TAG_NAR            = 0;
 
-        const ulong TAG_PTR_SET_STR    = 0x0001000000000000;    // Memory pointer to SET of string header
-        const ulong TAG_PTR_SET_INT32  = 0x0002000000000000;    // Memory pointer to SET of 32 signed integer
-        const ulong TAG_PTR_LINKLIST   = 0x0003000000000000;    // Memory pointer to double-linked list node
-        const ulong TAG_PTR_DEBUG      = 0x0004000000000000;    // Memory pointer to Diagnostic string
-        const ulong TAG_INT32_VAL      = 0x0006000000000000;    // Signed 32 bit integer / single boolean
-        const ulong TAG_UINT32_VAL     = 0x0007000000000000;    // Unsigned integer 32
+        const ulong TAG_PTR_SET_STR    = (ulong)DataType.PtrSet_String << 32;
+        const ulong TAG_PTR_SET_INT32  = (ulong)DataType.PtrSet_Int32 << 32;
+        const ulong TAG_PTR_LINKLIST   = (ulong)DataType.PtrLinkedList << 32;
+        const ulong TAG_PTR_DEBUG      = (ulong)DataType.PtrDiagnosticString << 32;
+        const ulong TAG_INT32_VAL      = (ulong)DataType.ValInt32 << 32;
+        const ulong TAG_UINT32_VAL     = (ulong)DataType.ValUInt32 << 32;
 
-        const ulong TAG_VAR_REF        = 0x8000000000000000;    // Variable ref (32 bit hash)
-        const ulong TAG_OPCODE         = 0x8001000000000000;    // Opcode (3 x 16bit: code, first param, second param)
+        const ulong TAG_VAR_REF        = (ulong)DataType.VariableRef << 32;
+        const ulong TAG_OPCODE         = (ulong)DataType.Opcode << 32;
 
-        const ulong TAG_PTR_STR        = 0x8002000000000000;    // Memory pointer to STRING header
-        const ulong TAG_PTR_TABLE      = 0x8003000000000000;    // Memory pointer to HASHTABLE
-        const ulong TAG_PTR_GRID       = 0x8004000000000000;    // Memory pointer to GRID (hash table keyed by ints) -- maybe this can be inferred from usage?
+        const ulong TAG_PTR_STR        = (ulong)DataType.PtrString << 32;
+        const ulong TAG_PTR_TABLE      = (ulong)DataType.PtrHashtable << 32;
+        const ulong TAG_PTR_GRID       = (ulong)DataType.PtrGrid << 32;
 
-        const ulong TAG_PTR_ARR_INT32  = 0x8005000000000000;    // Memory pointer to ARRAY of int32
-        const ulong TAG_PTR_ARR_UINT32 = 0x8006000000000000;    // Memory pointer to ARRAY of uint32
-        const ulong TAG_ARR_STR        = 0x8007000000000000;    // Memory pointer to ARRAY of string
-        const ulong TAG_ARR_DOUBLE     = 0x0005000000000000;    // Memory pointer to ARRAY of double
+        const ulong TAG_ARR_STR        = (ulong)DataType.PtrArray_String << 32;
+        // TODO: Maybe replace with general pointer-to-value-array
+        const ulong TAG_UNUSED_2  = (ulong)DataType.UNUSED_2 << 32;
+        const ulong TAG_UNUSED_1 = (ulong)DataType.UNUSED_1 << 32;
+        const ulong TAG_ARR_DOUBLE     = (ulong)DataType.PtrArray_Double << 32;
 
 
         /// <summary>
@@ -72,16 +40,13 @@ namespace EvieCompilerSystem.InputOutput
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe DataType TypeOf(double unknown)
         {
-            unchecked
-            {
-                var bits = *(ulong*) &unknown;
-                if ((bits & NAN_FLAG) != NAN_FLAG) return DataType.Number;
-                var tag = (bits & UPPER_FOUR) >> 32;
-                return (DataType)tag;
-            }
+            var bits = *(ulong*)&unknown;
+            if ((bits & NAN_FLAG) != NAN_FLAG) return DataType.Number;
+            var tag = (bits & UPPER_FOUR) >> 32;
+            return (DataType)tag;
         }
 
-        
+
         /// <summary>
         /// Returns true if this token is a pointer to allocated data.
         /// Returns false if this token is a direct value
@@ -99,13 +64,14 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.Opcode:
                 case DataType.ValInt32:
                 case DataType.ValUInt32:
+
+                case DataType.UNUSED_2:
+                case DataType.UNUSED_1:
                     return false;
 
                 case DataType.PtrString:
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_Int32:
-                case DataType.PtrArray_UInt32:
                 case DataType.PtrArray_String:
                 case DataType.PtrArray_Double:
                 case DataType.PtrSet_String:
@@ -126,22 +92,25 @@ namespace EvieCompilerSystem.InputOutput
         {
             switch (type)
             {
+                case DataType.NoValue: return TAG_NAR;
                 case DataType.VariableRef: return TAG_VAR_REF;
                 case DataType.Opcode: return TAG_OPCODE;
+
                 case DataType.PtrString: return TAG_PTR_STR;
                 case DataType.PtrHashtable: return TAG_PTR_TABLE;
                 case DataType.PtrGrid: return TAG_PTR_GRID;
-                case DataType.PtrArray_Int32: return TAG_PTR_ARR_INT32;
-                case DataType.PtrArray_UInt32: return TAG_PTR_ARR_UINT32;
                 case DataType.PtrArray_String: return TAG_ARR_STR;
                 case DataType.PtrArray_Double: return TAG_ARR_DOUBLE;
                 case DataType.PtrSet_String: return TAG_PTR_SET_STR;
                 case DataType.PtrSet_Int32: return TAG_PTR_SET_INT32;
                 case DataType.PtrLinkedList: return TAG_PTR_LINKLIST;
                 case DataType.PtrDiagnosticString: return TAG_PTR_DEBUG;
-                case DataType.NoValue: return TAG_NAR;
+
                 case DataType.ValInt32: return TAG_INT32_VAL;
                 case DataType.ValUInt32: return TAG_UINT32_VAL;
+
+                case DataType.UNUSED_1: return TAG_UNUSED_1;
+                case DataType.UNUSED_2: return TAG_UNUSED_2;
 
                 default:
                     throw new Exception("Invalid data type");
@@ -457,8 +426,6 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.PtrGrid: return "Pointer: Grid ["+DecodePointer(token)+"]";
                 case DataType.PtrLinkedList: return "Pointer: Linked List ["+DecodePointer(token)+"]";
 
-                case DataType.PtrArray_Int32:  return "Pointer: Int32 Array ["+DecodePointer(token)+"]";
-                case DataType.PtrArray_UInt32: return "Pointer: UInt32 Array ["+DecodePointer(token)+"]";
                 case DataType.PtrArray_String: return "Pointer: String Array ["+DecodePointer(token)+"]";
                 case DataType.PtrArray_Double: return "Pointer: Double Array ["+DecodePointer(token)+"]";
 
@@ -468,6 +435,9 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.Number: return "Double ["+token+"]";
                 case DataType.ValInt32: return "Int32 ["+DecodeInt32(token)+"]";
                 case DataType.ValUInt32: return "UInt32 [" + DecodeUInt32(token) + "]";
+
+                case DataType.UNUSED_1: return "UNUSED TOKEN";
+                case DataType.UNUSED_2:  return "UNUSED TOKEN";
 
                 default:
                     return "Invalid token";

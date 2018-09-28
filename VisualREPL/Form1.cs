@@ -30,7 +30,7 @@ namespace VisualREPL
                 SetStatus("Running");
                 sw.Start();
                 var coreTime = Repl.BuildAndRun(text, streamIn, streamOut,
-                    traceCheckbox.Checked, showBytecodeCheck.Checked, traceMemory: true); // TODO: checkbox for this
+                    traceCheckbox.Checked, showBytecodeCheck.Checked, memTraceCheckBox.Checked);
                 sw.Stop();
                 SetStatus("Complete: " + sw.Elapsed + " (execution: " + coreTime + ")");
                 } catch (Exception ex) {

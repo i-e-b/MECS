@@ -38,6 +38,24 @@ namespace EvieCompilerSystem.Runtime
             scopes = new LinkedList<HashTable<double>>();
             scopes.AddLast(new HashTable<double>()); // global scope
         }
+        
+        /// <summary>
+        /// Create a new value scope, copying references from a parent scope
+        /// </summary>
+        public Scope(Scope parentScope)
+        {
+            PotentialGarbage = new HashSet<double>();
+            scopes = new LinkedList<HashTable<double>>();
+
+            var global = new HashTable<double>();
+
+            foreach (var pair in parentScope.ListAllVisible())
+            {
+                global.Add(pair); // all parent refs become globals, regardless of original hierarchy
+            }
+
+            scopes.AddLast(global);
+        }
 
         /// <summary>
         /// List all values in the scope

@@ -17,9 +17,9 @@ namespace EvieCompilerSystem.Runtime
 
         private readonly List<double> encodedTokens;
 
-        public RuntimeMemoryModel(NanCodeWriter writer)
+        public RuntimeMemoryModel(NanCodeWriter writer, Scope parentScope)
         {
-            Variables = new Scope();
+            Variables = new Scope(parentScope);
             var ms = new MemoryStream((int)writer.OpCodeCount() * 16);
             writer.WriteToStream(ms);
             ms.Seek(0, SeekOrigin.Begin);
@@ -93,7 +93,7 @@ namespace EvieCompilerSystem.Runtime
         private string MakeSafe(string raw)
         {
             return string.Join("", raw.ToCharArray().Select(c => 
-                (c >= ' ' && c <= '~') ? c : '▒'
+                (c >= ' ' && c <= '~') ? c : '\u001F'
                 ));
         }
 
@@ -107,6 +107,10 @@ namespace EvieCompilerSystem.Runtime
             switch (type){
                 case DataType.Invalid: return "";
                 case DataType.NoValue: return "";
+
+                case DataType.UNUSED_1:
+                case DataType.UNUSED_2:
+                    return "UNUSED TOKEN";
 
                 case DataType.VariableRef:
                     var rref = NanTags.DecodeVariableRef(token);
@@ -137,8 +141,6 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.PtrString:
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_Int32:
-                case DataType.PtrArray_UInt32:
                 case DataType.PtrArray_String:
                 case DataType.PtrArray_Double:
                 case DataType.PtrSet_String:
@@ -201,6 +203,12 @@ namespace EvieCompilerSystem.Runtime
                         if (string.Equals(strVal, "0", StringComparison.OrdinalIgnoreCase)) return false;
                         return true;
                     }
+                    
+                case DataType.VariableRef:
+                    // Follow scope
+                    var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+                    return CastBoolean(next);
+
 
                 // All the things that can't be meaningfully cast are 'false'
                 default: return false;
@@ -220,6 +228,11 @@ namespace EvieCompilerSystem.Runtime
 
                 case DataType.ValUInt32:
                     return NanTags.DecodeUInt32(encoded);
+                    
+                case DataType.VariableRef:
+                    // Follow scope
+                    var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+                    return CastDouble(next);
 
                 // TODO: parse strings?
                 // All the things that can't be meaningfully cast
@@ -237,9 +250,17 @@ namespace EvieCompilerSystem.Runtime
             switch (type){
                 case DataType.Invalid: return "<invalid value>";
                 case DataType.Number: return encoded.ToString(CultureInfo.InvariantCulture);
-                case DataType.VariableRef: return "<Reference>";
                 case DataType.Opcode: return "<Op Code>";
                 case DataType.NoValue: return "";
+
+                case DataType.VariableRef:
+                    // Follow scope
+                    var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+                    return CastString(next);
+
+                case DataType.UNUSED_1:
+                case DataType.UNUSED_2:
+                    return "<unused token>";
 
                 case DataType.PtrDiagnosticString:
                 case DataType.PtrString:
@@ -248,8 +269,6 @@ namespace EvieCompilerSystem.Runtime
 
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_Int32:
-                case DataType.PtrArray_UInt32:
                 case DataType.PtrArray_String:
                 case DataType.PtrArray_Double:
                 case DataType.PtrSet_String:
@@ -275,6 +294,8 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.Invalid:
                 case DataType.Opcode:
                 case DataType.NoValue:
+                case DataType.UNUSED_1:
+                case DataType.UNUSED_2:
                     return 0;
 
                 case DataType.VariableRef:
@@ -290,8 +311,6 @@ namespace EvieCompilerSystem.Runtime
 
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_Int32:
-                case DataType.PtrArray_UInt32:
                 case DataType.PtrArray_String:
                 case DataType.PtrArray_Double:
                 case DataType.PtrSet_String:

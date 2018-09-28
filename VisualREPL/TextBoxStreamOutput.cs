@@ -13,7 +13,7 @@ namespace VisualREPL
 
         public TextBoxStreamOutput(TextBox consoleTextBox)
         {
-            _cache = new CircularString(4096);
+            _cache = new CircularString(16000);
             _dirty = false;
             _consoleTextBox = consoleTextBox;
 
