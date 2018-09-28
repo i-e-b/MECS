@@ -61,17 +61,19 @@ namespace EvieCompilerSystem.Runtime
                     sb.AppendLine("Data table: "+count+" tokens ("+(count*8)+" bytes)");
                     while (index < count)
                     {
-                        var length = NanTags.DecodeUInt32(encodedTokens[index++]);
+                        var length = NanTags.DecodeUInt32(encodedTokens[index]);
                         var chunkCount = (int)Math.Ceiling(length / 8.0d);
-                        sb.Append(index + ": ("+length+") ");
+                        sb.Append("    " + index + ": ("+length+") [");
 
+                        index++;
                         for (var ch = 0; ch < chunkCount; ch++)
                         {
                             var raw = BitConverter.GetBytes(encodedTokens[index++]);
                             sb.Append(MakeSafe(Encoding.ASCII.GetString(raw)));
                         }
-                        sb.AppendLine();
+                        sb.AppendLine("]");
                     }
+                    sb.AppendLine("End of data table");
                 }
             }
 
@@ -90,6 +92,9 @@ namespace EvieCompilerSystem.Runtime
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Reduce a .Net string to ASCII
+        /// </summary>
         private string MakeSafe(string raw)
         {
             return string.Join("", raw.ToCharArray().Select(c => 
@@ -109,7 +114,6 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.NoValue: return "";
 
                 case DataType.UNUSED_1:
-                case DataType.UNUSED_2:
                     return "UNUSED TOKEN";
 
                 case DataType.VariableRef:
@@ -137,6 +141,9 @@ namespace EvieCompilerSystem.Runtime
                     }
                     NanTags.DecodeOpCode(token, out _, out _, out var p1, out var p2);
                     return ccls+""+cact+" ("+p1+", "+p2+")";
+
+                case DataType.ValSmallString:
+                    return "["+NanTags.DecodeShortStr(token)+"]";
 
                 case DataType.PtrString:
                 case DataType.PtrHashtable:
@@ -180,6 +187,9 @@ namespace EvieCompilerSystem.Runtime
             return Encoding.ASCII.GetString(rawBytes, 0, (int)length);
         }
         
+        /// <summary>
+        /// Interpret or cast value as a boolean
+        /// </summary>
         public bool CastBoolean(double encoded)
         {
             var type = NanTags.TypeOf(encoded);
@@ -194,16 +204,19 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.ValUInt32:
                     return NanTags.DecodeUInt32(encoded) != 0;
 
+                case DataType.ValSmallString:
+                    {
+                        var strVal = NanTags.DecodeShortStr(encoded);
+                        return StringTruthyness(strVal);
+                    }
+
                 case DataType.PtrString:
-                    { // null, empty, "false" or "0" are false. All other strings are true.
+                    {
                         NanTags.DecodePointer(encoded, out var ptr, out _);
                         var strVal = DereferenceString(ptr);
-                        if (string.IsNullOrEmpty(strVal)) return false;
-                        if (string.Equals(strVal, "false", StringComparison.OrdinalIgnoreCase)) return false;
-                        if (string.Equals(strVal, "0", StringComparison.OrdinalIgnoreCase)) return false;
-                        return true;
+                        return StringTruthyness(strVal);
                     }
-                    
+
                 case DataType.VariableRef:
                     // Follow scope
                     var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
@@ -215,10 +228,24 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
+        /// <summary>
+        /// null, empty, "false" or "0" are false. All other strings are true.
+        /// </summary>
+        private static bool StringTruthyness(string strVal)
+        {
+            if (string.IsNullOrEmpty(strVal)) return false;
+            if (string.Equals(strVal, "false", StringComparison.OrdinalIgnoreCase)) return false;
+            if (string.Equals(strVal, "0", StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Interpret, or cast value as double
+        /// </summary>
         public double CastDouble(double encoded)
         {
             var type = NanTags.TypeOf(encoded);
-
+            double result;
             switch (type) {
                 case DataType.Number:
                     return encoded;
@@ -233,10 +260,19 @@ namespace EvieCompilerSystem.Runtime
                     // Follow scope
                     var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
                     return CastDouble(next);
+                    
+                case DataType.ValSmallString:
+                    double.TryParse(NanTags.DecodeShortStr(encoded), out result);
+                    return result;
 
-                // TODO: parse strings?
+                case DataType.PtrDiagnosticString:
+                case DataType.PtrString:
+                    NanTags.DecodePointer(encoded, out var target, out _);
+                    double.TryParse(DereferenceString(target), out result);
+                    return result;
+
                 // All the things that can't be meaningfully cast
-                default: return double.NaN;
+                default: return 0.0d;
             }
         }
 
@@ -259,8 +295,10 @@ namespace EvieCompilerSystem.Runtime
                     return CastString(next);
 
                 case DataType.UNUSED_1:
-                case DataType.UNUSED_2:
                     return "<unused token>";
+
+                case DataType.ValSmallString:
+                    return NanTags.DecodeShortStr(encoded);
 
                 case DataType.PtrDiagnosticString:
                 case DataType.PtrString:
@@ -289,13 +327,13 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public int CastInt(double encoded)
         {
+            int result;
             var type = NanTags.TypeOf(encoded);
             switch (type){
                 case DataType.Invalid:
                 case DataType.Opcode:
                 case DataType.NoValue:
                 case DataType.UNUSED_1:
-                case DataType.UNUSED_2:
                     return 0;
 
                 case DataType.VariableRef:
@@ -303,10 +341,14 @@ namespace EvieCompilerSystem.Runtime
                     var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
                     return CastInt(next);
 
+                case DataType.ValSmallString:
+                    int.TryParse(NanTags.DecodeShortStr(encoded), out result);
+                    return result;
+
                 case DataType.PtrDiagnosticString:
                 case DataType.PtrString:
                     NanTags.DecodePointer(encoded, out var target, out _);
-                    int.TryParse(DereferenceString(target), out var result);
+                    int.TryParse(DereferenceString(target), out result);
                     return result;
 
                 case DataType.PtrHashtable:
@@ -332,6 +374,12 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public double StoreStringAndGetReference(string str)
         {
+            // short strings are stack/scope values
+            if (str.Length <= 6) {
+                return NanTags.EncodeShortStr(str);
+            }
+
+            // Longer strings need to be allocated
             var location = encodedTokens.Count;
 
             var bytes = Encoding.ASCII.GetBytes(str);

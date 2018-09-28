@@ -22,15 +22,16 @@ namespace EvieCompilerSystem.Runtime
         public static HashTable<string> DebugSymbols;
         public static Random rnd = new Random();
        
-        private int stepsTaken;
+        private int _stepsTaken;
         private TextReader _input;
         private TextWriter _output;
         private RuntimeMemoryModel _memory;
-        private bool runningVerbose;
-        private int position = 0; // the PC. This is in TOKEN positions, not bytes
+        private bool _runningVerbose;
+        private int _position; // the PC. This is in TOKEN positions, not bytes
 
         public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, HashTable<string> debugSymbols = null)
         {
+            _position = 0;
             _memory = bin;
 
             Functions = BuiltInFunctionSymbols();
@@ -47,7 +48,7 @@ namespace EvieCompilerSystem.Runtime
         /// Last interpreter position
         /// </summary>
         public int LastPosition() {
-            return position;
+            return _position;
         }
 
         /// <summary>
@@ -89,7 +90,7 @@ namespace EvieCompilerSystem.Runtime
         public double Execute(bool resetVars, bool verbose)
         {
 		    double evalResult;
-            runningVerbose = verbose;
+            _runningVerbose = verbose;
 
             if (resetVars) { _memory.Variables.Clear(); }
 
@@ -98,38 +99,38 @@ namespace EvieCompilerSystem.Runtime
 		    
 		    int programCount = program.Count;
 		    
-		    while (position < programCount)
+		    while (_position < programCount)
             {
-			    stepsTaken++;
+			    _stepsTaken++;
                 //if (stepsTaken > 1000) throw new Exception("trap");
                 // TODO: add a hook for a step event here?
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
-			    if ((stepsTaken & 127) == 0 && valueStack.Count > 100) // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
+			    if ((_stepsTaken & 127) == 0 && valueStack.Count > 100) // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
                 {
                     var oldValues = valueStack.ToArray();
                     valueStack = new Stack<double>(oldValues.Skip(oldValues.Length - 100));
                 }
 
-                double word = program[position];
+                double word = program[_position];
 
                 if (verbose)
                 {
                     _output.WriteLine("          stack :"+string.Join(", ",valueStack.ToArray().Select(t=> _memory.DiagnosticString(t, DebugSymbols))));
-                    _output.WriteLine("          #" + stepsTaken + "; p="+position
+                    _output.WriteLine("          #" + _stepsTaken + "; p="+_position
                                       +"; w="+_memory.DiagnosticString(word, DebugSymbols) );
                 }
 
                 var type = NanTags.TypeOf(word);
                 switch (type) {
                     case DataType.Invalid:
-                        throw new Exception("Unknown code point at " + position);
+                        throw new Exception("Unknown code point at " + _position);
 
                     case DataType.Opcode:
                         // decode opcode and do stuff
                         NanTags.DecodeOpCode(word, out var codeClass, out var codeAction, out var p1, out var p2);
-                        ProcessOpCode(codeClass, codeAction, p1, p2, ref position, valueStack, returnStack, word);
+                        ProcessOpCode(codeClass, codeAction, p1, p2, ref _position, valueStack, returnStack, word);
                         break;
 
                     default:
@@ -138,7 +139,7 @@ namespace EvieCompilerSystem.Runtime
                 }
 
                 
-                position++;
+                _position++;
 		    }
 
 		    if (valueStack.Count != 0)
@@ -446,7 +447,7 @@ namespace EvieCompilerSystem.Runtime
                     var bin = ToNanCodeCompiler.CompileRoot(programTmp, false);
                     var interpreter = new ByteCodeInterpreter();
                     interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
-                    return interpreter.Execute(false, runningVerbose);
+                    return interpreter.Execute(false, _runningVerbose);
 
                 case FuncDef.Call:
                     NanTags.DecodePointer(param.ElementAt(0), out var target, out var type);
@@ -597,7 +598,6 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.NoValue:
                 case DataType.Opcode:
                 case DataType.UNUSED_1:
-                case DataType.UNUSED_2:
                     return false;
 
                 // Numeric types
@@ -614,6 +614,7 @@ namespace EvieCompilerSystem.Runtime
                     }
 
                 // String types
+                case DataType.ValSmallString:
                 case DataType.PtrDiagnosticString:
                 case DataType.PtrString:
                     {
