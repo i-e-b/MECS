@@ -6,6 +6,10 @@
         /// Not a valid token
         /// </summary>
         Invalid               = 1,
+
+
+        // Value-in-token
+
         
         /// <summary>
         /// Token represents a double value
@@ -28,6 +32,34 @@
         Opcode                = 0x80010000,
 
         /// <summary>
+        /// Signed 32 bit integer / single boolean
+        /// </summary>
+        ValInt32              = 0x00060000,
+
+        /// <summary>
+        /// Unsigned integer 32
+        /// </summary>
+        ValUInt32             = 0x00070000,
+
+        /// <summary>
+        /// ...
+        /// </summary>
+        UNUSED_2        = 0x80050000,
+
+        /// <summary>
+        /// ...
+        /// </summary>
+        UNUSED_1       = 0x80060000,
+
+        /// <summary>
+        /// Memory pointer to Diagnostic string (note: this type could be abandoned and replaced with a seperate symbols file)
+        /// </summary>
+        PtrDiagnosticString   = 0x00040000,
+
+        // Allocated:
+
+
+        /// <summary>
         /// Memory pointer to STRING header
         /// </summary>
         PtrString             = 0x80020000,
@@ -41,16 +73,6 @@
         /// Memory pointer to GRID (hash table keyed by ints) -- maybe this can be inferred from usage?
         /// </summary>
         PtrGrid               = 0x80040000,
-
-        /// <summary>
-        /// ...
-        /// </summary>
-        UNUSED_2        = 0x80050000,
-
-        /// <summary>
-        /// ...
-        /// </summary>
-        UNUSED_1       = 0x80060000,
 
         /// <summary>
         /// Memory pointer to ARRAY of string
@@ -76,20 +98,5 @@
         /// Memory pointer to double-linked list node
         /// </summary>
         PtrLinkedList         = 0x00030000,
-
-        /// <summary>
-        /// Memory pointer to Diagnostic string (note: this type could be abandoned and replaced with a seperate symbols file)
-        /// </summary>
-        PtrDiagnosticString   = 0x00040000,
-
-        /// <summary>
-        /// Signed 32 bit integer / single boolean
-        /// </summary>
-        ValInt32              = 0x00060000,
-
-        /// <summary>
-        /// Unsigned integer 32
-        /// </summary>
-        ValUInt32             = 0x00070000
     }
 }

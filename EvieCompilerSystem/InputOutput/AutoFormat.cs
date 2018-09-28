@@ -21,7 +21,8 @@ namespace EvieCompilerSystem.InputOutput
                 var program = sourceCodeReader.Read(input, true);
                 var sb = new StringBuilder();
                 var focus = program.Reformat(0, sb, ref cursorPosition);
-                if (focus != null){
+                if (focus != null && focus != program)
+                {
                     scopeStart = focus.FormattedLocation;
                     scopeLength = focus.FormattedLength;
                 }

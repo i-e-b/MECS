@@ -47,7 +47,7 @@
         /// <summary>
         /// Opening or closing parenthesis
         /// </summary>
-        Paren = -4,
+        ScopeDelimiter = -4,
 
         /// <summary>
         /// String delimiter or similar

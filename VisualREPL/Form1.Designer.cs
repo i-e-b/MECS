@@ -63,6 +63,7 @@
             this.scriptInputBox.Size = new System.Drawing.Size(797, 180);
             this.scriptInputBox.TabIndex = 0;
             this.scriptInputBox.Text = "// Enter your program here";
+            this.scriptInputBox.SelectionChanged += new System.EventHandler(this.scriptInputBox_SelectionChanged);
             this.scriptInputBox.TextChanged += new System.EventHandler(this.scriptInputBox_TextChanged);
             // 
             // consoleTextBox

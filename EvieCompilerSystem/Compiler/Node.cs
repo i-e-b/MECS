@@ -67,13 +67,28 @@ namespace EvieCompilerSystem.Compiler
         /// </summary>
         public int FormattedLength;
 
-        public Node(bool isLeaf, int sourceLoc, Node parent)
+        public Node(bool isLeaf, int sourceLoc)
         {
             NodeType = NodeType.Default;
             IsLeaf = isLeaf;
             IsValid = true;
             SourceLocation = sourceLoc;
-            Parent = parent;
+        }
+
+        /// <summary>
+        /// Add a node to the end of this one's child list
+        /// </summary>
+        public void AddLast(Node n) {
+            n.Parent = this;
+            Children.AddLast(n);
+        }
+        
+        /// <summary>
+        /// Add a node to the start of this one's child list
+        /// </summary>
+        public void AddFirst(Node n) {
+            n.Parent = this;
+            Children.AddFirst(n);
         }
 
         // ReSharper disable once UnusedMember.Global
@@ -143,7 +158,7 @@ namespace EvieCompilerSystem.Compiler
                 if (leadingWhite) {
                     if (node.NodeType == NodeType.Whitespace) continue;
                     leadingWhite = false;
-                    if (node.NodeType == NodeType.Paren) builder.Append(' ', (indent - 1) * 4);
+                    if (node.NodeType == NodeType.ScopeDelimiter) builder.Append(' ', (indent - 1) * 4);
                     else builder.Append(' ', indent * 4);
                 }
                 if (node.NodeType == NodeType.Newline) leadingWhite = true;
@@ -152,40 +167,37 @@ namespace EvieCompilerSystem.Compiler
                 node.ReformatRec(indent + 1, builder, origCaret, ref caret, ref focus);
             }
 
-            //if (leftEdge && caret >= FormattedLocation && caret <= builder.Length) focus = this; // do this as we come out of recursion to get widest scope
-
             FormattedLength = builder.Length - FormattedLocation;
         }
 
         public static Node RootNode()
         {
-            return new Node(false, 0, null) {Text = "", NodeType = NodeType.Root};
+            return new Node(false, 0) {Text = "", NodeType = NodeType.Root};
         }
 
-        public static Node OpenCall(Node parent, int loc)
+        public static Node OpenCall(int loc)
         {
-            return new Node(false, loc, parent)
+            return new Node(false, loc)
             {
                 Text = "()",
                 Unescaped = "(",
-                Parent = parent,
-                NodeType = NodeType.Paren
+                NodeType = NodeType.ScopeDelimiter
             };
         }
 
-        public static Node CloseCall(Node parent, int loc)
+        public static Node CloseCall(int loc)
         {
-            return new Node(true, loc, parent) {Text = ")", NodeType = NodeType.Paren};
+            return new Node(true, loc) {Text = ")", NodeType = NodeType.ScopeDelimiter};
         }
 
-        public static Node Whitespace(Node parent, string s, int loc)
+        public static Node Whitespace(string s, int loc)
         {
-            return new Node(true, loc, parent) {Text = s, NodeType = NodeType.Whitespace};
+            return new Node(true, loc) {Text = s, NodeType = NodeType.Whitespace};
         }
 
-        public static Node Delimiter(Node parent, char c, int loc)
+        public static Node Delimiter(char c, int loc)
         {
-            return new Node(true, loc, parent)
+            return new Node(true, loc)
             {
                 Text = c.ToString(),
                 NodeType = NodeType.Delimiter

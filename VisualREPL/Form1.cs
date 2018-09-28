@@ -83,9 +83,16 @@ namespace VisualREPL
         }
 
 
-
+        // TODO: spin this complex text box stuff out to its own component?
         private readonly object _textLock = new object();
         private bool _textChanging;
+
+        private void scriptInputBox_SelectionChanged(object sender, EventArgs e)
+        {
+            if (_textChanging) return;
+            scriptInputBox_TextChanged(null, null); // reformat and re-highlight scope
+        }
+
         private void scriptInputBox_TextChanged(object sender, EventArgs e)
         {
             if (_textChanging) return;
@@ -101,31 +108,42 @@ namespace VisualREPL
                     // If failed, change nothing
                     if (updated == null) return;
 
-                    // Stop the text box from rendering, save scroll position
-                    var scroll = ControlHelper.GetScrollPos(scriptInputBox);
-                    ControlHelper.Suspend(scriptInputBox);
-
-                    // Update text and styling
-                    scriptInputBox.Text = updated;
-
-                    try {
-                        scriptInputBox.Select(scopeStart, scopeLength);
-                        scriptInputBox.SelectionBackColor = Color.Cyan;
-                    } catch {/*ignore*/}
-
-                    // Set caret
-                    scriptInputBox.Select(caret, 0);
-
-                    // Restore scroll, enable rendering, trigger a refresh
-                    ControlHelper.SetScrollPos(scriptInputBox, scroll);
-                    ControlHelper.Resume(scriptInputBox);
-                    scriptInputBox.Invalidate();
+                    RefreshSourceDisplay(updated, scopeStart, scopeLength, caret);
                 }
                 finally
                 {
                     _textChanging = false;
                 }
             }
+        }
+
+        private void RefreshSourceDisplay(string updated, int scopeStart, int scopeLength, int caret)
+        {
+            // Stop the text box from rendering, save scroll position
+            var scroll = ControlHelper.GetScrollPos(scriptInputBox);
+            ControlHelper.Suspend(scriptInputBox);
+
+            // Update text and styling
+            scriptInputBox.Text = updated;
+
+            try
+            {
+                scriptInputBox.Select(scopeStart, scopeLength);
+                scriptInputBox.BackColor = Color.White;
+                scriptInputBox.SelectionBackColor = Color.LightGray;
+            }
+            catch
+            {
+                /*ignore*/
+            }
+
+            // Set caret
+            scriptInputBox.Select(caret, 0);
+
+            // Restore scroll, enable rendering, trigger a refresh
+            ControlHelper.SetScrollPos(scriptInputBox, scroll);
+            ControlHelper.Resume(scriptInputBox);
+            scriptInputBox.Invalidate();
         }
     }
 }

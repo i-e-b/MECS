@@ -28,10 +28,10 @@ namespace EvieCompilerSystem.InputOutput
         const ulong TAG_PTR_GRID       = (ulong)DataType.PtrGrid << 32;
 
         const ulong TAG_ARR_STR        = (ulong)DataType.PtrArray_String << 32;
-        // TODO: Maybe replace with general pointer-to-value-array
-        const ulong TAG_UNUSED_2  = (ulong)DataType.UNUSED_2 << 32;
-        const ulong TAG_UNUSED_1 = (ulong)DataType.UNUSED_1 << 32;
         const ulong TAG_ARR_DOUBLE     = (ulong)DataType.PtrArray_Double << 32;
+
+        const ulong TAG_UNUSED_1       = (ulong)DataType.UNUSED_1 << 32;
+        const ulong TAG_UNUSED_2       = (ulong)DataType.UNUSED_2 << 32;
 
 
         /// <summary>

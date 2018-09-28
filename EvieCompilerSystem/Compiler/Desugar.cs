@@ -40,20 +40,20 @@ namespace EvieCompilerSystem.Compiler
                                                           "If you want something that runs in every-other-case, use\r\n" +
                                                           "if ( true ...");
 
-                nub.Children.AddLast(MakeReturnNode());
+                nub.AddLast(MakeReturnNode());
             }
 
             // The entire lot then gets wrapped in a function def and immediately called
             var newFuncName = SugarName(funcName);
 
-            var wrapper = new Node(false, -1, null);
-            var defineBlock = new Node(false, -1, wrapper) { Text = "def" };
+            var wrapper = new Node(false, -1);
+            var defineBlock = new Node(false, -1) { Text = "def" };
 
-            defineBlock.Children.AddLast(new Node(true, -1, defineBlock) { Text = newFuncName }); // name, empty param list
-            defineBlock.Children.AddLast(sourceNode); // modified pick block
+            defineBlock.AddLast(new Node(true, -1) { Text = newFuncName }); // name, empty param list
+            defineBlock.AddLast(sourceNode); // modified pick block
 
-            wrapper.Children.AddFirst(defineBlock); // function def
-            wrapper.Children.AddLast(new Node(false, -1, wrapper){ Text = newFuncName  }); // call the function
+            wrapper.AddFirst(defineBlock); // function def
+            wrapper.AddLast(new Node(false, -1){ Text = newFuncName  }); // call the function
 
             return wrapper;
         }
@@ -66,7 +66,7 @@ namespace EvieCompilerSystem.Compiler
 
         private static Node MakeReturnNode()
         {
-            return new Node(false, -1, null) { Text = "return" };
+            return new Node(false, -1) { Text = "return" };
         }
     }
 }

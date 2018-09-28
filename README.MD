@@ -31,10 +31,8 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 * [x] Circular buffer in the repl console
 * [x] Automatic formatter/prettifier (indent if more opens than closes, unindent on match)
-* [ ] Highlighting for current parenthesis scope
-* [ ] Handle malformed source code correctly
+* [x] Highlighting for current parenthesis scope
 
-* [ ] Try optimised 'top n' references in Scope?
 * [ ] Short-string stack value to reduce GC gunk
 * [ ] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
@@ -50,6 +48,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
 * [ ] String interning / deduplication (runtime)
 
+* [ ] Handle malformed source code correctly
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] More math: useful constants (pi, e, inf, neg-inf)
@@ -59,6 +58,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
 * [ ] Iterators/Generators?
+* [ ] Try optimised 'top n' references in Scope?
 * [ ] Replace scope with registers and spill?
 
 ### Data types
