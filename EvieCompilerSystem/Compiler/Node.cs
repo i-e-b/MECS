@@ -92,8 +92,6 @@ namespace EvieCompilerSystem.Compiler
 
         private void ReformatRec(int indent, StringBuilder builder, int origCaret, ref int caret)
         {
-            //builder.Append("["+SourceLocation+"]");
-
             // Update caret
             if (SourceLocation < origCaret) caret = builder.Length + (origCaret - SourceLocation);
 
@@ -110,12 +108,12 @@ namespace EvieCompilerSystem.Compiler
                 if (leadingWhite) {
                     if (node.NodeType == NodeType.Whitespace) continue;
                     leadingWhite = false;
-                    if (node.NodeType == NodeType.Delimiter) builder.Append(' ', (indent - 1) * 4);
+                    if (node.NodeType == NodeType.Paren) builder.Append(' ', (indent - 1) * 4);
                     else builder.Append(' ', indent * 4);
                 }
                 if (node.NodeType == NodeType.Newline) leadingWhite = true;
                 
-                // otherwise write node text
+                // write node text
                 node.ReformatRec(indent + 1, builder, origCaret, ref caret);
             }
         }
@@ -131,13 +129,14 @@ namespace EvieCompilerSystem.Compiler
             {
                 Text = "()",
                 Unescaped = "(",
-                Parent = parent
+                Parent = parent,
+                NodeType = NodeType.Paren
             };
         }
 
         public static Node CloseCall(int loc)
         {
-            return new Node(true, loc) {Text = ")", NodeType = NodeType.Delimiter};
+            return new Node(true, loc) {Text = ")", NodeType = NodeType.Paren};
         }
 
         public static Node Whitespace(string s, int loc)

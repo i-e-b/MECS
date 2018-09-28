@@ -81,6 +81,8 @@ namespace VisualREPL
             }
         }
 
+
+
         private readonly object _textLock = new object();
         private bool _textChanging;
         private void scriptInputBox_TextChanged(object sender, EventArgs e)
@@ -91,16 +93,25 @@ namespace VisualREPL
                 {
                     _textChanging = true;
 
-                    var loc = scriptInputBox.Location;
-                    var selectionStart = scriptInputBox.SelectionStart;
-                    var updated = AutoFormat.Reformat(scriptInputBox.Text, ref selectionStart);
+                    // Try reformatting
+                    var caret = scriptInputBox.SelectionStart;
+                    var updated = AutoFormat.Reformat(scriptInputBox.Text, ref caret);
 
+                    // If failed, change nothing
                     if (updated == null) return;
 
+                    // Stop the text box from rendering, save scroll position
+                    var scroll = ControlHelper.GetScrollPos(scriptInputBox);
+                    ControlHelper.Suspend(scriptInputBox);
+
+                    // Update text and caret
                     scriptInputBox.Text = updated;
-                    scriptInputBox.SelectionStart = selectionStart;
-                    
-                    scriptInputBox.Location = loc;
+                    scriptInputBox.SelectionStart = caret;
+
+                    // Restore scroll, enable rendering, trigger a refresh
+                    ControlHelper.SetScrollPos(scriptInputBox, scroll);
+                    ControlHelper.Resume(scriptInputBox);
+                    scriptInputBox.Invalidate();
                 }
                 finally
                 {

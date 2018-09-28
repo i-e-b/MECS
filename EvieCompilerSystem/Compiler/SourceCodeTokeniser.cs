@@ -38,8 +38,8 @@ namespace EvieCompilerSystem.Compiler
 
                 var car = source.ElementAt(i);
 
-                Node parent;
                 Node tmp;
+                Node parent;
                 switch (car)
                 {
                     case '(': // start of call
@@ -139,10 +139,7 @@ namespace EvieCompilerSystem.Compiler
 
                                     if (preserveMetadata){
                                         foreach (var ws in wsNode.Children) { current.Children.AddLast(ws); }
-                                        current.Children.AddLast(new Node(true, i) {
-                                            Text = "(",
-                                            NodeType = NodeType.Delimiter
-                                        });
+                                        current.Children.AddLast(Node.OpenCall(parent, i));
                                     }
                                     parent.Children.AddLast(current);
                                 }

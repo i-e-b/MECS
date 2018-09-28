@@ -45,9 +45,9 @@
         Newline = -3,
 
         /// <summary>
-        /// Marker for the position of the editor caret
+        /// Opening or closing parenthesis
         /// </summary>
-        Caret = -4,
+        Paren = -4,
 
         /// <summary>
         /// String delimiter or similar
