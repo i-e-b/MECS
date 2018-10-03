@@ -90,12 +90,14 @@ namespace VisualREPL
         private void scriptInputBox_SelectionChanged(object sender, EventArgs e)
         {
             if (_textChanging) return;
+            if (scriptInputBox.SelectionLength > 0) return; // don't mess while doing selection operations
             scriptInputBox_TextChanged(null, null); // reformat and re-highlight scope
         }
 
         private void scriptInputBox_TextChanged(object sender, EventArgs e)
         {
             if (_textChanging) return;
+            if (scriptInputBox.SelectionLength > 0) return; // don't mess while doing selection operations
             lock (_textLock) {
                 try
                 {
