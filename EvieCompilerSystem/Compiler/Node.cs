@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace EvieCompilerSystem.Compiler
@@ -202,6 +203,34 @@ namespace EvieCompilerSystem.Compiler
                 Text = c.ToString(),
                 NodeType = NodeType.Delimiter
             };
+        }
+
+        /// <summary>
+        /// Is the node a primitive value or an atom?
+        /// </summary>
+        public bool IsSimpleType()
+        {
+            switch (NodeType) {
+                case NodeType.StringLiteral:
+                case NodeType.Numeric:
+                case NodeType.Atom:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Pack a list of child nodes into a new root
+        /// </summary>
+        public static Node Repack(LinkedList<Node> children)
+        {
+            var root = new Node(false, 0) {Text = "", NodeType = NodeType.Root};
+            foreach (var child in children)
+            {
+                root.Children.AddLast(child);
+            }
+            return root;
         }
     }
 }

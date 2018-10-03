@@ -3,6 +3,9 @@ using EvieCompilerSystem.Runtime;
 
 namespace EvieCompilerSystem.Compiler
 {
+    /// <summary>
+    /// Language features that are implemented by decomposing into simpler elements
+    /// </summary>
     public static class Desugar{
         /// <summary>
         /// List of special function names that the compiler plays tricks with

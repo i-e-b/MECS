@@ -45,48 +45,8 @@ namespace EvieCompilerSystem.Runtime
         }
 
         /// <summary>
-        /// Last interpreter position
+        /// Main loop
         /// </summary>
-        public int LastPosition() {
-            return _position;
-        }
-
-        /// <summary>
-        /// Symbol mapping for built-in functions
-        /// </summary>
-        public static HashTable<FunctionDefinition> BuiltInFunctionSymbols()
-        {
-            var tmp = new HashTable<FunctionDefinition>(64);
-            Action<string, FuncDef> add = (name, type) => {
-                tmp.Add(NanTags.GetCrushedName(name), new FunctionDefinition{ Kind = type});
-            };
-
-            add("=", FuncDef.Equal); add("equals", FuncDef.Equal); add(">", FuncDef.GreaterThan);
-            add("<", FuncDef.LessThan); add("<>", FuncDef.NotEqual); add("not-equal", FuncDef.NotEqual);
-            add("assert", FuncDef.Assert); add("random", FuncDef.Random); add("eval", FuncDef.Eval);
-            add("call", FuncDef.Call); add("not", FuncDef.LogicNot); add("or", FuncDef.LogicOr);
-            add("and", FuncDef.LogicAnd); add("readkey", FuncDef.ReadKey); add("readline", FuncDef.ReadLine);
-            add("print", FuncDef.Print); add("substring", FuncDef.Substring);
-            add("length", FuncDef.Length); add("replace", FuncDef.Replace); add("concat", FuncDef.Concat);
-            add("+", FuncDef.MathAdd); add("-", FuncDef.MathSub); add("*", FuncDef.MathProd);
-            add("/", FuncDef.MathDiv); add("%", FuncDef.MathMod);
-            add("()", FuncDef.UnitEmpty); // empty value marker
-            return tmp;
-        }
-
-        public static HashTable<string> DebugSymbolsForBuiltIns()
-        {
-            var tmp = new HashTable<string>(64);
-            Action<string> add = name => { tmp.Add(NanTags.GetCrushedName(name), name); };
-
-            add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
-            add("assert"); add("random"); add("eval"); add("call"); add("not"); add("or");
-            add("and"); add("readkey"); add("readline"); add("print"); add("substring");
-            add("length"); add("replace"); add("concat"); add("+"); add("-"); add("*");
-            add("/"); add("%"); add("()");
-            return tmp;
-        }
-
         public double Execute(bool resetVars, bool verbose)
         {
 		    double evalResult;
@@ -156,6 +116,9 @@ namespace EvieCompilerSystem.Runtime
 		    return evalResult;
 	    }
         
+        /// <summary>
+        /// Core instruction dispatch
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessOpCode(char codeClass, char codeAction, ushort p1, ushort p2, ref int position, Stack<double> valueStack, Stack<int> returnStack, double word)
         {
@@ -182,6 +145,12 @@ namespace EvieCompilerSystem.Runtime
                         }
                         break;
 
+                    case 'C': // compound compare and jump
+                        {
+                            position = HandleCompoundCompare((byte)codeAction, p1, p2, valueStack, position);
+                        }
+                        break;
+
                     case 'm': // Memory access - get|set|isset|unset
                         varRef = p2 + ((uint)p1 << 16);
                         HandleMemoryAccess(codeAction, valueStack, position, varRef, p1);
@@ -193,7 +162,7 @@ namespace EvieCompilerSystem.Runtime
                         break;
 
                     case 's': // reserved for System operation.
-                        break;
+                        throw new Exception("Unimplemented System operation op code at " + position + " : " + _memory.DiagnosticString(word, DebugSymbols));
 
                     default:
                         throw new Exception("Unexpected op code at " + position + " : " + _memory.DiagnosticString(word, DebugSymbols));
@@ -317,6 +286,24 @@ namespace EvieCompilerSystem.Runtime
             return position;
         }
 
+        private int HandleCompoundCompare(byte action, ushort argCount, ushort opCodeCount, Stack<double> valueStack, int position)
+        {
+            var param = ReadParams(position, argCount, valueStack);
+            var cmp = (CmpOp)action;
+            switch (cmp) {
+                case CmpOp.Equal:
+                    return ListEquals(param) ? position : position + opCodeCount;
+                case CmpOp.NotEqual:
+                    return ListEquals(param) ? position + opCodeCount : position;
+                case CmpOp.Less:
+                    return FoldInequality(param, (a, b) => a < b) ? position : position + opCodeCount;
+                case CmpOp.Greater:
+                    return FoldInequality(param, (a, b) => a > b) ? position : position + opCodeCount;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
         private void HandleReturn(ref int position, Stack<int> returnStack)
         {
             if (returnStack.Count < 1) throw new Exception("Return stack empty. Check program logic");
@@ -329,18 +316,7 @@ namespace EvieCompilerSystem.Runtime
         {
             var functionNameHash = NanTags.DecodeVariableRef(valueStack.Pop());
 
-            var param = new double[nbParams];
-            // Pop values from stack into a param cache
-            try
-            {
-                for (int i = nbParams - 1; i >= 0; i--) {
-                    param[i] = valueStack.Pop();
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("Stack underflow. Ran out of values before function call at " + position, ex);
-            }
+            var param = ReadParams(position, nbParams, valueStack);
 
             // Evaluate function.
             var evalResult = EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
@@ -354,6 +330,26 @@ namespace EvieCompilerSystem.Runtime
             }
 
             return position;
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double[] ReadParams(int position, ushort nbParams, Stack<double> valueStack)
+        {
+            var param = new double[nbParams];
+            // Pop values from stack into a param cache
+            try
+            {
+                for (int i = nbParams - 1; i >= 0; i--)
+                {
+                    param[i] = valueStack.Pop();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Stack underflow. Ran out of values before function call at " + position, ex);
+            }
+
+            return param;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -413,12 +409,12 @@ namespace EvieCompilerSystem.Runtime
                 // Each element smaller than the last
                 case FuncDef.GreaterThan:
                     if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
-                    return FoldInequality(param, (a, b) => a > b);
+                    return NanTags.EncodeBool(FoldInequality(param, (a, b) => a > b));
 
                 // Each element larger than the last
                 case FuncDef.LessThan:
                     if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
-                    return FoldInequality(param, (a, b) => a < b);
+                    return NanTags.EncodeBool(FoldInequality(param, (a, b) => a < b));
 
                 // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
                 case FuncDef.NotEqual:
@@ -649,6 +645,50 @@ namespace EvieCompilerSystem.Runtime
             }
         }
 
+        
+        /// <summary>
+        /// Last interpreter position
+        /// </summary>
+        public int LastPosition() {
+            return _position;
+        }
+
+        /// <summary>
+        /// Symbol mapping for built-in functions
+        /// </summary>
+        public static HashTable<FunctionDefinition> BuiltInFunctionSymbols()
+        {
+            var tmp = new HashTable<FunctionDefinition>(64);
+            Action<string, FuncDef> add = (name, type) => {
+                tmp.Add(NanTags.GetCrushedName(name), new FunctionDefinition{ Kind = type});
+            };
+
+            add("=", FuncDef.Equal); add("equals", FuncDef.Equal); add(">", FuncDef.GreaterThan);
+            add("<", FuncDef.LessThan); add("<>", FuncDef.NotEqual); add("not-equal", FuncDef.NotEqual);
+            add("assert", FuncDef.Assert); add("random", FuncDef.Random); add("eval", FuncDef.Eval);
+            add("call", FuncDef.Call); add("not", FuncDef.LogicNot); add("or", FuncDef.LogicOr);
+            add("and", FuncDef.LogicAnd); add("readkey", FuncDef.ReadKey); add("readline", FuncDef.ReadLine);
+            add("print", FuncDef.Print); add("substring", FuncDef.Substring);
+            add("length", FuncDef.Length); add("replace", FuncDef.Replace); add("concat", FuncDef.Concat);
+            add("+", FuncDef.MathAdd); add("-", FuncDef.MathSub); add("*", FuncDef.MathProd);
+            add("/", FuncDef.MathDiv); add("%", FuncDef.MathMod);
+            add("()", FuncDef.UnitEmpty); // empty value marker
+            return tmp;
+        }
+
+        public static HashTable<string> DebugSymbolsForBuiltIns()
+        {
+            var tmp = new HashTable<string>(64);
+            Action<string> add = name => { tmp.Add(NanTags.GetCrushedName(name), name); };
+
+            add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
+            add("assert"); add("random"); add("eval"); add("call"); add("not"); add("or");
+            add("and"); add("readkey"); add("readline"); add("print"); add("substring");
+            add("length"); add("replace"); add("concat"); add("+"); add("-"); add("*");
+            add("/"); add("%"); add("()");
+            return tmp;
+        }
+
         private string ConcatList(double[] list, int startIndex)
         {
             var sb = new StringBuilder();
@@ -659,7 +699,7 @@ namespace EvieCompilerSystem.Runtime
             return sb.ToString();
         }
 
-        private double FoldInequality(IEnumerable<double> list, Func<double, double, bool> comparitor)
+        private bool FoldInequality(IEnumerable<double> list, Func<double, double, bool> comparitor)
         {
             bool first = true;
             double prev = 0;
@@ -671,10 +711,10 @@ namespace EvieCompilerSystem.Runtime
                     continue;
                 }
                 var current = _memory.CastDouble(encoded);
-                if ( ! comparitor(prev, current)) return NanTags.EncodeBool(false);
+                if ( ! comparitor(prev, current)) return false;
                 prev = current;
             }
-            return NanTags.EncodeBool(true);
+            return true;
         }
     }
 }

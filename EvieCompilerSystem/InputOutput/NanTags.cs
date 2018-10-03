@@ -153,6 +153,30 @@ namespace EvieCompilerSystem.InputOutput
                 return *(double*)&encoded;
             }
         }
+        /// <summary>
+        /// Encode an op-code with up to 2x16 bit params
+        /// </summary>
+        /// <param name="codeClass">Kind of op code</param>
+        /// <param name="codeAction">The action to perform in the class</param>
+        /// <param name="p1">First parameter, if used</param>
+        /// <param name="p2">Second parameter if used</param>
+        public static unsafe double EncodeOpcode(char codeClass, byte codeAction, ushort p1, ushort p2)
+        {
+            unchecked
+            {
+                byte cc = (byte)codeClass;
+                byte ca = codeAction;
+                ulong encoded =
+                        NAN_FLAG
+                        | TAG_OPCODE
+                        | ((ulong)cc << 40)
+                        | ((ulong)ca << 32)
+                        | ((ulong)p1 << 16)
+                        | p2
+                    ;
+                return *(double*)&encoded;
+            }
+        }
 
         /// <summary>
         /// Encode an op-code with one 32 bit param

@@ -1,4 +1,4 @@
-﻿namespace EvieCompilerSystem.Runtime
+﻿namespace EvieCompilerSystem.InputOutput
 {
     public struct FunctionDefinition
     {

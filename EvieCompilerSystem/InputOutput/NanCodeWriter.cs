@@ -290,6 +290,17 @@ namespace EvieCompilerSystem.InputOutput
         }
 
         /// <summary>
+        /// Encode a compound compare
+        /// </summary>
+        /// <param name="operation">compare to do</param>
+        /// <param name="argCount">number of value-stack args to compare</param>
+        /// <param name="opCodeCount">opcodes to jump relative down if top if comparison result is false</param>
+        public void CompoundCompareJump(CmpOp operation, ushort argCount, ushort opCodeCount)
+        {
+            _opcodes.Add(NanTags.EncodeOpcode('C', (byte)operation, argCount, opCodeCount));
+        }
+
+        /// <summary>
         /// Jump relative down if top of value-stack is false
         /// </summary>
         public void CompareJump(uint opCodeCount)

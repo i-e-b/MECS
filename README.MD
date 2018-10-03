@@ -32,10 +32,9 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Circular buffer in the repl console
 * [x] Automatic formatter/prettifier (indent if more opens than closes, unindent on match)
 * [x] Highlighting for current parenthesis scope
-* [ ] Fix interactive highlighting
 
 * [x] Short-string stack value to reduce GC gunk
-* [ ] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
+* [x] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
 * [ ] Single step in repl gui
 * [ ] Runtime interpreter exceptions to give position

@@ -7,6 +7,9 @@ using EvieCompilerSystem.Runtime;
 
 namespace EvieCompilerSystem.Compiler
 {
+    /// <summary>
+    /// Compile source code to NanTagged file or memory layout
+    /// </summary>
     public class ToNanCodeCompiler
     {
         public static string BaseDirectory = "";
@@ -210,14 +213,13 @@ namespace EvieCompilerSystem.Compiler
         private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, NanCodeWriter wr, Scope parameterNames)
         {
             // Check for special increment mode
-            if (node.Text == "set" && IsSmallIncrement(node, out var incr, out var target))
+            if (node.Text == "set" && Optimisations.IsSmallIncrement(node, out var incr, out var target))
             {
                 wr.Increment(incr, target);
                 return;
             }
 
-            var child = new Node(false, -2);
-            child.Text = container.Children.First.Value.Text;
+            var child = new Node(false, -2) {Text = container.Children.First.Value.Text};
             var paramCount = container.Children.Count - 1;
             for (int i = paramCount; i > 0; i--) { child.AddLast(container.Children.ElementAt(i)); }
 
@@ -229,71 +231,6 @@ namespace EvieCompilerSystem.Compiler
             }
 
             wr.Memory(node.Text[0], child.Text, paramCount);
-        }
-
-        private static bool IsSmallIncrement(Node node, out sbyte incr, out string varName)
-        {
-            incr = 0;
-            varName = null;
-
-            // These cases are handled:
-            // 1)  set(x +(x n))
-            // 2)  set(x +(get(x) n))
-            // 3)  set(x +(n x))
-            // 4)  set(x +(n get(x))
-            // 5)  set(x -(x n))
-            // 6)  set(x -(get(x) n)
-            //
-            // Where `x` is any reference name, and n is a literal integer between -100 and 100
-
-            if (node.Text != "set") return false;
-            if (node.Children.Count != 2) return false;
-            var target = node.Children.First.Value.Text;
-            var operation = node.Children.Last.Value;
-            if (operation.Children.Count != 2) return false;
-            
-            if (operation.Text != "+" && operation.Text != "-") return false;
-
-            if (operation.Text == "-") { // the operands can only be one way around
-                if (!IsGet(operation.Children.First.Value, target)) return false;
-                var incrNode = operation.Children.Last.Value;
-                if (incrNode.NodeType != NodeType.Numeric) return false;
-                if (! int.TryParse(incrNode.Text, out var incrV)) return false;
-                if (incrV < -100 || incrV > 100 || incrV == 0) return false;
-                unchecked{
-                    incr = (sbyte)(-incrV); // negate to account for subtraction
-                    varName = target;
-                }
-                return true;
-            }
-
-            if (operation.Text == "+") { // +- operands can be either way
-                Node incrNode;
-                if (IsGet(operation.Children.First.Value, target)) {
-                    incrNode = operation.Children.Last.Value;
-                } else if (IsGet(operation.Children.Last.Value, target)) {
-                    incrNode = operation.Children.First.Value;
-                } else return false;
-                
-                if (incrNode.NodeType != NodeType.Numeric) return false;
-                if (! int.TryParse(incrNode.Text, out var incrV)) return false;
-                if (incrV < -100 || incrV > 100 || incrV == 0) return false;
-                unchecked{
-                    incr = (sbyte)incrV;
-                    varName = target;
-                }
-                return true;
-            }
-
-            return false;
-        }
-
-        private static bool IsGet(Node node, string target)
-        {
-            if (node.NodeType == NodeType.Atom && node.Text == target) return true;
-            if (node.Text == "get" && node.Children.Count == 1 && node.Children.First.Value.Text == target) return true;
-
-            return false;
         }
 
         private static void CompileExternalFile(int level, bool debug, Node node, NanCodeWriter wr, Scope parameterNames, HashSet<string> includedFiles)
@@ -350,15 +287,8 @@ namespace EvieCompilerSystem.Compiler
             condition.AddLast(container.Children.ElementAt(0));
             condition.Text = "()";
 
-            var conditionCode = Compile(condition, level + 1, debug, parameterNames, null, context);
-
-            if (debug)
-            {
-                wr.Comment("// Condition for : " + node.Text);
-            }
-
             var topOfBlock = wr.Position() - 1;
-            wr.Merge(conditionCode);
+            
 
             var body = new Node(false, -2);
 
@@ -370,40 +300,43 @@ namespace EvieCompilerSystem.Compiler
             body.Text = "()";
             var compiledBody = Compile(body, level + 1, debug, parameterNames, null, context);
             returns |= compiledBody.ReturnsValues;
+            var opCodeCount = compiledBody.OpCodeCount();
+            if (isLoop) opCodeCount++; // also skip the end unconditional jump
 
             if (debug)
             {
                 wr.Comment("// Compare condition for : " + node.Text +", If false, skip " + compiledBody.OpCodeCount() + " element(s)");
             }
 
-            // TODO: find a way to make a fused ineqFun+cmpJmp
-            if (isLoop)
+            if (Optimisations.IsSimpleComparion(condition, opCodeCount))
             {
-                wr.CompareJump(compiledBody.OpCodeCount() + 1); // also skip the end unconditional jump
+                // output just the arguments
+                var argNodes = Optimisations.ReadSimpleComparison(condition, out var cmpOp, out var argCount);
+                var conditionArgs = Compile(argNodes, level + 1, debug, parameterNames, null, context);
+                wr.Merge(conditionArgs);
+                wr.CompoundCompareJump(cmpOp, argCount, (ushort) opCodeCount);
             }
             else
             {
-                wr.CompareJump(compiledBody.OpCodeCount()); // if doesn't have the unconditional
+                var conditionCode = Compile(condition, level + 1, debug, parameterNames, null, context);
+
+                if (debug)
+                {
+                    wr.Comment("// Condition for : " + node.Text);
+                }
+
+                wr.Merge(conditionCode);
+                wr.CompareJump(opCodeCount);
             }
 
             wr.Merge(compiledBody);
 
+            if (debug) { wr.Comment("// End : " + node.Text); }
             if (isLoop)
             {
-                if (debug)
-                {
-                    wr.Comment("// End : " + node.Text);
-                }
 
                 var distance = wr.Position() - topOfBlock;
                 wr.UnconditionalJump((uint)distance);
-            }
-            else
-            {
-                if (debug)
-                {
-                    wr.Comment("// End : " + node.Text);
-                }
             }
             return returns;
         }
