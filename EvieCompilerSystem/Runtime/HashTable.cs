@@ -64,7 +64,19 @@ namespace EvieCompilerSystem.Runtime
         }
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool Get(uint key, out TValue value)
+        public TValue Get(uint key) {
+            
+            uint index;
+            if (Find(key, out index))
+            {
+                return buckets[index].value;
+            }
+
+            return default(TValue);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Get(uint key, out TValue value)
         {
             uint index;
             if (Find(key, out index))
@@ -80,21 +92,22 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Find and directly change a stored value
         /// </summary>
-        public void DirectChange(uint key, Func<TValue, TValue> mut) {
-            
-            if (Find(key, out var index))
-            {
-                buckets[index].value = mut(buckets[index].value);
-            }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool DirectChange(uint key, Func<TValue, TValue> mut) {
+            if (!Find(key, out var index)) return false;
+            buckets[index].value = mut(buckets[index].value);
+            return true;
         }
-
-        private void Put(uint key, TValue val, bool canReplace)
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Put(uint key, TValue val, bool canReplace)
         {
             if (countUsed == growAt) ResizeNext();
 
             PutInternal(new Entry(key, val), canReplace, true);
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void PutInternal(Entry entry, bool canReplace, bool checkDuplicates)
         {
             uint indexInit = entry.key & countMod;
@@ -260,7 +273,7 @@ namespace EvieCompilerSystem.Runtime
         {
             get { return Entries.Select(entry => entry.Value).ToList(); }
         }
-
+        
         public TValue this[uint key]
         {
             get

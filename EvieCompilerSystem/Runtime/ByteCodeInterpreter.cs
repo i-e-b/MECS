@@ -372,7 +372,7 @@ namespace EvieCompilerSystem.Runtime
             // handle functions that are defined in the program
             _memory.Variables.PushScope(param); // write parameters into new scope
             returnStack.Push(position); // set position for 'cret' call
-            position = Functions[functionNameHash].StartPosition; // move pointer to start of function
+            position = Functions.Get(functionNameHash).StartPosition; // move pointer to start of function
             return NanTags.VoidReturn(); // return no value, continue execution elsewhere
 
         }
@@ -699,7 +699,7 @@ namespace EvieCompilerSystem.Runtime
             return sb.ToString();
         }
 
-        private bool FoldInequality(IEnumerable<double> list, Func<double, double, bool> comparitor)
+        private bool FoldInequality(double[] list, Func<double, double, bool> comparitor)
         {
             bool first = true;
             double prev = 0;

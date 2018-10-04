@@ -17,7 +17,8 @@ namespace EvieCompilerSystem.Runtime
         /// becomes from one reference. It may be available from another location.</remarks>
         public readonly HashSet<double> PotentialGarbage;
 
-        readonly LinkedList<HashTable<double>> scopes;
+        private readonly HashTable<double>[] _scopes;
+        private int _currentScopeIdx;
 
         private static readonly uint[] posParamHash;
 
@@ -35,8 +36,9 @@ namespace EvieCompilerSystem.Runtime
         public Scope()
         {
             PotentialGarbage = new HashSet<double>();
-            scopes = new LinkedList<HashTable<double>>();
-            scopes.AddLast(new HashTable<double>()); // global scope
+            _scopes = new HashTable<double>[128]; // recursion depth limit
+            _currentScopeIdx = 0;
+            _scopes[_currentScopeIdx] = new HashTable<double>(); // global scope
         }
         
         /// <summary>
@@ -45,7 +47,8 @@ namespace EvieCompilerSystem.Runtime
         public Scope(Scope parentScope)
         {
             PotentialGarbage = new HashSet<double>();
-            scopes = new LinkedList<HashTable<double>>();
+            _scopes = new HashTable<double>[128]; // recursion depth limit
+            _currentScopeIdx = 0;
 
             var global = new HashTable<double>();
 
@@ -54,7 +57,7 @@ namespace EvieCompilerSystem.Runtime
                 global.Add(pair); // all parent refs become globals, regardless of original hierarchy
             }
 
-            scopes.AddLast(global);
+            _scopes[_currentScopeIdx] = global;
         }
 
         /// <summary>
@@ -65,16 +68,15 @@ namespace EvieCompilerSystem.Runtime
             unchecked
             {
                 var seen = new HashSet<uint>();
-                var scope = scopes.Last;
-                while (scope != null)
+                for (int i = _currentScopeIdx; i >= 0; i--)
                 {
-                    foreach (var pair in scope.Value)
+                    var scope = _scopes[i];
+                    foreach (var pair in scope)
                     {
                         if (seen.Contains(pair.Key)) continue;
                         seen.Add(pair.Key);
                         yield return pair;
                     }
-                    scope = scope.Previous;
                 }
             }
         }
@@ -96,7 +98,8 @@ namespace EvieCompilerSystem.Runtime
                         i++;
                     }
                 }
-                scopes.AddLast(sd);
+                _currentScopeIdx++; // TODO: check for current > length
+                _scopes[_currentScopeIdx] = sd;
             }
         }
 
@@ -104,8 +107,9 @@ namespace EvieCompilerSystem.Runtime
         /// Remove innermost scope, and drop back to the previous one
         /// </summary>
         public void DropScope() {
-            var last = scopes.Last.Value;
-            scopes.RemoveLast();
+            var last = _scopes[_currentScopeIdx];
+            _scopes[_currentScopeIdx] = null;
+            _currentScopeIdx--;
 
             // this could be done on another thread
             foreach (var token in last.Values)
@@ -120,17 +124,10 @@ namespace EvieCompilerSystem.Runtime
         public double Resolve(uint crushedName){
             unchecked
             {
-                var current = scopes.Last;
-                while (current != null)
+                for (int i = _currentScopeIdx; i >= 0; i--)
                 {
-                    try
-                    {
-                        return current.Value[crushedName];
-                    }
-                    catch
-                    {
-                        current = current.Previous;
-                    }
+                    var current = _scopes[i];
+                    if (current.Get(crushedName, out var found)) return found;
                 }
 
                 throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");
@@ -143,24 +140,23 @@ namespace EvieCompilerSystem.Runtime
         public void SetValue(uint crushedName, double newValue) {
             unchecked
             {
-                var current = scopes.Last;
-                while (current != null)
+                for (int i = _currentScopeIdx; i >= 0; i--)
                 {
-                    if (current.Value.ContainsKey(crushedName))
+                    var current = _scopes[i];
+                    if (!current.Get(crushedName, out var oldValue))
                     {
-                        var oldValue = current.Value[crushedName];
-                        // ReSharper disable once CompareOfFloatsByEqualityOperator
-                        if (oldValue != newValue)
-                        {
-                            if (NanTags.IsAllocated(oldValue)) PotentialGarbage.Add(newValue);
-                            current.Value[crushedName] = newValue;
-                        }
-                        return;
+                        continue;
                     }
-                    current = current.Previous;
+
+                    // ReSharper disable once CompareOfFloatsByEqualityOperator
+                    if (oldValue == newValue) return;
+                    if (NanTags.IsAllocated(oldValue)) PotentialGarbage.Add(newValue);
+                    current.Put(crushedName, newValue, true);
+                    return;
                 }
 
-                scopes.Last.Value.Add(crushedName, newValue);
+                // nothing already exists to replace
+                _scopes[_currentScopeIdx].Add(crushedName, newValue);
             }
         }
 
@@ -169,8 +165,12 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public void Clear()
         {
-            scopes.Clear();
-            scopes.AddLast(new HashTable<double>()); // global scope
+            for (int i = _currentScopeIdx; i >= 0; i--)
+            {
+                _scopes[i] = null;
+            }
+            _currentScopeIdx = 0;
+            _scopes[_currentScopeIdx] = new HashTable<double>();
         }
 
         /// <summary>
@@ -180,11 +180,10 @@ namespace EvieCompilerSystem.Runtime
         {
             unchecked
             {
-                var current = scopes.Last;
-                while (current != null)
+                for (int i = _currentScopeIdx; i >= 0; i--)
                 {
-                    if (current.Value.ContainsKey(crushedName)) return true;
-                    current = current.Previous;
+                    var current = _scopes[i];
+                    if (current.ContainsKey(crushedName)) return true;
                 }
                 return false;
             }
@@ -199,8 +198,8 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public void Remove(uint crushedName)
         {
-            if (scopes.First.Value.Remove(crushedName)) return;
-            scopes.Last.Value.Remove(crushedName);
+            if (_scopes[0].Remove(crushedName)) return;
+            _scopes[_currentScopeIdx].Remove(crushedName);
         }
 
 
@@ -218,7 +217,7 @@ namespace EvieCompilerSystem.Runtime
         /// </summary>
         public bool InScope(uint crushedName)
         {
-            return scopes.Last.Value.ContainsKey(crushedName);
+            return _scopes[_currentScopeIdx].ContainsKey(crushedName);
         }
 
         /// <summary>
@@ -228,18 +227,10 @@ namespace EvieCompilerSystem.Runtime
         {
             unchecked
             {
-                var current = scopes.Last;
-                while (current != null)
+                for (int i = _currentScopeIdx; i >= 0; i--)
                 {
-                    try
-                    {
-                        current.Value.DirectChange(crushedName, a => a + increment);
-                        return;
-                    }
-                    catch
-                    {
-                        current = current.Previous;
-                    }
+                    var current = _scopes[i];
+                    if (current.DirectChange(crushedName, a => a + increment)) return;
                 }
 
                 throw new Exception("Could not resolve '" + crushedName.ToString("X") + "', check program logic");

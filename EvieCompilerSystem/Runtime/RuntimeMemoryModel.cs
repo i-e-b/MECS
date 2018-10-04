@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using EvieCompilerSystem.InputOutput;
 
@@ -173,7 +174,6 @@ namespace EvieCompilerSystem.Runtime
 
         public string DereferenceString(long position) {
             // a string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
-            // The plan:
             //  1) read the byte length
             var header = encodedTokens[(int)position];
             if (NanTags.TypeOf(header) != DataType.ValUInt32) throw new Exception("String header was not a UInt32");
@@ -190,6 +190,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Interpret or cast value as a boolean
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CastBoolean(double encoded)
         {
             var type = NanTags.TypeOf(encoded);
@@ -242,6 +243,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Interpret, or cast value as double
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double CastDouble(double encoded)
         {
             var type = NanTags.TypeOf(encoded);
@@ -280,6 +282,7 @@ namespace EvieCompilerSystem.Runtime
         /// Get a resonable string representation from a value.
         /// This should include stringifying non-string types (numbers, structures etc)
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public string CastString(double encoded)
         {
             var type = NanTags.TypeOf(encoded);
@@ -325,6 +328,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Cast a value to int. If not applicable, returns zero
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int CastInt(double encoded)
         {
             int result;
