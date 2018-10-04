@@ -12,8 +12,6 @@ namespace EvieCompilerSystem.Runtime
     /// </summary>
     public class HashTable<TValue> : IDictionary<uint, TValue>
     {
-        //private const float LOAD_FACTOR = 0.5f; // Lower = more memory, less collisions.
-
         private Entry[] buckets;
         private uint count;
         private uint countMod;

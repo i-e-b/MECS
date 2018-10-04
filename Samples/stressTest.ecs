@@ -5,11 +5,11 @@ set(i 0)
 while ( <(i 640)
     set(j 0)
 
-    while ( <(j 320)
+    while ( <(j 480)
         set(x 0)
         set(y 0)
         set(z 1)
-        while ( <(z 1E6)
+        while ( <(z 1E7)
             //print( z )
             
             set(x get(y))

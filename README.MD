@@ -20,6 +20,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Change assm definition to be less stringy
       - Tagged basic type (NaN-tagging)
       - All non-numbers are pointers to type
+* [x] Basic types
 
 * [x] Change list-equals to compare all to *first* item, so you can do like `equals(0 a b c d)` to check if *any* equal zero. Same for not-equal.
 
@@ -36,14 +37,13 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Short-string stack value to reduce GC gunk
 * [x] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
+* [ ] Replace scope with registers and spill?
 * [ ] Single step in repl gui
 * [ ] Runtime interpreter exceptions to give position
 
-* [x] Basic types
 * [ ] Memory model (heap, arrays)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] String builder in memory model
-* [ ] Move value definitions into memory
 
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
 * [ ] String interning / deduplication (runtime)
@@ -59,7 +59,6 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
 * [ ] Iterators/Generators?
 * [ ] Try optimised 'top n' references in Scope?
-* [ ] Replace scope with registers and spill?
 
 ### Data types
 
@@ -71,10 +70,6 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * Array (of type)
 * List (heterogenous)
 * Grid (2+D array, sparse)
-
-### Ideas
-
-Extend get/set over many types? Like `set(myDict "keyStr" "valueStr")` and `get(myGrid 3 5)`
 
 # Language definitions
 
@@ -381,20 +376,15 @@ Make an unconditional jump **backward**.
 ### Opcode `[c][s]  [token count: uint32]`
 Make an unconditional jump **forward**.
 
+### Opcode `[C][cmp type: byte] [parameter count: uint16]  [tag count: uint16]`
+Compare values on the value-stack and jump **forward** if result is false.
+
 ### Opcode `[c][r]`
 Return from a function call. A absolute token position value is popped from the return-stack and program flow continues from there.
 
 ### Opcode `[c][t] [name hash: uint32]`
 Runtime error: Function exit without value.
 This is emitted by the compiler to trap functions where some but not all paths in a function return values
-```
-dmyFunc 2 8         // define a function
-v__p0 mg            //     get first parameter
-v__p1 mg            //     get second parameter
-f%2B  2             //     add two numbers (result goes on stack)
-freturn 1           //     return from function, taking top 1 stack values
-ctmyFunc            // if flow gets here, the function was bad, and the runtime will error
-```
 
 ### Opcode `[m][g] [name hash: uint32]`
 Memory get. Looks up a variable with the given name-hash, pushes its value to the value-stack

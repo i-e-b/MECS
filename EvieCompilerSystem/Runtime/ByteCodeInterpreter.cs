@@ -296,9 +296,9 @@ namespace EvieCompilerSystem.Runtime
                 case CmpOp.NotEqual:
                     return ListEquals(param) ? position + opCodeCount : position;
                 case CmpOp.Less:
-                    return FoldInequality(param, (a, b) => a < b) ? position : position + opCodeCount;
+                    return FoldLessThan(param) ? position : position + opCodeCount;
                 case CmpOp.Greater:
-                    return FoldInequality(param, (a, b) => a > b) ? position : position + opCodeCount;
+                    return FoldGreaterThan(param) ? position : position + opCodeCount;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -401,7 +401,7 @@ namespace EvieCompilerSystem.Runtime
         {
             switch (kind)
             {
-                // each element equal to the last
+                // each element equal to the first
                 case FuncDef.Equal:
                     if (nbParams < 2) throw new Exception("equals ( = ) must have at least two things to compare");
                     return NanTags.EncodeBool(ListEquals(param));
@@ -409,14 +409,14 @@ namespace EvieCompilerSystem.Runtime
                 // Each element smaller than the last
                 case FuncDef.GreaterThan:
                     if (nbParams < 2) throw new Exception("greater than ( > ) must have at least two things to compare");
-                    return NanTags.EncodeBool(FoldInequality(param, (a, b) => a > b));
+                    return NanTags.EncodeBool(FoldGreaterThan(param));
 
                 // Each element larger than the last
                 case FuncDef.LessThan:
                     if (nbParams < 2) throw new Exception("less than ( < ) must have at least two things to compare");
-                    return NanTags.EncodeBool(FoldInequality(param, (a, b) => a < b));
+                    return NanTags.EncodeBool(FoldLessThan(param));
 
-                // Each element DIFFERENT TO THE LAST (does not check set uniqueness!)
+                // Each element DIFFERENT TO THE FIRST (does not check set uniqueness!)
                 case FuncDef.NotEqual:
                     if (nbParams < 2) throw new Exception("not-equal ( <> ) must have at least two things to compare");
                     return NanTags.EncodeBool(! ListEquals(param));
@@ -558,7 +558,7 @@ namespace EvieCompilerSystem.Runtime
                 
                 case FuncDef.MathAdd:
                     if (nbParams == 1) return param[0];
-                    return param.Sum();
+                    return param.ChainSum();
 
                 case FuncDef.MathSub:
                     if (nbParams == 1) return -param[0];
@@ -699,21 +699,47 @@ namespace EvieCompilerSystem.Runtime
             return sb.ToString();
         }
 
-        private bool FoldInequality(double[] list, Func<double, double, bool> comparitor)
+        private bool FoldLessThan(double[] list)
         {
             bool first = true;
             double prev = 0;
-            foreach (var encoded in list)
+            for (var i = 0; i < list.Length; i++)
             {
-                if (first) {
+                var encoded = list[i];
+                if (first)
+                {
                     prev = _memory.CastDouble(encoded);
                     first = false;
                     continue;
                 }
+
                 var current = _memory.CastDouble(encoded);
-                if ( ! comparitor(prev, current)) return false;
+                if (prev >= current) return false; // inverted for short-circuit
                 prev = current;
             }
+
+            return true;
+        }
+        
+        private bool FoldGreaterThan(double[] list)
+        {
+            bool first = true;
+            double prev = 0;
+            for (var i = 0; i < list.Length; i++)
+            {
+                var encoded = list[i];
+                if (first)
+                {
+                    prev = _memory.CastDouble(encoded);
+                    first = false;
+                    continue;
+                }
+
+                var current = _memory.CastDouble(encoded);
+                if (prev <= current) return false; // inverted for short-circuit
+                prev = current;
+            }
+
             return true;
         }
     }
