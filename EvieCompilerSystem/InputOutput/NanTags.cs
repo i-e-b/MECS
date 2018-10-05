@@ -4,6 +4,9 @@ using System.Text;
 
 namespace EvieCompilerSystem.InputOutput
 {
+    /// <summary>
+    /// Functions to encode and decode values behind NaN tags in 64-bit blocks
+    /// </summary>
     public static class NanTags
     {
         const ulong NAN_FLAG   = 0x7FF8000000000000;      // Bits to make a quiet NaN

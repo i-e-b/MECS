@@ -25,7 +25,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Names that we've hashed
         /// </summary>
-        private readonly HashTable<string> _symbols;
+        private readonly HashLookup<string> _symbols;
 
         /// <summary>
         /// The program fragment expects to produce result values. Defaults to false.
@@ -40,7 +40,7 @@ namespace EvieCompilerSystem.InputOutput
             ReturnsValues = false;
             _stringTable = new List<string>(100);
             _opcodes = new List<double>(1024);
-            _symbols = new HashTable<string>();
+            _symbols = new HashLookup<string>();
         }
 
         /// <summary>
@@ -252,7 +252,7 @@ namespace EvieCompilerSystem.InputOutput
         /// <summary>
         /// Add a symbol set to the known symbols table
         /// </summary>
-        public void AddSymbols(HashTable<string> sym)
+        public void AddSymbols(HashLookup<string> sym)
         {
             foreach (var symbol in sym)
             {
@@ -349,7 +349,7 @@ namespace EvieCompilerSystem.InputOutput
         /// Return the original names of variable references we've hashed.
         /// Keys are the Variable Ref byte codes
         /// </summary>
-        public HashTable<string> GetSymbols()
+        public HashLookup<string> GetSymbols()
         {
             return _symbols;
         }

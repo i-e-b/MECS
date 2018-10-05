@@ -7,10 +7,9 @@ using System.Runtime.CompilerServices;
 namespace EvieCompilerSystem.Runtime
 {
     /// <summary>
-    /// A robin-hood strategy hash table.
-    /// Always keys on uint, please BYO hash algorithm.
+    /// A robin-hood strategy hash table, simplified for looking up pre-hashed keys.
     /// </summary>
-    public class HashTable<TValue> : IDictionary<uint, TValue>
+    public class HashLookup<TValue> : IDictionary<uint, TValue>
     {
         private Entry[] buckets;
         private uint count;
@@ -18,15 +17,27 @@ namespace EvieCompilerSystem.Runtime
         private uint countUsed;
         private uint growAt;
         private uint shrinkAt;
+        
+        private struct Entry
+        {
+            public Entry(uint key, TValue value)
+            {
+                this.key = key;
+                this.value = value;
+            }
 
-        public HashTable(int size) : this((uint)size) { }
+            public readonly uint key;
+            public TValue value;
+        }
 
-        public HashTable(uint size) : this()
+        public HashLookup(int size) : this((uint)size) { }
+
+        public HashLookup(uint size) : this()
         {
             Resize(NextPow2(size));
         }
 
-        public HashTable()
+        public HashLookup()
         {
             Resize(32);
         }
@@ -193,7 +204,8 @@ namespace EvieCompilerSystem.Runtime
 
             return false;
         }
-
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private uint DistanceToInitIndex(uint indexStored)
         {
             var indexInit = buckets[indexStored].key & countMod;
@@ -204,18 +216,6 @@ namespace EvieCompilerSystem.Runtime
         private void ResizeNext()
         {
             Resize(count == 0 ? 1 : count * 2);
-        }
-
-        private struct Entry
-        {
-            public Entry(uint key, TValue value)
-            {
-                this.key = key;
-                this.value = value;
-            }
-
-            public readonly uint key;
-            public TValue value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

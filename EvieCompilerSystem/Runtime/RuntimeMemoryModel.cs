@@ -49,7 +49,7 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Produce a diagnostic description of the memory layout
         /// </summary>
-        public string ToString(HashTable<string> debugSymbols)
+        public string ToString(HashLookup<string> debugSymbols)
         {
             int index = 0;
             var sb = new StringBuilder();
@@ -108,7 +108,7 @@ namespace EvieCompilerSystem.Runtime
             return ToString(null);
         }
 
-        private string Stringify(double token, DataType type, HashTable<string> debugSymbols)
+        private string Stringify(double token, DataType type, HashLookup<string> debugSymbols)
         {
             switch (type){
                 case DataType.Invalid: return "";
@@ -423,7 +423,7 @@ namespace EvieCompilerSystem.Runtime
             return token;
         }
 
-        public string DiagnosticString(double token, HashTable<string> symbols = null)
+        public string DiagnosticString(double token, HashLookup<string> symbols = null)
         {
             return Stringify(token, NanTags.TypeOf(token), symbols);
         }

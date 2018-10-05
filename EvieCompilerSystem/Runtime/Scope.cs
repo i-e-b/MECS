@@ -17,7 +17,7 @@ namespace EvieCompilerSystem.Runtime
         /// becomes from one reference. It may be available from another location.</remarks>
         public readonly HashSet<double> PotentialGarbage;
 
-        private readonly HashTable<double>[] _scopes;
+        private readonly HashLookup<double>[] _scopes;
         private int _currentScopeIdx;
 
         private static readonly uint[] posParamHash;
@@ -36,9 +36,9 @@ namespace EvieCompilerSystem.Runtime
         public Scope()
         {
             PotentialGarbage = new HashSet<double>();
-            _scopes = new HashTable<double>[128]; // recursion depth limit
+            _scopes = new HashLookup<double>[128]; // recursion depth limit
             _currentScopeIdx = 0;
-            _scopes[_currentScopeIdx] = new HashTable<double>(); // global scope
+            _scopes[_currentScopeIdx] = new HashLookup<double>(); // global scope
         }
         
         /// <summary>
@@ -47,10 +47,10 @@ namespace EvieCompilerSystem.Runtime
         public Scope(Scope parentScope)
         {
             PotentialGarbage = new HashSet<double>();
-            _scopes = new HashTable<double>[128]; // recursion depth limit
+            _scopes = new HashLookup<double>[128]; // recursion depth limit
             _currentScopeIdx = 0;
 
-            var global = new HashTable<double>();
+            var global = new HashLookup<double>();
 
             foreach (var pair in parentScope.ListAllVisible())
             {
@@ -88,7 +88,7 @@ namespace EvieCompilerSystem.Runtime
         public void PushScope(ICollection<double> parameters = null) {
             unchecked
             {
-                var sd = new HashTable<double>();
+                var sd = new HashLookup<double>();
                 var i = 0;
                 if (parameters != null)
                 {
@@ -170,7 +170,7 @@ namespace EvieCompilerSystem.Runtime
                 _scopes[i] = null;
             }
             _currentScopeIdx = 0;
-            _scopes[_currentScopeIdx] = new HashTable<double>();
+            _scopes[_currentScopeIdx] = new HashLookup<double>();
         }
 
         /// <summary>

@@ -36,19 +36,20 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 * [x] Short-string stack value to reduce GC gunk
 * [x] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
-* [ ] Move scope resolution from runtime to compiler, have variables as simple array (ready for final memory model)
-* [ ] Replace scope with registers and spill?
 * [ ] Single step in repl gui
 * [ ] Runtime interpreter exceptions to give position
 
-* [ ] Memory model (heap, arrays)
+* [ ] Memory model
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
-* [ ] String builder in memory model
+* [ ] String builder in memory model (array concat?)
+* [ ] Experiment with NAR propagation and a test function.
+* [ ] Syntax for defining variadic functions ( `...{array name}` or something? Look at https://blog.taylorwood.io/2017/09/15/year-behind.html )
 
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
 * [ ] String interning / deduplication (runtime)
 
 * [ ] Handle malformed source code correctly
+* [ ] Replace C# exceptions with internal error handling
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] More math: useful constants (pi, e, inf, neg-inf)
@@ -59,6 +60,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
 * [ ] Iterators/Generators?
 * [ ] Try optimised 'top n' references in Scope?
+* [ ] Try simple tail-recursion optimisation?
 
 ### Data types
 

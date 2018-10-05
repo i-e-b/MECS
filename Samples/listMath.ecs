@@ -9,6 +9,15 @@ def (
         )
     )
 )
+def (
+    show-bool (str) (        
+        if (eval(str)
+            return( concat(str " = true") )
+        )
+        return( concat(str " = false"))
+    )
+)
+
 
 print("Uniary math (one number)")
 print("------------------------")
@@ -20,7 +29,7 @@ print("\r\n")
 
 print("List math (more than two numbers)")
 print("---------------------------------")
-print("The sum of integers: " +(1 2 3 4 5) ) // should be 15
+print("The sum of integers:           " show("+(1 2 3 4 5)") ) // should be 15
 print("Reduction from an accumulator: " show("-(100 10 1)") )   // should be 89
 print("Chain product:                 " show("*(5 1 2 4)") )    // should be 40
 print("Chain partition:               " show("/(100 2 5)") )    // should be 10
@@ -33,22 +42,22 @@ print("List logic (more than two values)")
 print("all operations short-circuit")
 print("---------------------------------")
 // Less-than: sequence is in ascending order
-print("List < :    " show("<(5 15 100)")) // should be true
-print("List < :    " show("<(5 1 100)")) // should be false
-print("List < :    " show("<(100 50 0)")) // should be false
+print("List < :    " show-bool("<(5 15 100)"))// should be true
+print("List < :    " show-bool("<(5 1 100)")) // should be false
+print("List < :    " show-bool("<(100 50 0)")) // should be false
 
 // Greater-then: sequence is in descending order
-print("List > :    " show(">(5 15 100)")) // should be false
-print("List > :    " show(">(5 1 100)")) // should be false
-print("List > :    " show(">(100 50 0)")) // should be true
+print("List > :    " show-bool(">(5 15 100)")) // should be false
+print("List > :    " show-bool(">(5 1 100)")) // should be false
+print("List > :    " show-bool(">(100 50 0)")) // should be true
 
 // Equals: at least one element is equal to the first
-print("List = :    " show("=(5 15 100)")) // should be false
-print("List = :    " show("=(1 1 1)")) // should be true
-print("List = :    " show("=(1 1 1 0)")) // should be true
+print("List = :    " show-bool("=(5 15 100)")) // should be false
+print("List = :    " show-bool("=(1 1 1)")) // should be true
+print("List = :    " show-bool("=(1 1 1 0)")) // should be true
 
 // Not-equal: no elements are equal to the first
-print("List <> :   " show("<>(5 15 100)")) // should be true
-print("List <> :   " show("<>(1 1 1)")) // should be false
-print("List <> :   " show("<>(1 1 1 0)")) // should be false
-print("List <> :   " show("<>(1 0 1 0)")) // should be false (some are equal)
+print("List <> :   " show-bool("<>(5 15 100)")) // should be true
+print("List <> :   " show-bool("<>(1 1 1)")) // should be false
+print("List <> :   " show-bool("<>(1 1 1 0)")) // should be false
+print("List <> :   " show-bool("<>(1 0 1 0)")) // should be false (some are equal)

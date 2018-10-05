@@ -51,7 +51,6 @@ namespace EvieCompilerSystem.Compiler
                 var rootContainer = root;
                 foreach (var node in rootContainer.Children.ToList())
                 {
-				    node.Text = node.Text;
 				    if (!node.IsLeaf)
                     {
 					    var container = node;

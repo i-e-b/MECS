@@ -18,8 +18,8 @@ namespace EvieCompilerSystem.Runtime
         public const double ComparisonPrecision = 1e-20;
 
         private List<double> program;
-        public HashTable<FunctionDefinition>  Functions;
-        public static HashTable<string> DebugSymbols;
+        public HashLookup<FunctionDefinition>  Functions;
+        public static HashLookup<string> DebugSymbols;
         public static Random rnd = new Random();
        
         private int _stepsTaken;
@@ -29,7 +29,7 @@ namespace EvieCompilerSystem.Runtime
         private bool _runningVerbose;
         private int _position; // the PC. This is in TOKEN positions, not bytes
 
-        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, HashTable<string> debugSymbols = null)
+        public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, HashLookup<string> debugSymbols = null)
         {
             _position = 0;
             _memory = bin;
@@ -656,9 +656,9 @@ namespace EvieCompilerSystem.Runtime
         /// <summary>
         /// Symbol mapping for built-in functions
         /// </summary>
-        public static HashTable<FunctionDefinition> BuiltInFunctionSymbols()
+        public static HashLookup<FunctionDefinition> BuiltInFunctionSymbols()
         {
-            var tmp = new HashTable<FunctionDefinition>(64);
+            var tmp = new HashLookup<FunctionDefinition>(64);
             Action<string, FuncDef> add = (name, type) => {
                 tmp.Add(NanTags.GetCrushedName(name), new FunctionDefinition{ Kind = type});
             };
@@ -676,9 +676,9 @@ namespace EvieCompilerSystem.Runtime
             return tmp;
         }
 
-        public static HashTable<string> DebugSymbolsForBuiltIns()
+        public static HashLookup<string> DebugSymbolsForBuiltIns()
         {
-            var tmp = new HashTable<string>(64);
+            var tmp = new HashLookup<string>(64);
             Action<string> add = name => { tmp.Add(NanTags.GetCrushedName(name), name); };
 
             add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");

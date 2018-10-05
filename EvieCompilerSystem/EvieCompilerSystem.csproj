@@ -42,7 +42,7 @@
     <Compile Include="InputOutput\CmpOp.cs" />
     <Compile Include="InputOutput\DataType.cs" />
     <Compile Include="InputOutput\NonValueType.cs" />
-    <Compile Include="Runtime\HashTable.cs" />
+    <Compile Include="Runtime\HashLookup.cs" />
     <Compile Include="Runtime\RuntimeMemoryModel.cs" />
     <Compile Include="InputOutput\NanCodeWriter.cs" />
     <Compile Include="InputOutput\NanTags.cs" />
