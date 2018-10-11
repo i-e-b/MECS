@@ -256,6 +256,7 @@ namespace EvieCompilerSystem.Runtime
                 // Hashes and arrays do the obvious lookup
                 // Sets return true/false for occupancy
                 case DataType.PtrString:
+                case DataType.PtrStaticString:
                     // get the other indexes. If more than one, build a string out of the bits?
                     // What to do with out-of-range?
                     var str = _memory.DereferenceString(NanTags.DecodePointer(value));
@@ -479,7 +480,8 @@ namespace EvieCompilerSystem.Runtime
 
                 case FuncDef.Call:
                     NanTags.DecodePointer(param.ElementAt(0), out var target, out var type);
-                    if (type != DataType.PtrString) throw new Exception("Tried to call a function by name, but passed a '" + type + "' at " + position);
+                    if (type != DataType.PtrString && type != DataType.PtrStaticString)
+                        throw new Exception("Tried to call a function by name, but passed a '" + type + "' at " + position);
                     // this should be a string, but we need a function name hash -- so calculate it:
                     var strName = _memory.DereferenceString(target);
                     var functionNameHash = NanTags.GetCrushedName(strName);
@@ -642,7 +644,7 @@ namespace EvieCompilerSystem.Runtime
 
                 // String types
                 case DataType.ValSmallString:
-                case DataType.PtrDiagnosticString:
+                case DataType.PtrStaticString:
                 case DataType.PtrString:
                     {
                         var target = _memory.CastString(list[0]);

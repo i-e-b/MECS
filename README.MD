@@ -37,7 +37,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Short-string stack value to reduce GC gunk
 * [x] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [x] Runtime interpreter exceptions to give position
-* [ ] Move static strings outside of GC
+* [x] Move static strings outside of GC
 
 * [ ] Full memory model (including return & value stacks)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.

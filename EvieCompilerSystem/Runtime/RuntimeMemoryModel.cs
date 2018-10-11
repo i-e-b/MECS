@@ -143,15 +143,12 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.ValSmallString:
                     return "["+NanTags.DecodeShortStr(token)+"]";
 
-                case DataType.PtrString:
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.UNUSED_PTR_2:
-                case DataType.UNUSED_PTR_3:
                 case DataType.PtrSet:
-                case DataType.UNUSED_PTR_1:
                 case DataType.PtrVector:
-                case DataType.PtrDiagnosticString:
+                case DataType.PtrString:
+                case DataType.PtrStaticString:
                     NanTags.DecodePointer(token, out var targ, out _);
                     return " -> " + targ;
 
@@ -209,6 +206,7 @@ namespace EvieCompilerSystem.Runtime
                     }
 
                 case DataType.PtrString:
+                case DataType.PtrStaticString:
                     {
                         NanTags.DecodePointer(encoded, out var ptr, out _);
                         var strVal = DereferenceString(ptr);
@@ -264,7 +262,7 @@ namespace EvieCompilerSystem.Runtime
                     double.TryParse(NanTags.DecodeShortStr(encoded), out result);
                     return result;
 
-                case DataType.PtrDiagnosticString:
+                case DataType.PtrStaticString:
                 case DataType.PtrString:
                     NanTags.DecodePointer(encoded, out var target, out _);
                     double.TryParse(DereferenceString(target), out result);
@@ -297,7 +295,7 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.ValSmallString:
                     return NanTags.DecodeShortStr(encoded);
 
-                case DataType.PtrDiagnosticString:
+                case DataType.PtrStaticString:
                 case DataType.PtrString:
                     NanTags.DecodePointer(encoded, out var target, out _);
                     return DereferenceString(target);
@@ -339,7 +337,7 @@ namespace EvieCompilerSystem.Runtime
                     int.TryParse(NanTags.DecodeShortStr(encoded), out result);
                     return result;
 
-                case DataType.PtrDiagnosticString:
+                case DataType.PtrStaticString:
                 case DataType.PtrString:
                     NanTags.DecodePointer(encoded, out var target, out _);
                     int.TryParse(DereferenceString(target), out result);

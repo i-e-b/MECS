@@ -88,6 +88,7 @@ namespace EvieCompilerSystem.InputOutput
                         break;
                     
                     case DataType.PtrString:
+                    case DataType.PtrStaticString:
                         NanTags.DecodePointer(code, out var target, out _);
                         LiteralString(strings[(int)target]);
                         break;
@@ -140,9 +141,10 @@ namespace EvieCompilerSystem.InputOutput
                 var type = NanTags.TypeOf(code);
                 switch (type) {
                     case DataType.PtrString:
+                    case DataType.PtrStaticString:
                         NanTags.DecodePointer(code, out var original, out _);
                         var final = mapping[original];
-                        WriteCode(output, NanTags.EncodePointer(final, DataType.PtrString));
+                        WriteCode(output, NanTags.EncodePointer(final, DataType.PtrStaticString));
                         break;
 
                     default: 
@@ -175,8 +177,9 @@ namespace EvieCompilerSystem.InputOutput
         /// <param name="s"></param>
         public void Comment(string s)
         {
-            _stringTable.Add(s);
-            _opcodes.Add(NanTags.EncodePointer(_stringTable.Count - 1, DataType.PtrDiagnosticString));
+            // TODO: move this out to symbols file
+            //_stringTable.Add(s);
+            //_opcodes.Add(NanTags.EncodePointer(_stringTable.Count - 1, DataType.PtrDiagnosticString));
         }
 
         /// <summary>
@@ -321,18 +324,22 @@ namespace EvieCompilerSystem.InputOutput
             _opcodes.Add(d);
         }
 
+        /// <summary>
+        /// Write a static string.
+        /// Static strings aren't seen by the GC and exist in memory outside of the normal allocation space
+        /// </summary>
         public void LiteralString(string s)
         {
             // duplication check
             if (_stringTable.Contains(s)) {
                 var idx = _stringTable.IndexOf(s);
-                _opcodes.Add(NanTags.EncodePointer(idx, DataType.PtrString));
+                _opcodes.Add(NanTags.EncodePointer(idx, DataType.PtrStaticString));
                 return;
             }
 
             // no existing matches
             _stringTable.Add(s);
-            _opcodes.Add(NanTags.EncodePointer(_stringTable.Count - 1, DataType.PtrString));
+            _opcodes.Add(NanTags.EncodePointer(_stringTable.Count - 1, DataType.PtrStaticString));
         }
 
         public void LiteralInt32(int i)

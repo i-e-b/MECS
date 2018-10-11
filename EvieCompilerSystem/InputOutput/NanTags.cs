@@ -24,7 +24,7 @@ namespace EvieCompilerSystem.InputOutput
         const ulong TAG_INT32_VAL      = (ulong)DataType.ValInt32 << 32;
         const ulong TAG_UINT32_VAL     = (ulong)DataType.ValUInt32 << 32;
         const ulong TAG_SMALL_STR      = (ulong)DataType.ValSmallString << 32;
-        const ulong TAG_PTR_DEBUG      = (ulong)DataType.PtrDiagnosticString << 32; // it is a pointer, but it's not allocated
+        const ulong TAG_PTR_DEBUG      = (ulong)DataType.PtrStaticString << 32; // it is a pointer, but it's not allocated
 
         const ulong TAG_UNUSED_VAL_1   = (ulong)DataType.UNUSED_VAL_1 << 32;
 
@@ -80,7 +80,7 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.ValUInt32: return TAG_UINT32_VAL;
                 case DataType.ValSmallString: return TAG_SMALL_STR;
 
-                case DataType.PtrDiagnosticString: return TAG_PTR_DEBUG;
+                case DataType.PtrStaticString: return TAG_PTR_DEBUG;
 
                 case DataType.PtrString: return TAG_PTR_STR;
                 case DataType.PtrHashtable: return TAG_PTR_TABLE;
@@ -467,7 +467,7 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.VariableRef:  return "VariableNameRef ["+DecodeVariableRef(token)+"]";
 
                 case DataType.PtrString: return "Pointer: String ["+DecodePointer(token)+"]"; 
-                case DataType.PtrDiagnosticString: return "Pointer: Diag Str ["+DecodePointer(token)+"]"; 
+                case DataType.PtrStaticString: return "Pointer: Static Str ["+DecodePointer(token)+"]"; 
                 case DataType.PtrHashtable: return "Pointer: Hashtable ["+DecodePointer(token)+"]";
                 case DataType.PtrGrid: return "Pointer: Grid ["+DecodePointer(token)+"]";
                 case DataType.PtrVector: return "Pointer: Linked List ["+DecodePointer(token)+"]";

@@ -8,6 +8,7 @@
         Invalid               = 1,
 
         // Value-in-token ////////////////////
+        // These are ignored by the GC.
         
         /// <summary>
         /// Token represents a double value
@@ -50,11 +51,13 @@
         UNUSED_VAL_1          = 0x00060000,
 
         /// <summary>
-        /// Memory pointer to Diagnostic string (note: this type could be abandoned and replaced with a seperate symbols file)
+        /// Memory pointer to *static* string header. This is the same as a run-time string, but
+        /// is ignored by the GC
         /// </summary>
-        PtrDiagnosticString   = 0x00070000,
+        PtrStaticString   = 0x00070000,
 
         // Allocated ////////////////////
+        // These tags are considered references to memory by the GC
 
         /// <summary>
         /// Memory pointer to STRING header
