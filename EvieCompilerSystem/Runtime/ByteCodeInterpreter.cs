@@ -593,7 +593,6 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.Invalid:
                 case DataType.NoValue:
                 case DataType.Opcode:
-                case DataType.UNUSED_1:
                     return false;
 
                 // Numeric types
@@ -626,11 +625,8 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.VariableRef:
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_String:
-                case DataType.PtrArray_Double:
-                case DataType.PtrSet_String:
-                case DataType.PtrSet_Int32:
-                case DataType.PtrLinkedList:
+                case DataType.PtrSet:
+                case DataType.PtrVector:
                     {
                         var target = NanTags.DecodeRaw(list[0]);
                         for (int i = 1; i < list.Length; i++)

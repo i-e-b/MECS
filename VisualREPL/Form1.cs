@@ -62,6 +62,7 @@ namespace VisualREPL
                 case DialogResult.OK:
                 case DialogResult.Yes:
                     scriptInputBox.Text = File.ReadAllText(openFileDialog1.FileName);
+                    saveFileDialog1.FileName = openFileDialog1.FileName; // for overwriting
                     Repl.SetBasePath(Path.GetDirectoryName(openFileDialog1.FileName));
                     break;
             }
@@ -83,7 +84,6 @@ namespace VisualREPL
         }
 
 
-        // TODO: spin this complex text box stuff out to its own component?
         private readonly object _textLock = new object();
         private bool _textChanging;
 

@@ -44,16 +44,16 @@ weird-names-are-ok? ()
 
 /* while i < 10 */
 while ( not (=(10 i) ) // handles any quantity of white-space
-	print("Counter: "  i)
+    print("Counter: "  i)
 
-	if(=(i, 3)
-		// If i = 3, show this message.
-		print("this is 3.")
+    if(=(i, 3)
+        // If i = 3, show this message.
+        print("this is 3.")
         CustomSubroutine("one" "two") // call a custom function
-	)
+    )
 
-	// Increment i.
-	set(i, +(i 1))
+    // Increment i.
+    set(i, +(i 1))
 )
 
 // Demonstrate value returning functions:
@@ -67,11 +67,13 @@ FunctionThatReturns(false)
 print("'i' is now " i)
 
 // Check scopes:
-if (isset(localVar)
-    print("The local variable is still set. That's wrong!")
-) // TODO: figure out an nice way of doing if/else? Maybe `pick(idx, (), (), ...)` where idx==true would pick the first, etc?
-if (not(isset(localVar))
-    print("The local variable from the custom function is gone. That's correct!")
+pick (
+    if (isset(localVar)
+        print("The local variable is still set. That's wrong!")
+    )
+    if (not(isset(localVar))
+        print("The local variable from the custom function is gone. That's correct!")
+    )
 )
 
 // Optional. Remove memory definition

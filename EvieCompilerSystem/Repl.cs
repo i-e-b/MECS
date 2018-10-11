@@ -77,7 +77,7 @@ namespace EvieCompilerSystem
             }
             catch (Exception e)
             {
-                output.WriteLine("Interpreter stopped at "+interpreter.LastPosition());
+                output.WriteLine("Interpreter stopped at " + interpreter.LastPosition());
                 output.WriteLine("Exception : " + e.Message);
                 output.WriteLine("\r\n\r\n" + e.StackTrace);
                 sw.Stop();

@@ -37,12 +37,14 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Short-string stack value to reduce GC gunk
 * [x] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
 * [ ] Single step in repl gui
-* [ ] Runtime interpreter exceptions to give position
+* [x] Runtime interpreter exceptions to give position
+* [ ] Ability to pass references to functions
 
-* [ ] Memory model
+* [ ] Full memory model (including stacks)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] String builder in memory model (array concat?)
 * [ ] Experiment with NAR propagation and a test function.
+* [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Syntax for defining variadic functions ( `...{array name}` or something? Look at https://blog.taylorwood.io/2017/09/15/year-behind.html )
 
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
@@ -53,7 +55,6 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] More math: useful constants (pi, e, inf, neg-inf)
-* [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Make sure (de)serialisation is available
 * [ ] Object-literal form? Functions-as-data, or special syntax?
 * [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
@@ -64,14 +65,13 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 ### Data types
 
-* String
-* Int
-* Float/Number
-* Set/flags
-* Dictionary/map/hashtable
-* Array (of type)
-* List (heterogenous)
-* Grid (2+D array, sparse)
+* String                      (Ascii block with header -- not a null-term string)
+* Int                         (tail 32 bits of tag)
+* Float/Number                (non-nan double)
+* Set/flags                   (Hash table with dummy contents)
+* Dictionary/map/hashtable    (Hash table keyed and valued with tags)
+* Array/List                  (Scalable vector of tags)
+* Grid (2+D array, sparse)    (Hash table with specially constructed keys)
 
 # Language definitions
 

@@ -24,19 +24,21 @@ namespace EvieCompilerSystem.InputOutput
         const ulong TAG_INT32_VAL      = (ulong)DataType.ValInt32 << 32;
         const ulong TAG_UINT32_VAL     = (ulong)DataType.ValUInt32 << 32;
         const ulong TAG_SMALL_STR      = (ulong)DataType.ValSmallString << 32;
+        const ulong TAG_PTR_DEBUG      = (ulong)DataType.PtrDiagnosticString << 32; // it is a pointer, but it's not allocated
 
-        const ulong TAG_PTR_SET_STR    = (ulong)DataType.PtrSet_String << 32;
-        const ulong TAG_PTR_SET_INT32  = (ulong)DataType.PtrSet_Int32 << 32;
-        const ulong TAG_PTR_LINKLIST   = (ulong)DataType.PtrLinkedList << 32;
-        const ulong TAG_PTR_DEBUG      = (ulong)DataType.PtrDiagnosticString << 32;
+        const ulong TAG_UNUSED_VAL_1   = (ulong)DataType.UNUSED_VAL_1 << 32;
+
+
+        const ulong TAG_PTR_SET        = (ulong)DataType.PtrSet << 32;
+        const ulong TAG_PTR_VECTOR     = (ulong)DataType.PtrVector << 32;
         const ulong TAG_PTR_STR        = (ulong)DataType.PtrString << 32;
         const ulong TAG_PTR_TABLE      = (ulong)DataType.PtrHashtable << 32;
         const ulong TAG_PTR_GRID       = (ulong)DataType.PtrGrid << 32;
 
-        const ulong TAG_ARR_STR        = (ulong)DataType.PtrArray_String << 32;
-        const ulong TAG_ARR_DOUBLE     = (ulong)DataType.PtrArray_Double << 32;
+        const ulong TAG_UNUSED_PTR_1   = (ulong)DataType.UNUSED_PTR_1 << 32;
+        const ulong TAG_UNUSED_PTR_2   = (ulong)DataType.UNUSED_PTR_2 << 32;
+        const ulong TAG_UNUSED_PTR_3   = (ulong)DataType.UNUSED_PTR_3 << 32;
 
-        const ulong TAG_UNUSED_1       = (ulong)DataType.UNUSED_1 << 32;
 
 
         /// <summary>
@@ -78,18 +80,19 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.ValUInt32: return TAG_UINT32_VAL;
                 case DataType.ValSmallString: return TAG_SMALL_STR;
 
+                case DataType.PtrDiagnosticString: return TAG_PTR_DEBUG;
+
                 case DataType.PtrString: return TAG_PTR_STR;
                 case DataType.PtrHashtable: return TAG_PTR_TABLE;
                 case DataType.PtrGrid: return TAG_PTR_GRID;
-                case DataType.PtrArray_String: return TAG_ARR_STR;
-                case DataType.PtrArray_Double: return TAG_ARR_DOUBLE;
-                case DataType.PtrSet_String: return TAG_PTR_SET_STR;
-                case DataType.PtrSet_Int32: return TAG_PTR_SET_INT32;
-                case DataType.PtrLinkedList: return TAG_PTR_LINKLIST;
-                case DataType.PtrDiagnosticString: return TAG_PTR_DEBUG;
+                case DataType.PtrSet: return TAG_PTR_SET;
+                case DataType.PtrVector: return TAG_PTR_VECTOR;
 
 
-                case DataType.UNUSED_1: return TAG_UNUSED_1;
+                case DataType.UNUSED_PTR_1: return TAG_UNUSED_PTR_1;
+                case DataType.UNUSED_PTR_2: return TAG_UNUSED_PTR_2;
+                case DataType.UNUSED_PTR_3: return TAG_UNUSED_PTR_3;
+                case DataType.UNUSED_VAL_1: return TAG_UNUSED_VAL_1;
 
                 default:
                     throw new Exception("Invalid data type");
@@ -467,20 +470,20 @@ namespace EvieCompilerSystem.InputOutput
                 case DataType.PtrDiagnosticString: return "Pointer: Diag Str ["+DecodePointer(token)+"]"; 
                 case DataType.PtrHashtable: return "Pointer: Hashtable ["+DecodePointer(token)+"]";
                 case DataType.PtrGrid: return "Pointer: Grid ["+DecodePointer(token)+"]";
-                case DataType.PtrLinkedList: return "Pointer: Linked List ["+DecodePointer(token)+"]";
+                case DataType.PtrVector: return "Pointer: Linked List ["+DecodePointer(token)+"]";
 
-                case DataType.PtrArray_String: return "Pointer: String Array ["+DecodePointer(token)+"]";
-                case DataType.PtrArray_Double: return "Pointer: Double Array ["+DecodePointer(token)+"]";
+                case DataType.UNUSED_PTR_2: return "Pointer: String Array ["+DecodePointer(token)+"]";
+                case DataType.UNUSED_PTR_3: return "Pointer: Double Array ["+DecodePointer(token)+"]";
 
-                case DataType.PtrSet_String: return "Pointer: String Set ["+DecodePointer(token)+"]";
-                case DataType.PtrSet_Int32: return "Pointer: Int32 Set ["+DecodePointer(token)+"]";
+                case DataType.PtrSet: return "Pointer: String Set ["+DecodePointer(token)+"]";
+                case DataType.UNUSED_PTR_1: return "Pointer: Int32 Set ["+DecodePointer(token)+"]";
 
                 case DataType.Number: return "Double ["+token+"]";
                 case DataType.ValInt32: return "Int32 ["+DecodeInt32(token)+"]";
                 case DataType.ValUInt32: return "UInt32 [" + DecodeUInt32(token) + "]";
                 case DataType.ValSmallString: return "Short String [" + DecodeShortStr(token) + "]";
 
-                case DataType.UNUSED_1: return "UNUSED TOKEN";
+                case DataType.UNUSED_VAL_1: return "UNUSED TOKEN";
 
                 default:
                     return "Invalid token";

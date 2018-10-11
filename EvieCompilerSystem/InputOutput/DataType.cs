@@ -47,7 +47,7 @@
         /// <summary>
         /// ...
         /// </summary>
-        UNUSED_1              = 0x00060000,
+        UNUSED_VAL_1          = 0x00060000,
 
         /// <summary>
         /// Memory pointer to Diagnostic string (note: this type could be abandoned and replaced with a seperate symbols file)
@@ -72,28 +72,28 @@
         PtrGrid               = 0x80020000,
 
         /// <summary>
-        /// Memory pointer to ARRAY of string
+        /// Memory pointer to a SET of values or references
         /// </summary>
-        PtrArray_String       = 0x80030000,
+        PtrSet                = 0x80050000,
 
         /// <summary>
-        /// Memory pointer to ARRAY of numeric tokens (double, int32, uint32)
+        /// Memory pointer to a variable-length vector
         /// </summary>
-        PtrArray_Double       = 0x80040000,
+        PtrVector             = 0x80070000,
 
         /// <summary>
-        /// Memory pointer to SET of string header pointers
+        /// ...
         /// </summary>
-        PtrSet_String         = 0x80050000,
+        UNUSED_PTR_1          = 0x80060000,
 
         /// <summary>
-        ///  Memory pointer to SET of 32 signed integer
+        /// ...
         /// </summary>
-        PtrSet_Int32          = 0x80060000,
+        UNUSED_PTR_2          = 0x80030000,
 
         /// <summary>
-        /// Memory pointer to double-linked list node
+        /// ...
         /// </summary>
-        PtrLinkedList         = 0x80070000,
+        UNUSED_PTR_3          = 0x80040000,
     }
 }

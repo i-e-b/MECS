@@ -114,9 +114,6 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.Invalid: return "";
                 case DataType.NoValue: return "";
 
-                case DataType.UNUSED_1:
-                    return "UNUSED TOKEN";
-
                 case DataType.VariableRef:
                     var rref = NanTags.DecodeVariableRef(token);
                     if (debugSymbols?.ContainsKey(rref) == true)
@@ -149,11 +146,11 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.PtrString:
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_String:
-                case DataType.PtrArray_Double:
-                case DataType.PtrSet_String:
-                case DataType.PtrSet_Int32:
-                case DataType.PtrLinkedList:
+                case DataType.UNUSED_PTR_2:
+                case DataType.UNUSED_PTR_3:
+                case DataType.PtrSet:
+                case DataType.UNUSED_PTR_1:
+                case DataType.PtrVector:
                 case DataType.PtrDiagnosticString:
                     NanTags.DecodePointer(token, out var targ, out _);
                     return " -> " + targ;
@@ -297,9 +294,6 @@ namespace EvieCompilerSystem.Runtime
                     var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
                     return CastString(next);
 
-                case DataType.UNUSED_1:
-                    return "<unused token>";
-
                 case DataType.ValSmallString:
                     return NanTags.DecodeShortStr(encoded);
 
@@ -310,11 +304,8 @@ namespace EvieCompilerSystem.Runtime
 
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_String:
-                case DataType.PtrArray_Double:
-                case DataType.PtrSet_String:
-                case DataType.PtrSet_Int32:
-                case DataType.PtrLinkedList:
+                case DataType.PtrSet:
+                case DataType.PtrVector:
                     return "<complex type>"; // TODO: add stringification later
 
                 case DataType.ValInt32: return NanTags.DecodeInt32(encoded).ToString();
@@ -337,7 +328,6 @@ namespace EvieCompilerSystem.Runtime
                 case DataType.Invalid:
                 case DataType.Opcode:
                 case DataType.NoValue:
-                case DataType.UNUSED_1:
                     return 0;
 
                 case DataType.VariableRef:
@@ -357,11 +347,8 @@ namespace EvieCompilerSystem.Runtime
 
                 case DataType.PtrHashtable:
                 case DataType.PtrGrid:
-                case DataType.PtrArray_String:
-                case DataType.PtrArray_Double:
-                case DataType.PtrSet_String:
-                case DataType.PtrSet_Int32:
-                case DataType.PtrLinkedList:
+                case DataType.PtrSet:
+                case DataType.PtrVector:
                     return 0;
 
                 case DataType.Number: return (int)encoded;
