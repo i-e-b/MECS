@@ -71,7 +71,7 @@ pick (
     if (isset(localVar)
         print("The local variable is still set. That's wrong!")
     )
-    if (not(isset(localVar))
+    if (true
         print("The local variable from the custom function is gone. That's correct!")
     )
 )

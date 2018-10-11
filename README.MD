@@ -36,11 +36,10 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 * [x] Short-string stack value to reduce GC gunk
 * [x] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
-* [ ] Single step in repl gui
 * [x] Runtime interpreter exceptions to give position
-* [ ] Ability to pass references to functions
+* [ ] Move static strings outside of GC
 
-* [ ] Full memory model (including stacks)
+* [ ] Full memory model (including return & value stacks)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] String builder in memory model (array concat?)
 * [ ] Experiment with NAR propagation and a test function.
@@ -50,6 +49,7 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
 * [ ] String interning / deduplication (runtime)
 
+* [ ] Single step in repl gui
 * [ ] Handle malformed source code correctly
 * [ ] Replace C# exceptions with internal error handling
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)

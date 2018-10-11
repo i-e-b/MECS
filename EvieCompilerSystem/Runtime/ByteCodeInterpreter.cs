@@ -10,6 +10,31 @@ using EvieCompilerSystem.Utils;
 
 namespace EvieCompilerSystem.Runtime
 {
+    public struct ExecutionResult {
+        /// <summary>
+        /// How the interpreter stopped
+        /// </summary>
+        public ExecutionState State;
+
+        /// <summary>
+        /// If completed, the result of execution
+        /// </summary>
+        public double Result;
+    }
+
+    public enum ExecutionState
+    {
+        /// <summary>
+        /// Program could continue, but stopped by request (debug, step, etc.)
+        /// </summary>
+        Paused,
+
+        /// <summary>
+        /// Program ran to completion
+        /// </summary>
+        Complete
+    }
+
     public class ByteCodeInterpreter
     {
         /// <summary>
@@ -29,6 +54,9 @@ namespace EvieCompilerSystem.Runtime
         private bool _runningVerbose;
         private int _position; // the PC. This is in TOKEN positions, not bytes
 
+        private Stack<double> _valueStack;
+        private Stack<int> _returnStack;
+
         public void Init(RuntimeMemoryModel bin, TextReader input, TextWriter output, HashLookup<string> debugSymbols = null)
         {
             _position = 0;
@@ -42,24 +70,27 @@ namespace EvieCompilerSystem.Runtime
 
             _input  = input;
             _output = output;
+
+		    _valueStack = new Stack<double>();
+            _returnStack = new Stack<int>(); // absolute position for call and return
         }
 
+
         /// <summary>
-        /// Main loop
+        /// Main loop.
+        /// Good default for all the flags is `false`
         /// </summary>
-        public double Execute(bool resetVars, bool verbose)
+        /// <param name="resetVars">If true, all scopes are DELETED before running</param>
+        /// <param name="traceExecution">If true, console output of state is written</param>
+        /// <param name="singleStep">If true, the interpreter will run a single step, then return. Internal `eval` statements will run to completion</param>
+        public ExecutionResult Execute(bool resetVars, bool traceExecution, bool singleStep)
         {
 		    double evalResult;
-            _runningVerbose = verbose;
+            _runningVerbose = traceExecution;
 
             if (resetVars) { _memory.Variables.Clear(); }
 
-		    var valueStack = new Stack<double>();
-            var returnStack = new Stack<int>(); // absolute position for call and return
-		    
-		    int programCount = program.Count;
-		    
-		    while (_position < programCount)
+            while (_position < program.Count)
             {
 			    _stepsTaken++;
                 //if (stepsTaken > 1000) throw new Exception("trap");
@@ -67,17 +98,17 @@ namespace EvieCompilerSystem.Runtime
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
-			    if ((_stepsTaken & 127) == 0 && valueStack.Count > 100) // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
+			    if ((_stepsTaken & 127) == 0 && _valueStack.Count > 100) // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
                 {
-                    var oldValues = valueStack.ToArray();
-                    valueStack = new Stack<double>(oldValues.Skip(oldValues.Length - 100));
+                    var oldValues = _valueStack.ToArray();
+                    _valueStack = new Stack<double>(oldValues.Skip(oldValues.Length - 100));
                 }
 
                 double word = program[_position];
 
-                if (verbose)
+                if (traceExecution)
                 {
-                    _output.WriteLine("          stack :"+string.Join(", ",valueStack.ToArray().Select(t=> _memory.DiagnosticString(t, DebugSymbols))));
+                    _output.WriteLine("          stack :"+string.Join(", ",_valueStack.ToArray().Select(t=> _memory.DiagnosticString(t, DebugSymbols))));
                     _output.WriteLine("          #" + _stepsTaken + "; p="+_position
                                       +"; w="+_memory.DiagnosticString(word, DebugSymbols) );
                 }
@@ -90,32 +121,33 @@ namespace EvieCompilerSystem.Runtime
                     case DataType.Opcode:
                         // decode opcode and do stuff
                         NanTags.DecodeOpCode(word, out var codeClass, out var codeAction, out var p1, out var p2);
-                        ProcessOpCode(codeClass, codeAction, p1, p2, ref _position, valueStack, returnStack, word);
+                        ProcessOpCode(codeClass, codeAction, p1, p2, ref _position, _valueStack, _returnStack, word);
                         break;
 
                     default:
-                        valueStack.Push(word); // these could be raw doubles, encoded real values, or references/pointers
+                        _valueStack.Push(word); // these could be raw doubles, encoded real values, or references/pointers
                         break;
                 }
 
                 
                 _position++;
+                if (singleStep) return new ExecutionResult{ State = ExecutionState.Paused, Result = NanTags.EncodeNonValue(NonValueType.Not_a_Result)};
 		    }
 
-		    if (valueStack.Count != 0)
+		    if (_valueStack.Count != 0)
             {
-                evalResult = valueStack.Pop();
+                evalResult = _valueStack.Pop();
 		    }
             else
             {
-			    evalResult = 0;
+			    evalResult = NanTags.EncodeNonValue(NonValueType.Void);
 		    }
 
-		    valueStack.Clear();
+		    _valueStack.Clear();
 
-		    return evalResult;
-	    }
-        
+            return new ExecutionResult { State = ExecutionState.Complete, Result = evalResult };
+        }
+
         /// <summary>
         /// Core instruction dispatch
         /// </summary>
@@ -443,7 +475,7 @@ namespace EvieCompilerSystem.Runtime
                     var bin = ToNanCodeCompiler.CompileRoot(programTmp, false);
                     var interpreter = new ByteCodeInterpreter();
                     interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
-                    return interpreter.Execute(false, _runningVerbose);
+                    return interpreter.Execute(false, _runningVerbose, false).Result;
 
                 case FuncDef.Call:
                     NanTags.DecodePointer(param.ElementAt(0), out var target, out var type);

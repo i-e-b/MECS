@@ -62,7 +62,7 @@ namespace EvieCompilerSystem
                 interpreter.Init(memoryModel, input, output, debugSymbols: compiledOutput.GetSymbols());
 
                 sw.Start();
-                interpreter.Execute(false, trace);
+                interpreter.Execute(false, trace, false);
                 sw.Stop();
 
                 if (traceMemory) {
