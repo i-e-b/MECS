@@ -1,7 +1,7 @@
 # Compiled Script
 Parse and compile a prefix expression (source code) to a simple byte code.
 
-## TODO
+## C# features:
 
 * [x] Add custom subroutines
 * [x] Add value returns (I want to catch failure to return early, without having to define too much)
@@ -39,23 +39,30 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 * [x] Runtime interpreter exceptions to give position
 * [x] Move static strings outside of GC
 
+## Move to C for embedding
+
+* [ ] Re-implement without C# features
 * [ ] Full memory model (including return & value stacks)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
+* [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
+* [ ] Make sure (de)serialisation is available
+
+## Future work
+
 * [ ] String builder in memory model (array concat?)
 * [ ] Experiment with NAR propagation and a test function.
 * [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Syntax for defining variadic functions ( `...{array name}` or something? Look at https://blog.taylorwood.io/2017/09/15/year-behind.html )
 
-* [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
-* [ ] String interning / deduplication (runtime)
+* [ ] Try adding iterators/yield?
+
+* [ ] String interning / deduplication (runtime, maybe with a hash-map?)
 
 * [ ] Single step in repl gui
 * [ ] Handle malformed source code correctly
-* [ ] Replace C# exceptions with internal error handling
 * [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
 * [ ] More math: abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
 * [ ] More math: useful constants (pi, e, inf, neg-inf)
-* [ ] Make sure (de)serialisation is available
 * [ ] Object-literal form? Functions-as-data, or special syntax?
 * [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
 * [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
