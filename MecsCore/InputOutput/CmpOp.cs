@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace EvieCompilerSystem.InputOutput
+namespace MecsCore.InputOutput
 {
     /// <summary>
     /// Comparison Operations available for compound compare

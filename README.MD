@@ -1,5 +1,6 @@
-# Compiled Script
-Parse and compile a prefix expression (source code) to a simple byte code.
+# MECS
+Compiler, Interpreter, and Runtime engine for a simple language.
+Intended to contain a complete memory model, for embedding onto a SBC.
 
 ## C# features:
 
@@ -41,11 +42,12 @@ Parse and compile a prefix expression (source code) to a simple byte code.
 
 ## Move to C for embedding
 
-* [ ] Re-implement without C# features
+* [ ] Re-implement without dotnet class library
 * [ ] Full memory model (including return & value stacks)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
 * [ ] Make sure (de)serialisation is available
+* [ ] Messaging / Mailboxes
 
 ## Future work
 

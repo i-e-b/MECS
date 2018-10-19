@@ -1,4 +1,4 @@
-﻿namespace EvieCompilerSystem.InputOutput
+﻿namespace MecsCore.InputOutput
 {
     public struct FunctionDefinition
     {

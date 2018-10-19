@@ -1,7 +1,7 @@
 ﻿using System;
-using EvieCompilerSystem.Runtime;
+using MecsCore.Runtime;
 
-namespace EvieCompilerSystem.Compiler
+namespace MecsCore.Compiler
 {
     /// <summary>
     /// Language features that are implemented by decomposing into simpler elements

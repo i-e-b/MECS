@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using EvieCompilerSystem.InputOutput;
+using MecsCore.InputOutput;
 
-namespace EvieCompilerSystem.Runtime
+namespace MecsCore.Runtime
 {
     /// <summary>
     /// Simple variable scope storage and resolver.

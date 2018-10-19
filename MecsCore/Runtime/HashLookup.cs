@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace EvieCompilerSystem.Runtime
+namespace MecsCore.Runtime
 {
     /// <summary>
     /// A robin-hood strategy hash table, simplified for looking up pre-hashed keys.

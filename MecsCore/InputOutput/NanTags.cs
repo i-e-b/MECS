@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace EvieCompilerSystem.InputOutput
+namespace MecsCore.InputOutput
 {
     /// <summary>
     /// Functions to encode and decode values behind NaN tags in 64-bit blocks

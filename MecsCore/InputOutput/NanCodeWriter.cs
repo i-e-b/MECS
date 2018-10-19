@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using EvieCompilerSystem.Runtime;
+using MecsCore.Runtime;
 
-namespace EvieCompilerSystem.InputOutput
+namespace MecsCore.InputOutput
 {
     /// <summary>
     /// Outputs Nan-Boxed values and opcodes

@@ -1,4 +1,4 @@
-﻿namespace EvieCompilerSystem.Compiler
+﻿namespace MecsCore.Compiler
 {
     public enum NodeType
     {

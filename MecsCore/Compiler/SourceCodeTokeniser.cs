@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text;
 
-namespace EvieCompilerSystem.Compiler
+namespace MecsCore.Compiler
 {
     public class SourceCodeTokeniser
     {

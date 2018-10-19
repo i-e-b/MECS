@@ -4,11 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using EvieCompilerSystem.Compiler;
-using EvieCompilerSystem.InputOutput;
-using EvieCompilerSystem.Utils;
+using MecsCore.Compiler;
+using MecsCore.InputOutput;
+using MecsCore.Utils;
 
-namespace EvieCompilerSystem.Runtime
+namespace MecsCore.Runtime
 {
     public struct ExecutionResult {
         /// <summary>

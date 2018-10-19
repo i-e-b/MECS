@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using EvieCompilerSystem.InputOutput;
-using EvieCompilerSystem.Runtime;
+using MecsCore.InputOutput;
+using MecsCore.Runtime;
 
-namespace EvieCompilerSystem.Compiler
+namespace MecsCore.Compiler
 {
     /// <summary>
     /// Compile source code to NanTagged file or memory layout

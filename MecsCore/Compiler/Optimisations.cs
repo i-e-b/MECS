@@ -1,7 +1,7 @@
 ﻿using System;
-using EvieCompilerSystem.InputOutput;
+using MecsCore.InputOutput;
 
-namespace EvieCompilerSystem.Compiler
+namespace MecsCore.Compiler
 {
     /// <summary>
     /// Patterns in the code that can be reduced or compounded for better performance

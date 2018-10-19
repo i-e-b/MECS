@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 
-namespace EvieCompilerSystem.Compiler
+namespace MecsCore.Compiler
 {
     public class Node
     {

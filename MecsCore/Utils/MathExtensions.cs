@@ -1,5 +1,5 @@
 ﻿
-namespace EvieCompilerSystem.Utils
+namespace MecsCore.Utils
 {
     // ReSharper disable once UnusedMember.Global
     public static class MathExtensions {

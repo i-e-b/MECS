@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
-using EvieCompilerSystem.Compiler;
-using EvieCompilerSystem.InputOutput;
-using EvieCompilerSystem.Runtime;
+using MecsCore.Compiler;
+using MecsCore.InputOutput;
+using MecsCore.Runtime;
 
-namespace EvieCompilerSystem
+namespace MecsCore
 {
     // ReSharper disable once UnusedMember.Global
     public static class Repl

@@ -1,7 +1,7 @@
 ﻿using System.Text;
-using EvieCompilerSystem.Compiler;
+using MecsCore.Compiler;
 
-namespace EvieCompilerSystem.InputOutput
+namespace MecsCore.InputOutput
 {
     /// <summary>
     /// Format source code

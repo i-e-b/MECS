@@ -4,8 +4,8 @@ using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Windows.Forms;
-using EvieCompilerSystem;
-using EvieCompilerSystem.InputOutput;
+using MecsCore;
+using MecsCore.InputOutput;
 
 namespace VisualREPL
 {
