@@ -23,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -33,6 +34,7 @@
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -45,6 +47,8 @@
     <Compile Include="InputOutput\DataType.cs" />
     <Compile Include="InputOutput\NonValueType.cs" />
     <Compile Include="Runtime\HashLookup.cs" />
+    <Compile Include="Runtime\MemorySimulator.cs" />
+    <Compile Include="Runtime\Result.cs" />
     <Compile Include="Runtime\RuntimeMemoryModel.cs" />
     <Compile Include="InputOutput\NanCodeWriter.cs" />
     <Compile Include="InputOutput\NanTags.cs" />
@@ -59,6 +63,7 @@
     <Compile Include="Runtime\ByteCodeInterpreter.cs" />
     <Compile Include="InputOutput\FunctionDefinition.cs" />
     <Compile Include="Runtime\Scope.cs" />
+    <Compile Include="Runtime\Sizes.cs" />
     <Compile Include="Utils\MathExtensions.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

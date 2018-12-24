@@ -1,0 +1,25 @@
+// define a macro
+macro (
+    add-vec3 (first second) ( // each parameter is either an atom or a list, but we can treat it as a code string too?
+        // we can output new code using the 'print' statment
+        set(vname, new-name()) // `new-name` makes any string that isn't currently a used name in any scope when the macro is run
+        print ("set(" vname "new-vector())")
+        set(i 0) // names we don't output with 'print' are fine to define how we see fit
+        while( <(i 3)
+            print("set(" vname " " i " +(get(" first " " i ") get(" second " " i ")))")         
+        )
+        print("push(" vname ")")
+        print("unset(" vname ")")
+    )
+)
+
+// Use the macro
+set(C add-vec3 (A B))
+
+// expands to
+set(tmp new-vector())
+set(tmp 0 +(get(A 0) get(B 0)))
+set(tmp 1 +(get(A 1) get(B 1)))
+set(tmp 2 +(get(A 2) get(B 2)))
+push(tmp) // need a new function that directly adds to the value stack, like `return` would
+unset(tmp)

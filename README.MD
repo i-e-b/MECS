@@ -40,6 +40,9 @@ Intended to contain a complete memory model, for embedding onto a SBC.
 * [x] Runtime interpreter exceptions to give position
 * [x] Move static strings outside of GC
 
+* [ ] Stack clean-up behaviour
+* [ ] Macros (functions that run at compile time)
+
 ## Move to C for embedding
 
 * [ ] Re-implement without dotnet class library
