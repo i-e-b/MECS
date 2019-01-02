@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include "Vector.h"
+
 // Testing my #define understanding
 
 #define exp2str(expression)  #expression
@@ -55,4 +57,9 @@ int main()
     std::cout << exp2str(x > y) << "\n";          // "x > y"
     std::cout << splatName(hello) << "\n";        // "Special value"
     std::cout << xstr(splatName(hello)) << "\n";  // "_this_hello_is_special" (need to do a double expansion through `xstr` to get string of token)
+
+
+    // See if the container stuff works...
+    auto gvec = VectorAllocate(sizeof(exampleElement));
+    std::cout << "Vector OK? " << gvec.IsValid << "; base addr = " << gvec._baseChunkTable << "\n";
 }
