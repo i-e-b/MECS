@@ -53,22 +53,7 @@ const long SKIP_TABLE_SIZE_LIMIT = 1024;
   * evenly distribute for now.
   */
 
-void MaybeRebuildSkipTable(Vector *v);
-
-// add a new chunk at the end of the chain
-void *NewChunk(Vector *v)
-{
-    auto ptr = malloc(v->ChunkBytes);
-    if (ptr == NULL) return NULL;
-
-    ((size_t*)ptr)[0] = -1; // set the continuation pointer of the new chunk to invalid
-    if (v->_endChunkPtr != NULL) ((size_t*)v->_endChunkPtr)[0] = (size_t)ptr;  // update the continuation pointer of the old end chunk
-    v->_endChunkPtr = ptr;                                    // update the end chunk pointer
-    v->_skipTableDirty = true; // updating the skip table wouldn't be wasted
-
-    return ptr;
-}
-
+// A bunch of little memory helpers
 inline void * byteOffset(void *ptr, int byteOffset) {
     char* x = (char*)ptr;
     x += byteOffset;
@@ -94,6 +79,23 @@ inline void writePtr(void *ptr, int byteOffset, void* data) {
     x += byteOffset;
     ((size_t*)x)[0] = (size_t)data;
 }
+
+void MaybeRebuildSkipTable(Vector *v); // defined later
+
+// add a new chunk at the end of the chain
+void *NewChunk(Vector *v)
+{
+    auto ptr = malloc(v->ChunkBytes);
+    if (ptr == NULL) return NULL;
+
+    ((size_t*)ptr)[0] = 0; // set the continuation pointer of the new chunk to invalid
+    if (v->_endChunkPtr != NULL) ((size_t*)v->_endChunkPtr)[0] = (size_t)ptr;  // update the continuation pointer of the old end chunk
+    v->_endChunkPtr = ptr;                                    // update the end chunk pointer
+    v->_skipTableDirty = true; // updating the skip table wouldn't be wasted
+
+    return ptr;
+}
+
 
 void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **chunkPtr, unsigned int *chunkIndex) {
     // 1. Calculate desired chunk index
@@ -284,9 +286,24 @@ Vector VectorAllocate(int elementSize)
     result.IsValid = true;
     return result;
 }
-/*
-void VectorDeallocate(Vector *v);
 
+void VectorDeallocate(Vector *v) {
+    v->IsValid = false;
+    free(v->_skipTable);
+    v->_skipTable = NULL;
+    // Walk through the chunk chain, removing until we hit an invalid pointer
+    var current = v->_baseChunkTable;
+    v->_baseChunkTable = NULL;
+    v->_endChunkPtr = NULL;
+    while (true) {
+        var next = readPtr(current, 0);
+        free(current);
+        writePtr(current, 0, NULL); // just in case we have a loop
+        if (next == NULL) return; // end of chunks
+        current = next;
+    }
+}
+/*
 int VectorLength(Vector *v);
 bool VectorPush(Vector *v, void* value);
 void* VectorGet(Vector *v, unsigned int index);

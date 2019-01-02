@@ -60,6 +60,11 @@ int main()
 
 
     // See if the container stuff works...
+    std::cout << "Allocating\n";
     auto gvec = VectorAllocate(sizeof(exampleElement));
+    std::cout << "Vector OK? " << gvec.IsValid << "; base addr = " << gvec._baseChunkTable << "\n";
+
+    std::cout << "Deallocating\n";
+    VectorDeallocate(&gvec);
     std::cout << "Vector OK? " << gvec.IsValid << "; base addr = " << gvec._baseChunkTable << "\n";
 }
