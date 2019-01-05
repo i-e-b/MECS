@@ -85,7 +85,11 @@ int main()
     // Pop a load of values
     std::cout << "Reading and removing entries with 'pop'\n";
     for (int i = 0; i < 4000; i++) {
-        auto dummy = VectorPop(&gvec);
+        exampleElement poppedData;
+        if (!VectorPop(&gvec, &poppedData)) {
+            std::cout << "Pop failed!\n";
+            return 254;
+        }
     }
     std::cout << "Vector OK? " << gvec.IsValid << "; Elements stored = " << VectorLength(&gvec) << "\n";
 

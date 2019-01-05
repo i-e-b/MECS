@@ -362,14 +362,18 @@ void* VectorGet(Vector *v, unsigned int index) {
     return PtrOfElem(v, index);
 }
 
-void* VectorPop(Vector *v) {
-    if (v->_elementCount == 0) return NULL;
+bool VectorPop(Vector *v, void *target) {
+    if (v->_elementCount == 0) return false;
 
     var index = v->_elementCount - 1;
     var entryIdx = index % v->ElemsPerChunk;
 
     // Get the value
-    var result = readPtr(v->_endChunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+    var result = byteOffset(v->_endChunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+    if (result == NULL) return false;
+    if (target != NULL) { // need to copy element, as we might dealloc the chunk it lives in
+        writeValue(target, 0, result, v->ElementByteSize);
+    }
 
     // Clean up if we've emptied a chunk that isn't the initial one
     if (entryIdx < 1 && v->_elementCount > 0) {
@@ -378,13 +382,10 @@ void* VectorPop(Vector *v) {
         void *prevChunkPtr = NULL;
         uint deadChunkIdx = 0;
         FindNearestChunk(v, index - 1, &found, &prevChunkPtr, &deadChunkIdx);
-        if (!found) {
-            // not sure -- what would be missing?
-            return NULL;
-        }
-        if (prevChunkPtr == v->_endChunkPtr) {
-            // logic not right!
-            return result;
+        if (!found || prevChunkPtr == v->_endChunkPtr) {
+            // damaged references!
+            v->IsValid = false;
+            return false;
         }
         free(v->_endChunkPtr);
         v->_endChunkPtr = prevChunkPtr;
@@ -403,7 +404,7 @@ void* VectorPop(Vector *v) {
     }
 
     v->_elementCount--;
-    return result;
+    return true;
 }
 
 bool VectorSet(Vector *v, unsigned int index, void* element, void* prevValue) {
