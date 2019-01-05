@@ -66,7 +66,7 @@ int main()
 
     // add some entries
     std::cout << "Writing entries with 'push'\n";
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 1000; i++) {
         if (!VectorPush(&gvec, result)) {
             std::cout << "Push failed!\n";
             return 255;
@@ -77,6 +77,17 @@ int main()
     // read a random-access element
     auto r = (exampleElement*)VectorGet(&gvec, 5);
     std::cout << "Element 5 data = " << r->a << ", " << r->b << "\n";
+
+    // resize the array
+    VectorPrealloc(&gvec, 5000);
+    std::cout << "Vector OK? " << gvec.IsValid << "; Elements stored = " << VectorLength(&gvec) << "\n";
+
+    // Pop a load of values
+    std::cout << "Reading and removing entries with 'pop'\n";
+    for (int i = 0; i < 4000; i++) {
+        auto dummy = VectorPop(&gvec);
+    }
+    std::cout << "Vector OK? " << gvec.IsValid << "; Elements stored = " << VectorLength(&gvec) << "\n";
 
 
     std::cout << "Deallocating\n";

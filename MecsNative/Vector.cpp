@@ -28,7 +28,6 @@ const int TARGET_ELEMS_PER_CHUNK = 64;
 // This limits the memory growth of larger arrays. If it's bigger than an arena, everything will fail.
 const long SKIP_TABLE_SIZE_LIMIT = 1024;
 
-
 /*
  * Structure of the element chunk:
  *
@@ -94,7 +93,7 @@ void MaybeRebuildSkipTable(Vector *v); // defined later
 // add a new chunk at the end of the chain
 void *NewChunk(Vector *v)
 {
-    auto ptr = malloc(v->ChunkBytes);
+    auto ptr = calloc(1, v->ChunkBytes); // avoid garbage data in the chunks (help when we pre-alloc)
     if (ptr == NULL) return NULL;
 
     ((size_t*)ptr)[0] = 0; // set the continuation pointer of the new chunk to invalid
@@ -144,9 +143,9 @@ void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **c
     if (v->_skipEntries > 1)
     {
         // guess search bounds
-        var guess = (targetChunkIdx * v->_skipEntries) / endChunkIdx;
-        var upper = guess + 2;
-        var lower = guess - 2;
+        int guess = (targetChunkIdx * v->_skipEntries) / endChunkIdx;
+        int upper = guess + 2;
+        int lower = guess - 2;
         if (upper > v->_skipEntries) upper = v->_skipEntries;
         if (lower < 0) lower = 0;
 
@@ -175,7 +174,15 @@ void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **c
     // 4. Walk the chain until we find the chunk we want
     for (; startChunkIdx < targetChunkIdx; startChunkIdx++)
     {
-        chunkHeadPtr = readPtr(chunkHeadPtr, 0);
+        auto next = readPtr(chunkHeadPtr, 0);
+        if (next == NULL) {
+            // walk chain failed! We will store the last step in case it's useful.
+            *found = false;
+            *chunkPtr = chunkHeadPtr;
+            *chunkIndex = targetChunkIdx;
+            return;
+        }
+        chunkHeadPtr = next;
     }
 
     *found = true;
@@ -217,8 +224,7 @@ void RebuildSkipTable(Vector *v)
     for (int i = 0; i < entries; i++) {
         FindNearestChunk(v, target, &found, &chunkPtr, &chunkIndex);
 
-        if (!found || chunkPtr < 0) // total fail
-        {
+        if (!found || chunkPtr == NULL) { // total fail
             free(newTablePtr);
             v->_rebuilding = false;
             return;
@@ -231,9 +237,8 @@ void RebuildSkipTable(Vector *v)
         target += stride;
     }
 
-    if (newSkipEntries < 1) // total fail
-    {
-        free(newTablePtr);
+    if (newSkipEntries < 1) {
+        free(newTablePtr); // failed to build
         v->_rebuilding = false;
         return;
     }
@@ -318,8 +323,8 @@ void VectorDeallocate(Vector *v) {
     v->_endChunkPtr = NULL;
     while (true) {
         var next = readPtr(current, 0);
-        free(current);
         writePtr(current, 0, NULL); // just in case we have a loop
+        free(current);
         if (next == NULL) return; // end of chunks
         current = next;
     }
@@ -371,8 +376,16 @@ void* VectorPop(Vector *v) {
         // need to dealloc end chunk
         bool found;
         void *prevChunkPtr = NULL;
-        uint deadChunkIdx;
+        uint deadChunkIdx = 0;
         FindNearestChunk(v, index - 1, &found, &prevChunkPtr, &deadChunkIdx);
+        if (!found) {
+            // not sure -- what would be missing?
+            return NULL;
+        }
+        if (prevChunkPtr == v->_endChunkPtr) {
+            // logic not right!
+            return result;
+        }
         free(v->_endChunkPtr);
         v->_endChunkPtr = prevChunkPtr;
         writePtr(prevChunkPtr, 0, NULL); // remove the 'next' pointer from the new end chunk
