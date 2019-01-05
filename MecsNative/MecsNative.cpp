@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "Vector.h"
+#include "HashMap.h"
 
 // So, the idea for general containers, have some basic `void*` and size functionality,
 // and some macros to init an inline casting function for each type.
@@ -14,11 +15,38 @@ exampleElement fakeData = exampleElement{ 5,15 };
 // Register type specifics
 RegisterVectorFor(exampleElement, Vec)
 
+bool IntKeyCompare(void* key_A, void* key_B) {
+    auto A = *((int*)key_A);
+    auto B = *((int*)key_B);
+    return A == B;
+}
+unsigned int IntKeyHash(void* key) {
+    auto A = *((unsigned int*)key);
+    return A;
+}
+
 int main()
 {
     int x = 5, y = 4;
     char _this_hello_is_special[] = "Special value";
 
+    std::cout << "*************** HASH MAP *****************\n";
+    std::cout << "Allocating\n";
+    auto hmap = HashMapAllocate(64, IntKeyCompare, IntKeyHash);
+    std::cout << "HashMap OK? " << hmap.IsValid << "\n";
+
+    std::cout << "Writing entries\n";
+    for (int i = 0; i < 100; i++) {
+        int value = i * 2; // TODO: this won't really work. The hash-map doesn't store anything. FIX!
+        Put(&hmap, &i, &value, true);
+    }
+
+    std::cout << "Deallocating\n";
+    Deallocate(&hmap);
+    std::cout << "HashMap OK? " << hmap.IsValid << "\n";
+
+
+    std::cout << "**************** VECTOR *******************\n";
     auto testElement = exampleElement{ 20,5 };
 
     // See if the container stuff works...

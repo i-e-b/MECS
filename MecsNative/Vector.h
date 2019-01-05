@@ -40,6 +40,8 @@ int VectorLength(Vector *v);
 bool VectorPush(Vector *v, void* value);
 // Get a pointer to an element in the vector. This is an in-place pointer -- no copy is made
 void* VectorGet(Vector *v, unsigned int index);
+// Copy data from an element in the vector to a pointer
+bool VectorCopy(Vector *v, unsigned int index, void* outValue);
 // Read and remove an element from the vector. A copy of the element is written into the parameter. If null, only the removal is done.
 bool VectorPop(Vector *v, void *target);
 // Write a value at a given position. This must be an existing allocated position (with either push or prealloc).

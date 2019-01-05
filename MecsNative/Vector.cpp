@@ -362,6 +362,15 @@ void* VectorGet(Vector *v, unsigned int index) {
     return PtrOfElem(v, index);
 }
 
+bool VectorCopy(Vector * v, unsigned int index, void * outValue)
+{
+    var ptr = PtrOfElem(v, index);
+    if (ptr == NULL) return false;
+
+    writeValue(outValue, 0, ptr, v->ElementByteSize);
+    return true;
+}
+
 bool VectorPop(Vector *v, void *target) {
     if (v->_elementCount == 0) return false;
 

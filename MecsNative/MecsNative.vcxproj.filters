@@ -24,9 +24,15 @@
     <ClCompile Include="Vector.cpp">
       <Filter>Source Files\Containers</Filter>
     </ClCompile>
+    <ClCompile Include="HashMap.cpp">
+      <Filter>Source Files\Containers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
+      <Filter>Source Files\Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="HashMap.h">
       <Filter>Source Files\Containers</Filter>
     </ClInclude>
   </ItemGroup>
