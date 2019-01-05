@@ -89,6 +89,21 @@ int main()
     }
     std::cout << "Vector OK? " << gvec.IsValid << "; Elements stored = " << VectorLength(&gvec) << "\n";
 
+    // Set a different element value
+    auto newData = exampleElement{ 255,511 };
+    exampleElement capturedOldData;
+    VectorSet(&gvec, 70, &newData, &capturedOldData);
+    std::cout << "Replace value at 70. Old data = " << capturedOldData.a << ", " << capturedOldData.b << "\n";
+    r = (exampleElement*)VectorGet(&gvec, 70);
+    std::cout << "Element 70 new data = " << r->a << ", " << r->b << "\n";
+
+    // Swap elements by index pair
+    std::cout << "Swapping\n";
+    VectorSwap(&gvec, 60, 70);
+    r = (exampleElement*)VectorGet(&gvec, 60);
+    std::cout << "Element 60 new data = " << r->a << ", " << r->b << "\n";
+    r = (exampleElement*)VectorGet(&gvec, 70);
+    std::cout << "Element 70 new data = " << r->a << ", " << r->b << "\n";
 
     std::cout << "Deallocating\n";
     VectorDeallocate(&gvec);
