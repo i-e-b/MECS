@@ -19,21 +19,21 @@ const int SKIP_ELEM_SIZE = INDEX_SIZE + PTR_SIZE; // size of skip list entries
 // Tuning parameters: have a play if you have performance or memory issues.
 const int ARENA_SIZE = 65535; // number of bytes for each chunk (limit)
 
-// Desired maximum elements per chunk. This will be reduced if TElement is large (to fit in Arena limit)
+// Desired maximum elements per chunk. This will be reduced if element is large (to fit in Arena limit)
 // Larger values are significantly faster for big arrays, but more memory-wasteful on small arrays
 const int TARGET_ELEMS_PER_CHUNK = 64;
 
 // Maximum size of the skip table.
 // This is dynamically sizes, so large values won't use extra memory for small arrays.
-// This limits the memory growth of larger arrays. If it's bigger that an arena, everything will fail.
+// This limits the memory growth of larger arrays. If it's bigger than an arena, everything will fail.
 const long SKIP_TABLE_SIZE_LIMIT = 1024;
 
 
 /*
  * Structure of the element chunk:
  *
- * [Ptr to next chunk, or -1]    <- 8 bytes
- * [Chunk value (if set)]        <- sizeof(TElement)
+ * [Ptr to next chunk, or -1]    <- 8 bytes (ptr)
+ * [Chunk value (if set)]        <- sizeof(Element)
  * . . .
  * [Chunk value]                 <- ... up to ChunkBytes
  *
@@ -79,6 +79,15 @@ inline void writePtr(void *ptr, int byteOffset, void* data) {
     x += byteOffset;
     ((size_t*)x)[0] = (size_t)data;
 }
+inline void writeValue(void *ptr, int byteOffset, void* data, int length) {
+    char* dst = (char*)ptr;
+    dst += byteOffset;
+    char* src = (char*)data;
+
+    for (int i = 0; i < length; i++) {
+        *(dst++) = *(src++);
+    }
+}
 
 void MaybeRebuildSkipTable(Vector *v); // defined later
 
@@ -95,7 +104,6 @@ void *NewChunk(Vector *v)
 
     return ptr;
 }
-
 
 void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **chunkPtr, unsigned int *chunkIndex) {
     // 1. Calculate desired chunk index
@@ -243,6 +251,19 @@ void MaybeRebuildSkipTable(Vector *v) {
     if (v->_skipTableDirty) RebuildSkipTable(v);
 }
 
+void * PtrOfElem(Vector *v, uint index) {
+    if (index >= v->_elementCount) return NULL;
+
+    var entryIdx = index % v->ElemsPerChunk;
+
+    bool found;
+    void *chunkPtr = NULL;
+    FindNearestChunk(v, index, &found, &chunkPtr, &index);
+    if (!found) return NULL;
+
+    return byteOffset(chunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+}
+
 Vector VectorAllocate(int elementSize)
 {
     Vector result = Vector{};
@@ -303,12 +324,129 @@ void VectorDeallocate(Vector *v) {
         current = next;
     }
 }
-/*
-int VectorLength(Vector *v);
-bool VectorPush(Vector *v, void* value);
-void* VectorGet(Vector *v, unsigned int index);
-void* VectorPop(Vector *v);
-void* VectorSet(Vector *v, unsigned int index, void* element);
-void VectorPrealloc(Vector *v, unsigned int length);
-bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
-*/
+
+int VectorLength(Vector *v) {
+    return v->_elementCount;
+}
+
+bool VectorPush(Vector *v, void* value) {
+    var entryIdx = v->_elementCount % v->ElemsPerChunk;
+
+    bool found;
+    void *chunkPtr = NULL;
+    uint index;
+    FindNearestChunk(v, v->_elementCount, &found, &chunkPtr, &index);
+    if (!found) // need a new chunk, write at start
+    {
+        var ok = NewChunk(v);
+        if (ok == NULL) return false;
+        writeValue(v->_endChunkPtr, v->ChunkHeaderSize, value, v->ElementByteSize);
+        v->_elementCount++;
+        return true;
+    }
+    if (chunkPtr == NULL) return false;
+
+    // Writing value into existing chunk
+    writeValue(chunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx), value, v->ElementByteSize);
+    v->_elementCount++;
+
+    return true;
+}
+
+void* VectorGet(Vector *v, unsigned int index) {
+    return PtrOfElem(v, index);
+}
+
+void* VectorPop(Vector *v) {
+    if (v->_elementCount == 0) return NULL;
+
+    var index = v->_elementCount - 1;
+    var entryIdx = index % v->ElemsPerChunk;
+
+    // Get the value
+    var result = readPtr(v->_endChunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+
+    // Clean up if we've emptied a chunk that isn't the initial one
+    if (entryIdx < 1 && v->_elementCount > 0) {
+        // need to dealloc end chunk
+        bool found;
+        void *prevChunkPtr = NULL;
+        uint deadChunkIdx;
+        FindNearestChunk(v, index - 1, &found, &prevChunkPtr, &deadChunkIdx);
+        free(v->_endChunkPtr);
+        v->_endChunkPtr = prevChunkPtr;
+        writePtr(prevChunkPtr, 0, NULL); // remove the 'next' pointer from the new end chunk
+
+        if (v->_skipEntries > 0) {
+            // Check to see if we've made the skip list invalid
+            var skipTableEnd = readUint(v->_skipTable, SKIP_ELEM_SIZE * (v->_skipEntries - 1));
+
+            // knock the last element off if it's too big. 
+            // The walk limit in FindNearestChunk set the dirty flag if needed
+            if (skipTableEnd >= deadChunkIdx) {
+                v->_skipEntries--;
+            }
+        }
+    }
+
+    v->_elementCount--;
+    return result;
+}
+
+bool VectorSet(Vector *v, unsigned int index, void* element, void* prevValue) {
+    // push in the value, returning previous value
+    var ptr = PtrOfElem(v, index);
+    if (ptr == NULL) return false;
+
+    if (prevValue != NULL) {
+        writeValue(prevValue, 0, ptr, v->ElementByteSize);
+    }
+
+    writeValue(ptr, 0, element, v->ElementByteSize);
+    return true;
+}
+
+bool VectorPrealloc(Vector *v, unsigned int length) {
+    var remain = length - v->_elementCount;
+    if (remain < 1) return true;
+
+    var newChunkIdx = length / v->ElemsPerChunk;
+
+    // Walk through the chunk chain, adding where needed
+    var chunkHeadPtr = v->_baseChunkTable;
+    for (int i = 0; i < newChunkIdx; i++)
+    {
+        var nextChunkPtr = readPtr(chunkHeadPtr, 0);
+        if (nextChunkPtr == NULL) {
+            // need to alloc a new chunk
+            nextChunkPtr = NewChunk(v);
+            if (nextChunkPtr == NULL) return false;
+        }
+        chunkHeadPtr = nextChunkPtr;
+    }
+
+    v->_elementCount = length;
+
+    RebuildSkipTable(v); // make sure we're up to date
+
+    return true;
+}
+
+bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2) {
+    var A = PtrOfElem(v, index1);
+    var B = PtrOfElem(v, index2);
+
+    if (A == NULL || B == NULL) return false;
+
+    var bytes = v->ElementByteSize;
+    var tmp = malloc(bytes);
+    if (tmp == NULL) return false;
+
+    writeValue(tmp, 0, A, bytes); // tmp = A
+    writeValue(A, 0, B, bytes); // A = B
+    writeValue(B, 0, tmp, bytes); // B = tmp
+
+    free(tmp);
+
+    return true;
+}

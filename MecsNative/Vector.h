@@ -39,8 +39,8 @@ int VectorLength(Vector *v);
 bool VectorPush(Vector *v, void* value);
 void* VectorGet(Vector *v, unsigned int index);
 void* VectorPop(Vector *v);
-void* VectorSet(Vector *v, unsigned int index, void* element);
-void VectorPrealloc(Vector *v, unsigned int length);
+bool VectorSet(Vector *v, unsigned int index, void* element, void* prevValue);
+bool VectorPrealloc(Vector *v, unsigned int length);
 bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
 
 #endif

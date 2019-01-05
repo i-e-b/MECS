@@ -64,6 +64,21 @@ int main()
     auto gvec = VectorAllocate(sizeof(exampleElement));
     std::cout << "Vector OK? " << gvec.IsValid << "; base addr = " << gvec._baseChunkTable << "\n";
 
+    // add some entries
+    std::cout << "Writing entries with 'push'\n";
+    for (int i = 0; i < 10; i++) {
+        if (!VectorPush(&gvec, result)) {
+            std::cout << "Push failed!\n";
+            return 255;
+        }
+    }
+    std::cout << "Vector OK? " << gvec.IsValid << "; Elements stored = " << VectorLength(&gvec) << "\n";
+
+    // read a random-access element
+    auto r = (exampleElement*)VectorGet(&gvec, 5);
+    std::cout << "Element 5 data = " << r->a << ", " << r->b << "\n";
+
+
     std::cout << "Deallocating\n";
     VectorDeallocate(&gvec);
     std::cout << "Vector OK? " << gvec.IsValid << "; base addr = " << gvec._baseChunkTable << "\n";
