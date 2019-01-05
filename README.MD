@@ -45,7 +45,8 @@ Intended to contain a complete memory model, for embedding onto a SBC.
 
 ## Move to C for embedding
 
-* [ ] Re-implement without dotnet class library
+* [ ] Re-implement container types in C
+* [ ] Rebuild interpreter using the native containers
 * [ ] Full memory model (including return & value stacks)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)

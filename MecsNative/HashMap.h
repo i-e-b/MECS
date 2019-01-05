@@ -4,7 +4,7 @@
 #define hashmap_h
 #include "Vector.h"
 
-// key-value-pair data structure
+// key-value-pair data structure, for reading back value sets
 typedef struct HashMap_KVP {
     void* Key;
     void* Value;
@@ -13,8 +13,11 @@ typedef struct HashMap_KVP {
 // A generalised hash-map using the robin-hood strategy and our own Vector class
 // Users must supply their own hashing and equality function pointers
 // Only pointers to data are maintained by the hash-map. You must alloc and free as required.
+// This is best for larger structures and string keys
+// TODO: make another version of this that works with directly stored values ("Dictionary"?)
 typedef struct HashMap {
-    Vector buckets; // this is a Vector<HashMap_Entry>*
+    Vector buckets; // this is a Vector<HashMap_Entry>
+
     unsigned int count;
     unsigned int countMod;
     unsigned int countUsed;

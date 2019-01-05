@@ -14,6 +14,7 @@ exampleElement fakeData = exampleElement{ 5,15 };
 
 // Register type specifics
 RegisterVectorFor(exampleElement, Vec)
+RegisterVectorFor(HashMap_KVP, Vec)
 
 bool IntKeyCompare(void* key_A, void* key_B) {
     auto A = *((int*)key_A);
@@ -37,11 +38,34 @@ int main()
 
     std::cout << "Writing entries\n";
     for (int i = 0; i < 100; i++) {
-        int value = i * 2; // TODO: this won't really work. The hash-map doesn't store anything. FIX!
-        Put(&hmap, &i, &value, true);
+        auto key = (int*)malloc(sizeof(int));
+        auto value = (int*)malloc(sizeof(int));
+        *key = i;
+        *value = 2 * i;
+        Put(&hmap, key, value, true);
     }
 
-    std::cout << "Deallocating\n";
+    std::cout << "Looking up data\n";
+    int lukey = 40;
+    int* lu_val_ptr = NULL;
+    if (!Get(&hmap, &lukey, (void**)&lu_val_ptr)) {
+        std::cout << "Get failed!\n";
+        return 1;
+    }
+    std::cout << "Found value " << *lu_val_ptr << " (expected 80)\n";
+
+
+    std::cout << "Deallocating contents\n";
+    //Vector AllEntries(HashMap *h);
+    auto allEntriesVec = AllEntries(&hmap);
+    HashMap_KVP toClean;
+    while (VecPop_HashMap_KVP(&allEntriesVec, &toClean)) {
+        free(toClean.Key);
+        free(toClean.Value);
+    }
+
+
+    std::cout << "Deallocating map\n";
     Deallocate(&hmap);
     std::cout << "HashMap OK? " << hmap.IsValid << "\n";
 
