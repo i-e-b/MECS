@@ -1,0 +1,20 @@
+Components to do:
+=================
+
+* [x] General vector
+* [x] Vector macros
+* [x] Hash map for pointer types
+* [ ] Dictionary for simple types (plus macros) -- for integer mapping etc
+* [ ] Tree structure
+* [ ] Mutable string (Vector of char + manipulation tools -- including hashing)
+* [ ] Fixed point real?
+* [ ] Tagged data format reader for 32-bit cpu 
+* [ ] Queue (maybe a version of vector, or extend it, to keep a start index, and cleans up chunks when they are behind it?)
+
+Actor model stuff:
+------------------
+
+* [ ] Arenas
+* [ ] Serialisation & hashing
+* [ ] Message queues
+* [ ] Scheduler
