@@ -2,12 +2,6 @@
 
 #include "Vector.h"
 
-// Testing my #define understanding
-
-#define exp2str(expression)  #expression
-#define xstr(s) exp2str(s)
-#define splatName(name) _this_##name##_is_special
-
 // So, the idea for general containers, have some basic `void*` and size functionality,
 // and some macros to init an inline casting function for each type.
 // Like this:
@@ -17,57 +11,25 @@ typedef struct exampleElement {
 } exampleElement;
 exampleElement fakeData = exampleElement{ 5,15 };
 
-typedef struct general {
-    unsigned char *data;
-    int elementLength;
-    int elementCount;
-    int capacity;
-} general;
-
-general InitGeneral(int elementByteSize) {
-    return general{ NULL, elementByteSize, 0, 0 };
-}
-
-void *GeneralLoadElement(general *container, int index) {
-    return &fakeData; // would do actual lookup logic to get pointer to bytes.
-}
-
-// each general function has a macro to make the specific ones:
-#define regLoadElem(typeName) inline typeName *LoadElement_##typeName(general *container, int index){return (typeName *)GeneralLoadElement(container, index);} 
-#define regCreate(typeName) inline general Init_##typeName(){return InitGeneral(sizeof(typeName));} 
-// and there is a single macro to register all those specialised funcs:
-#define RegisterContainerFor(typeName) regCreate(typeName) regLoadElem(typeName)
-
-
-// Anytime you want to use the specialised container, call the main register macro:
-RegisterContainerFor(exampleElement)
-// now, you can call `Init_exampleElement()` or `LoadElement_exampleElement()`
+// Register type specifics
+RegisterVectorFor(exampleElement, Vec)
 
 int main()
 {
     int x = 5, y = 4;
     char _this_hello_is_special[] = "Special value";
 
-    auto container = Init_exampleElement();
-    std::cout << "Element size is " << container.elementLength << "\n";
-    auto result = LoadElement_exampleElement(&container, 0);
-    std::cout << "Element data = " << result->a << ", " << result->b << "\n";
-
-    std::cout << "Hello World!\n"; 
-    std::cout << exp2str(x > y) << "\n";          // "x > y"
-    std::cout << splatName(hello) << "\n";        // "Special value"
-    std::cout << xstr(splatName(hello)) << "\n";  // "_this_hello_is_special" (need to do a double expansion through `xstr` to get string of token)
-
+    auto testElement = exampleElement{ 20,5 };
 
     // See if the container stuff works...
     std::cout << "Allocating\n";
-    auto gvec = VectorAllocate(sizeof(exampleElement));
+    auto gvec = VecAllocate_exampleElement();
     std::cout << "Vector OK? " << gvec.IsValid << "; base addr = " << gvec._baseChunkTable << "\n";
 
     // add some entries
     std::cout << "Writing entries with 'push'\n";
     for (int i = 0; i < 1000; i++) {
-        if (!VectorPush(&gvec, result)) {
+        if (!VecPush_exampleElement(&gvec, testElement)) {
             std::cout << "Push failed!\n";
             return 255;
         }
@@ -75,7 +37,7 @@ int main()
     std::cout << "Vector OK? " << gvec.IsValid << "; Elements stored = " << VectorLength(&gvec) << "\n";
 
     // read a random-access element
-    auto r = (exampleElement*)VectorGet(&gvec, 5);
+    auto r = VecGet_exampleElement(&gvec, 5);
     std::cout << "Element 5 data = " << r->a << ", " << r->b << "\n";
 
     // resize the array
@@ -86,7 +48,7 @@ int main()
     std::cout << "Reading and removing entries with 'pop'\n";
     for (int i = 0; i < 4000; i++) {
         exampleElement poppedData;
-        if (!VectorPop(&gvec, &poppedData)) {
+        if (!VecPop_exampleElement(&gvec, &poppedData)) {
             std::cout << "Pop failed!\n";
             return 254;
         }
@@ -96,17 +58,17 @@ int main()
     // Set a different element value
     auto newData = exampleElement{ 255,511 };
     exampleElement capturedOldData;
-    VectorSet(&gvec, 70, &newData, &capturedOldData);
+    VecSet_exampleElement(&gvec, 70, &newData, &capturedOldData);
     std::cout << "Replace value at 70. Old data = " << capturedOldData.a << ", " << capturedOldData.b << "\n";
-    r = (exampleElement*)VectorGet(&gvec, 70);
+    r = VecGet_exampleElement(&gvec, 70);
     std::cout << "Element 70 new data = " << r->a << ", " << r->b << "\n";
 
     // Swap elements by index pair
     std::cout << "Swapping\n";
     VectorSwap(&gvec, 60, 70);
-    r = (exampleElement*)VectorGet(&gvec, 60);
+    r = VecGet_exampleElement(&gvec, 60);
     std::cout << "Element 60 new data = " << r->a << ", " << r->b << "\n";
-    r = (exampleElement*)VectorGet(&gvec, 70);
+    r = VecGet_exampleElement(&gvec, 70);
     std::cout << "Element 70 new data = " << r->a << ", " << r->b << "\n";
 
     std::cout << "Deallocating\n";
