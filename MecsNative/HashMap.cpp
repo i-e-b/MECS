@@ -160,7 +160,7 @@ HashMap HashMapAllocate(unsigned int size, bool(*keyComparerFunc)(void *key_A, v
     return result;
 }
 
-void Deallocate(HashMap * h)
+void HashMapDeallocate(HashMap * h)
 {
     h->count = 0;
     if(h->buckets.IsValid) VectorDeallocate(&(h->buckets));
@@ -193,7 +193,7 @@ bool Find(HashMap * h, void* key, uint* index) {
     return false;
 }
 
-bool Get(HashMap * h, void * key, void ** outValue) {
+bool HashMapGet(HashMap * h, void * key, void ** outValue) {
     uint index = 0;
     if (!Find(h, key, &index)) return false;
 
@@ -206,7 +206,7 @@ bool Get(HashMap * h, void * key, void ** outValue) {
     return true;
 }
 
-bool Put(HashMap * h, void * key, void * value, bool canReplace) {
+bool HashMapPut(HashMap * h, void * key, void * value, bool canReplace) {
     if (h->countUsed >= h->growAt) {
         if (!ResizeNext(h)) return false;
     }
@@ -216,7 +216,7 @@ bool Put(HashMap * h, void * key, void * value, bool canReplace) {
     return PutInternal(h, &entry, canReplace, true);
 }
 
-Vector AllEntries(HashMap * h) {
+Vector HashMapAllEntries(HashMap * h) {
     if (!h->buckets.IsValid) return Vector();
 
     var result = VectorAllocate(sizeof(HashMap_KVP));
@@ -231,13 +231,13 @@ Vector AllEntries(HashMap * h) {
     return result;
 }
 
-bool ContainsKey(HashMap * h, void * key)
+bool HashMapContainsKey(HashMap * h, void * key)
 {
     uint idx;
     return Find(h, key, &idx);
 }
 
-bool Remove(HashMap * h, void * key) {
+bool HashMapRemove(HashMap * h, void * key) {
     uint index;
     if (!Find(h, key, &index)) return false;
 
@@ -264,10 +264,10 @@ bool Remove(HashMap * h, void * key) {
     return false;
 }
 
-void Clear(HashMap * h) {
+void HashMapClear(HashMap * h) {
     Resize(h, 0, true);
 }
 
-unsigned int Count(HashMap * h) {
+unsigned int HashMapCount(HashMap * h) {
     return h->countUsed;
 }

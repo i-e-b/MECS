@@ -39,13 +39,13 @@ int TestHashMap() {
         auto value = (int*)malloc(sizeof(int));
         *key = i;
         *value = 2 * i;
-        Put(&hmap, key, value, true);
+        HashMapPut(&hmap, key, value, true);
     }
 
     std::cout << "Looking up data\n";
     int lukey = 40;
     int* lu_val_ptr = NULL;
-    if (!Get(&hmap, &lukey, (void**)&lu_val_ptr)) {
+    if (!HashMapGet(&hmap, &lukey, (void**)&lu_val_ptr)) {
         std::cout << "Get failed!\n";
         return 1;
     }
@@ -54,7 +54,7 @@ int TestHashMap() {
 
     std::cout << "Deallocating contents\n";
     //Vector AllEntries(HashMap *h);
-    auto allEntriesVec = AllEntries(&hmap);
+    auto allEntriesVec = HashMapAllEntries(&hmap);
     HashMap_KVP toClean;
     while (VecPop_HashMap_KVP(&allEntriesVec, &toClean)) {
         free(toClean.Key);
@@ -63,7 +63,7 @@ int TestHashMap() {
 
 
     std::cout << "Deallocating map\n";
-    Deallocate(&hmap);
+    HashMapDeallocate(&hmap);
     std::cout << "HashMap OK? " << hmap.IsValid << "\n";
     return 0;
 }

@@ -37,19 +37,19 @@ typedef struct HashMap {
 // Create a new hash map with an initial size
 HashMap HashMapAllocate(unsigned int size, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));
 // Deallocate internal storage of the hash-map. Does not deallocate the keys or values
-void Deallocate(HashMap *h);
+void HashMapDeallocate(HashMap *h);
 // Returns true if value found. If so, it's pointer is copied to `*outValue`
-bool Get(HashMap *h, void* key, void** outValue);
+bool HashMapGet(HashMap *h, void* key, void** outValue);
 // Add a key/value pair to the map. If `canReplace` is true, conflicts replace existing data. if false, existing data survives
-bool Put(HashMap *h, void* key, void* value, bool canReplace);
+bool HashMapPut(HashMap *h, void* key, void* value, bool canReplace);
 // List all keys in the hash map. The vector must be deallocated by the caller.
-Vector AllEntries(HashMap *h); // returns a Vector<HashMap_KVP>
+Vector HashMapAllEntries(HashMap *h); // returns a Vector<HashMap_KVP>
 // Returns true if hashmap has a value stored to the given key
-bool ContainsKey(HashMap *h, void* key);
+bool HashMapContainsKey(HashMap *h, void* key);
 // Remove the entry for the given key, if it exists
-bool Remove(HashMap *h, void* key);
+bool HashMapRemove(HashMap *h, void* key);
 // Remove all entries from the hash-map, but leave the hash-map allocated and valid
-void Clear(HashMap *h);
+void HashMapClear(HashMap *h);
 // Return count of entries stored in the hash-map
-unsigned int Count(HashMap *h);
+unsigned int HashMapCount(HashMap *h);
 #endif
