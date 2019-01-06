@@ -108,7 +108,7 @@ TreeNode* AllocateAndWriteNode(TreeNode* parent, void* element) {
 
 TreeNode* AddSibling(TreeNode* treeNodePtr, void* element) {
     // Walk the sibling link chain until we hit the last element
-    var next = treeNodePtr->NextSiblingPtr;
+    var next = treeNodePtr;
     while (next->NextSiblingPtr != NULL) {
         next = next->NextSiblingPtr;
     }

@@ -10,6 +10,7 @@ Components to do:
 * [ ] Fixed point real?
 * [ ] Tagged data format reader for 32-bit cpu 
 * [ ] Queue (maybe a version of vector, or extend it, to keep a start index, and cleans up chunks when they are behind it?)
+* [ ] Bring heap in from scan-line experiments
 
 Actor model stuff:
 ------------------

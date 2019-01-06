@@ -2,6 +2,7 @@
 
 #include "Vector.h"
 #include "HashMap.h"
+#include "Tree.h"
 
 // So, the idea for general containers, have some basic `void*` and size functionality,
 // and some macros to init an inline casting function for each type.
@@ -26,11 +27,7 @@ unsigned int IntKeyHash(void* key) {
     return A;
 }
 
-int main()
-{
-    int x = 5, y = 4;
-    char _this_hello_is_special[] = "Special value";
-
+int TestHashMap() {
     std::cout << "*************** HASH MAP *****************\n";
     std::cout << "Allocating\n";
     auto hmap = HashMapAllocate(64, IntKeyCompare, IntKeyHash);
@@ -68,8 +65,10 @@ int main()
     std::cout << "Deallocating map\n";
     Deallocate(&hmap);
     std::cout << "HashMap OK? " << hmap.IsValid << "\n";
+    return 0;
+}
 
-
+int TestVector() {
     std::cout << "**************** VECTOR *******************\n";
     auto testElement = exampleElement{ 20,5 };
 
@@ -126,4 +125,54 @@ int main()
     std::cout << "Deallocating\n";
     VectorDeallocate(&gvec);
     std::cout << "Vector OK? " << gvec.IsValid << "; base addr = " << gvec._baseChunkTable << "\n";
+    return 0;
+}
+
+int TestTree() {
+    std::cout << "**************** TREE *******************\n";
+
+    std::cout << "Allocating\n";
+    auto tree = TreeAllocate(sizeof(exampleElement));
+
+    std::cout << "Adding elements\n";
+    auto elem1 = exampleElement{ 0,1 };
+    SetValue(tree.Root, &elem1);
+
+    auto elem2 = exampleElement{ 1,2 };
+    auto node2 = AddChild(tree.Root, &elem2); // child of root
+
+    auto elem3 = exampleElement{ 1,3 };
+    auto node3 = AddChild(tree.Root, &elem3); // child of root, sibling of node2
+
+    auto elem4 = exampleElement{ 2,4 };
+    auto node4 = AddChild(node3, &elem4); // child of node3
+
+    auto elem5 = exampleElement{ 2,5 };
+    auto node5 = AddSibling(node4, &elem5); // child of node3, sibling of node4
+
+
+    std::cout << "Reading elements\n";
+    // find elem5 the long way...
+    auto find = tree.Root;
+    find = Child(find);
+    find = Sibling(find);
+    find = Child(find);
+    find = Sibling(find);
+    auto found = (exampleElement*)ReadBody(find);
+    std::cout << "Element 5 data (expecting 2,5) = " << found->a << ", " << found->b << "\n";
+
+    std::cout << "Deallocating\n";
+    Deallocate(&tree);
+    return 0;
+}
+
+int main() {
+    auto hmres = TestHashMap();
+    if (hmres != 0) return hmres;
+
+    auto vres = TestVector();
+    if (vres != 0) return vres;
+
+    auto tres = TestTree();
+    if (tres != 0) return tres;
 }
