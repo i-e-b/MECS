@@ -86,7 +86,7 @@ Tree TreeAllocate(int elementSize) {
 
 
 // Write an element value to the given node. If `node` is null, the root element is set
-void SetValue(TreeNode* node, void* element) {
+void TreeSetValue(TreeNode* node, void* element) {
     writeValue((void*)node, NODE_HEAD_SIZE, element, node->ElementByteSize);
 }
 
@@ -106,7 +106,7 @@ TreeNode* AllocateAndWriteNode(TreeNode* parent, void* element) {
     return newChildHead;
 }
 
-TreeNode* AddSibling(TreeNode* treeNodePtr, void* element) {
+TreeNode* TreeAddSibling(TreeNode* treeNodePtr, void* element) {
     // Walk the sibling link chain until we hit the last element
     var next = treeNodePtr;
     while (next->NextSiblingPtr != NULL) {
@@ -122,13 +122,13 @@ TreeNode* AddSibling(TreeNode* treeNodePtr, void* element) {
     return newChildPtr;
 }
 
-TreeNode* AddChild(TreeNode* parent, void* element) {
+TreeNode* TreeAddChild(TreeNode* parent, void* element) {
     if (parent == NULL) return NULL;
 
     var head = parent;
 
     if (head->FirstChildPtr != NULL) { // part of a chain. Switch function
-        return AddSibling(head->FirstChildPtr, element);
+        return TreeAddSibling(head->FirstChildPtr, element);
     }
 
     // This is the first child of this parent
@@ -140,26 +140,26 @@ TreeNode* AddChild(TreeNode* parent, void* element) {
     return newChildPtr;
 }
 
-void* ReadBody(TreeNode* treeNodePtr) {
+void* TreeReadBody(TreeNode* treeNodePtr) {
     return byteOffset(treeNodePtr, NODE_HEAD_SIZE);
 }
 
-TreeNode *Child(TreeNode* parentPtr) {
+TreeNode *TreeChild(TreeNode* parentPtr) {
     if (parentPtr == NULL) return NULL;
     return parentPtr->FirstChildPtr;
 }
 
-TreeNode *Sibling(TreeNode* olderSiblingPtr) {
+TreeNode *TreeSibling(TreeNode* olderSiblingPtr) {
     if (olderSiblingPtr == NULL) return NULL;
     return olderSiblingPtr->NextSiblingPtr;
 }
 
-TreeNode *InsertChild(TreeNode* parent, int targetIndex, void* element) {
+TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
 
     // Simplest case: a plain add
     if (parent->FirstChildPtr == NULL) {
         if (targetIndex != 0) return NULL;
-        return AddChild(parent, element);
+        return TreeAddChild(parent, element);
     }
 
     // Special case: insert at start (need to update parent)
@@ -219,7 +219,7 @@ void DeleteNode(TreeNode* treeNodePtr) {
     free(treeNodePtr);
 }
 
-void RemoveChild(TreeNode* parent, int targetIndex) {
+void TreeRemoveChild(TreeNode* parent, int targetIndex) {
     TreeNode*  deleteTargetPtr;
 
     if (parent->FirstChildPtr == NULL) return; // empty parent
@@ -262,6 +262,6 @@ void RemoveChild(TreeNode* parent, int targetIndex) {
 }
 
 // Deallocate all nodes, and the data held
-void Deallocate(Tree* tree) {
+void TreeDeallocate(Tree* tree) {
     DeleteNode(tree->Root);
 }

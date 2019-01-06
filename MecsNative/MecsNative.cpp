@@ -136,33 +136,33 @@ int TestTree() {
 
     std::cout << "Adding elements\n";
     auto elem1 = exampleElement{ 0,1 };
-    SetValue(tree.Root, &elem1);
+    TreeSetValue(tree.Root, &elem1);
 
     auto elem2 = exampleElement{ 1,2 };
-    auto node2 = AddChild(tree.Root, &elem2); // child of root
+    auto node2 = TreeAddChild(tree.Root, &elem2); // child of root
 
     auto elem3 = exampleElement{ 1,3 };
-    auto node3 = AddChild(tree.Root, &elem3); // child of root, sibling of node2
+    auto node3 = TreeAddChild(tree.Root, &elem3); // child of root, sibling of node2
 
     auto elem4 = exampleElement{ 2,4 };
-    auto node4 = AddChild(node3, &elem4); // child of node3
+    auto node4 = TreeAddChild(node3, &elem4); // child of node3
 
     auto elem5 = exampleElement{ 2,5 };
-    auto node5 = AddSibling(node4, &elem5); // child of node3, sibling of node4
+    auto node5 = TreeAddSibling(node4, &elem5); // child of node3, sibling of node4
 
 
     std::cout << "Reading elements\n";
     // find elem5 the long way...
     auto find = tree.Root;
-    find = Child(find);
-    find = Sibling(find);
-    find = Child(find);
-    find = Sibling(find);
-    auto found = (exampleElement*)ReadBody(find);
+    find = TreeChild(find);
+    find = TreeSibling(find);
+    find = TreeChild(find);
+    find = TreeSibling(find);
+    auto found = (exampleElement*)TreeReadBody(find);
     std::cout << "Element 5 data (expecting 2,5) = " << found->a << ", " << found->b << "\n";
 
     std::cout << "Deallocating\n";
-    Deallocate(&tree);
+    TreeDeallocate(&tree);
     return 0;
 }
 
