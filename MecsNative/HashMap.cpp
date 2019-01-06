@@ -22,7 +22,6 @@ const float LOAD_FACTOR = 0.8f; // higher is more memory efficient. Lower is fas
 #define var auto
 #endif
 
-
 // Entry in the hash-table
 typedef struct HashMap_Entry {
     uint hash; // NOTE: a hash value equal to zero marks an empty slot
