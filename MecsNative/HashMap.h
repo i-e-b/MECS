@@ -12,12 +12,16 @@ typedef struct HashMap_KVP {
 
 // A generalised hash-map using the robin-hood strategy and our own Vector class
 // Users must supply their own hashing and equality function pointers
-// Only pointers to data are maintained by the hash-map. You must alloc and free as required.
-// This is best for larger structures and string keys
-// TODO: make another version of this that works with directly stored values ("Dictionary"?)
 typedef struct HashMap {
-    Vector buckets; // this is a Vector<HashMap_Entry>
+    // Storage and types
+    Vector buckets; // this is a Vector<HashMap_Entry>, referencing the other vectors
+    Vector keys; // these are the stored keys (either data or pointers depending on caller's use)
+    Vector values; // the stored values (similar to keys)
 
+    int KeyByteSize;
+    int ValueByteSize;
+
+    // Hashmap metrics
     unsigned int count;
     unsigned int countMod;
     unsigned int countUsed;
@@ -35,9 +39,10 @@ typedef struct HashMap {
 } HashMap;
 
 // Create a new hash map with an initial size
-HashMap HashMapAllocate(unsigned int size, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));
+HashMap HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));
 // Deallocate internal storage of the hash-map. Does not deallocate the keys or values
 void HashMapDeallocate(HashMap *h);
+
 // Returns true if value found. If so, it's pointer is copied to `*outValue`
 bool HashMapGet(HashMap *h, void* key, void** outValue);
 // Add a key/value pair to the map. If `canReplace` is true, conflicts replace existing data. if false, existing data survives
@@ -52,4 +57,9 @@ bool HashMapRemove(HashMap *h, void* key);
 void HashMapClear(HashMap *h);
 // Return count of entries stored in the hash-map
 unsigned int HashMapCount(HashMap *h);
+
+// Resize the hash map and its internal buffers to suit the currently held data
+// Note: The hash map doesn't clean up after key removal/replacement until it is cleared or resized
+// If you are doing lots or remove and replace, call this occasionally to prevent memory growth
+void HashMapPurge(HashMap *h);
 #endif

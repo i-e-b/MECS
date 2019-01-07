@@ -30,16 +30,15 @@ unsigned int IntKeyHash(void* key) {
 int TestHashMap() {
     std::cout << "*************** HASH MAP *****************\n";
     std::cout << "Allocating\n";
-    auto hmap = HashMapAllocate(64, IntKeyCompare, IntKeyHash);
+    // start small enough that we will go through a grow cycle when adding
+    auto hmap = HashMapAllocate(64, sizeof(int), sizeof(int), IntKeyCompare, IntKeyHash); // Map<int,int>
     std::cout << "HashMap OK? " << hmap.IsValid << "\n";
 
     std::cout << "Writing entries\n";
     for (int i = 0; i < 100; i++) {
-        auto key = (int*)malloc(sizeof(int));
-        auto value = (int*)malloc(sizeof(int));
-        *key = i;
-        *value = 2 * i;
-        HashMapPut(&hmap, key, value, true);
+        int key = i;
+        int value = 2 * i;
+        HashMapPut(&hmap, &key, &value, true);
     }
 
     std::cout << "Looking up data\n";
@@ -50,17 +49,6 @@ int TestHashMap() {
         return 1;
     }
     std::cout << "Found value " << *lu_val_ptr << " (expected 80)\n";
-
-
-    std::cout << "Deallocating contents\n";
-    //Vector AllEntries(HashMap *h);
-    auto allEntriesVec = HashMapAllEntries(&hmap);
-    HashMap_KVP toClean;
-    while (VecPop_HashMap_KVP(&allEntriesVec, &toClean)) {
-        free(toClean.Key);
-        free(toClean.Value);
-    }
-
 
     std::cout << "Deallocating map\n";
     HashMapDeallocate(&hmap);
