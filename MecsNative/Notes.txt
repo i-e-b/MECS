@@ -4,8 +4,10 @@ Components to do:
 * [x] General vector
 * [x] Vector macros
 * [x] Hash map for pointer types
-* [ ] Dictionary for simple types (plus macros) -- for integer mapping etc
-* [ ] Tree structure
+* [x] Dictionary for simple types
+* [x] Tree structure
+* [x] Macros for hash map
+* [x] Macros for tree
 * [ ] Mutable string (Vector of char + manipulation tools -- including hashing)
 * [ ] Fixed point real?
 * [ ] Tagged data format reader for 32-bit cpu 

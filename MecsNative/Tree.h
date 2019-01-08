@@ -32,4 +32,26 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element);
 // Remove a child by index and stitch the chain back together
 void TreeRemoveChild(TreeNode* parent, int targetIndex);
 
+
+// Macros to create type-specific versions of the methods above.
+// If you want to use the typed versions, make sure you call `RegisterTreeFor(typeName, namespace)` for EACH type
+
+// These are invariant on type, but can be namespaced
+#define RegisterTreeStatics(nameSpace) \
+    inline void nameSpace##Deallocate(Tree *t){ TreeDeallocate(t); }\
+    inline TreeNode *nameSpace##Child(TreeNode *t){ return TreeChild(t); }\
+    inline TreeNode *nameSpace##Sibling(TreeNode *t){ return TreeSibling(t); }\
+    inline void nameSpace##RemoveChild(TreeNode *t, int idx){ return TreeRemoveChild(t, idx); }\
+
+
+// These must be registered for each distinct pair, as they are type variant
+#define RegisterTreeFor(elemType, nameSpace) \
+    inline elemType* nameSpace##ReadBody_##elemType(TreeNode *node){return (elemType*)TreeReadBody(node);}\
+    inline TreeNode* nameSpace##InsertChild_##elemType(TreeNode* parent, int idx, elemType* element){return TreeInsertChild(parent,idx,element);}\
+    inline void nameSpace##SetValue_##elemType(TreeNode* node, elemType* element){TreeSetValue(node,element);}\
+    inline TreeNode* nameSpace##AddChild_##elemType(TreeNode* parent, elemType* element){return TreeAddChild(parent, element);}\
+    inline TreeNode* nameSpace##AddSibling_##elemType(TreeNode* node, elemType* element){return TreeAddSibling(node,element);}\
+    inline Tree nameSpace##Allocate_##elemType(){return TreeAllocate(sizeof(elemType));}\
+
+
 #endif

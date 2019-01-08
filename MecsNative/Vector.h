@@ -57,31 +57,21 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
 // If you want to use the typed versions, make sure you call `RegisterContainerFor(typeName, namespace)` for EACH type
 // Vectors can only hold one kind of fixed-length element per vector instance
 
-// These are invariant on type, but included for completeness
-#define regVectorDeallocate(typeName, nameSpace) inline void nameSpace##Deallocate_##typeName(Vector *v){ VectorDeallocate(v); }
-#define regVectorLength(typeName, nameSpace) inline int nameSpace##Length_##typeName(Vector *v){ return VectorLength(v); }
-#define regVectorPrealloc(typeName, nameSpace) inline bool nameSpace##Prealloc_##typeName(Vector *v, unsigned int length){ return VectorPrealloc(v, length); }
-#define regVectorSwap(typeName, nameSpace) inline bool nameSpace##Swap_##typeName(Vector *v, unsigned int index1, unsigned int index2){ return VectorSwap(v, index1, index2); }
+// These are invariant on type, but can be namespaced
+#define RegisterVectorStatics(nameSpace) \
+    inline void nameSpace##Deallocate(Vector *v){ VectorDeallocate(v); }\
+    inline int nameSpace##Length(Vector *v){ return VectorLength(v); }\
+    inline bool nameSpace##Prealloc(Vector *v, unsigned int length){ return VectorPrealloc(v, length); }\
+    inline bool nameSpace##Swap(Vector *v, unsigned int index1, unsigned int index2){ return VectorSwap(v, index1, index2); }\
 
-// These are required as they are type variant
-#define regVectorAllocate(typeName, nameSpace) inline Vector nameSpace##Allocate_##typeName(){ return VectorAllocate(sizeof(typeName)); } 
-#define regVectorPush(typeName, nameSpace) inline bool nameSpace##Push_##typeName(Vector *v, typeName valuePtr){ return VectorPush(v, (void*)&valuePtr); } 
-#define regVectorGet(typeName, nameSpace) inline typeName * nameSpace##Get_##typeName(Vector *v, unsigned int index){ return (typeName*)VectorGet(v, index); } 
-#define regVectorPop(typeName, nameSpace) inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } 
-#define regVectorSet(typeName, nameSpace) inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName* element, typeName* prevValue){ return VectorSet(v, index, (void*)element, (void*)prevValue); } 
-
-
-// and there is a single macro to register all those specialised funcs:
+// These must be registered for each type, as they are type variant
 #define RegisterVectorFor(typeName, nameSpace) \
-    regVectorDeallocate(typeName, nameSpace) \
-    regVectorLength(typeName, nameSpace)\
-    regVectorPrealloc(typeName, nameSpace) \
-    regVectorSwap(typeName, nameSpace)\
-    regVectorAllocate(typeName, nameSpace)\
-    regVectorPush(typeName, nameSpace)\
-    regVectorGet(typeName, nameSpace)\
-    regVectorPop(typeName, nameSpace)\
-    regVectorSet(typeName, nameSpace)\
+    inline Vector nameSpace##Allocate_##typeName(){ return VectorAllocate(sizeof(typeName)); } \
+    inline bool nameSpace##Push_##typeName(Vector *v, typeName valuePtr){ return VectorPush(v, (void*)&valuePtr); } \
+    inline typeName * nameSpace##Get_##typeName(Vector *v, unsigned int index){ return (typeName*)VectorGet(v, index); } \
+    inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } \
+    inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName* element, typeName* prevValue){ return VectorSet(v, index, (void*)element, (void*)prevValue); } \
+
 
 
 #endif

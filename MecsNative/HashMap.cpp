@@ -154,7 +154,7 @@ bool Resize(HashMap * h, uint newSize, bool autoSize) {
     return true;
 }
 
-unsigned long NextPow2(unsigned long c) {
+unsigned long long NextPow2(unsigned long long c) {
     c--;
     c |= c >> 1;
     c |= c >> 2;
@@ -166,7 +166,7 @@ unsigned long NextPow2(unsigned long c) {
 }
 
 void HashMapPurge(HashMap *h) {
-    auto size = NextPow2(h->countUsed);
+    auto size = NextPow2((h->countUsed) / LOAD_FACTOR);
     Resize(h, size, true);
 }
 
@@ -287,7 +287,7 @@ Vector HashMapAllEntries(HashMap* h) {
     return result;
 }
 
-bool HashMapContainsKey(HashMap* h, void* key)
+bool HashMapContains(HashMap* h, void* key)
 {
     uint idx;
     return Find(h, key, &idx);

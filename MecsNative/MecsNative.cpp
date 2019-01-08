@@ -13,9 +13,6 @@ typedef struct exampleElement {
 } exampleElement;
 exampleElement fakeData = exampleElement{ 5,15 };
 
-// Register type specifics
-RegisterVectorFor(exampleElement, Vec)
-RegisterVectorFor(HashMap_KVP, Vec)
 
 bool IntKeyCompare(void* key_A, void* key_B) {
     auto A = *((int*)key_A);
@@ -27,31 +24,55 @@ unsigned int IntKeyHash(void* key) {
     return A;
 }
 
+// Register type specifics
+RegisterVectorStatics(Vec)
+RegisterVectorFor(exampleElement, Vec)
+RegisterVectorFor(HashMap_KVP, Vec)
+
+RegisterHashMapStatics(Map)
+RegisterHashMapFor(int, int, IntKeyHash, IntKeyCompare, Map)
+RegisterHashMapFor(int, float, IntKeyHash, IntKeyCompare, Map)
+
+RegisterTreeStatics(T)
+RegisterTreeFor(exampleElement, T)
+
 int TestHashMap() {
     std::cout << "*************** HASH MAP *****************\n";
     std::cout << "Allocating\n";
     // start small enough that we will go through a grow cycle when adding
-    auto hmap = HashMapAllocate(64, sizeof(int), sizeof(int), IntKeyCompare, IntKeyHash); // Map<int,int>
+    auto hmap = MapAllocate_int_int(64);
     std::cout << "HashMap OK? " << hmap.IsValid << "\n";
 
     std::cout << "Writing entries\n";
     for (int i = 0; i < 100; i++) {
         int key = i;
         int value = 2 * i;
-        HashMapPut(&hmap, &key, &value, true);
+        MapPut_int_int(&hmap, key, value, true);
     }
 
     std::cout << "Looking up data\n";
     int lukey = 40;
     int* lu_val_ptr = NULL;
-    if (!HashMapGet(&hmap, &lukey, (void**)&lu_val_ptr)) {
+    if (!MapGet_int_int(&hmap, lukey, &lu_val_ptr)) {
         std::cout << "Get failed!\n";
         return 1;
     }
     std::cout << "Found value " << *lu_val_ptr << " (expected 80)\n";
 
+    auto has50 = MapContains_int_int(&hmap, 50);
+    auto hasNeg1 = MapContains_int_int(&hmap, -1);
+    std::cout << "Has 50? " << (has50 ? "yes" : "no") << "; Has -1? " << (hasNeg1 ? "yes" : "no") << "\n";
+
+    MapRemove_int_int(&hmap, 50);
+    has50 = MapContains_int_int(&hmap, 50);
+    std::cout << "Has 50 after removal? " << (has50 ? "yes" : "no") << "\n";
+
+    std::cout << "Count before clear = " << (MapCount(&hmap)) << "\n";
+    MapClear(&hmap);
+    std::cout << "Count after clear = " << (MapCount(&hmap)) << "\n";
+
     std::cout << "Deallocating map\n";
-    HashMapDeallocate(&hmap);
+    MapDeallocate(&hmap);
     std::cout << "HashMap OK? " << hmap.IsValid << "\n";
     return 0;
 }
@@ -120,37 +141,37 @@ int TestTree() {
     std::cout << "**************** TREE *******************\n";
 
     std::cout << "Allocating\n";
-    auto tree = TreeAllocate(sizeof(exampleElement));
+    auto tree = TAllocate_exampleElement();
 
     std::cout << "Adding elements\n";
     auto elem1 = exampleElement{ 0,1 };
-    TreeSetValue(tree.Root, &elem1);
+    TSetValue_exampleElement(tree.Root, &elem1);
 
     auto elem2 = exampleElement{ 1,2 };
-    auto node2 = TreeAddChild(tree.Root, &elem2); // child of root
+    auto node2 = TAddChild_exampleElement(tree.Root, &elem2); // child of root
 
     auto elem3 = exampleElement{ 1,3 };
-    auto node3 = TreeAddChild(tree.Root, &elem3); // child of root, sibling of node2
+    auto node3 = TAddChild_exampleElement(tree.Root, &elem3); // child of root, sibling of node2
 
     auto elem4 = exampleElement{ 2,4 };
-    auto node4 = TreeAddChild(node3, &elem4); // child of node3
+    auto node4 = TAddChild_exampleElement(node3, &elem4); // child of node3
 
     auto elem5 = exampleElement{ 2,5 };
-    auto node5 = TreeAddSibling(node4, &elem5); // child of node3, sibling of node4
+    auto node5 = TAddSibling_exampleElement(node4, &elem5); // child of node3, sibling of node4
 
 
     std::cout << "Reading elements\n";
     // find elem5 the long way...
     auto find = tree.Root;
-    find = TreeChild(find);
-    find = TreeSibling(find);
-    find = TreeChild(find);
-    find = TreeSibling(find);
-    auto found = (exampleElement*)TreeReadBody(find);
+    find = TChild(find);
+    find = TSibling(find);
+    find = TChild(find);
+    find = TSibling(find);
+    auto found = TReadBody_exampleElement(find);
     std::cout << "Element 5 data (expecting 2,5) = " << found->a << ", " << found->b << "\n";
 
     std::cout << "Deallocating\n";
-    TreeDeallocate(&tree);
+    TDeallocate(&tree);
     return 0;
 }
 

@@ -50,7 +50,7 @@ bool HashMapPut(HashMap *h, void* key, void* value, bool canReplace);
 // List all keys in the hash map. The vector must be deallocated by the caller.
 Vector HashMapAllEntries(HashMap *h); // returns a Vector<HashMap_KVP>
 // Returns true if hashmap has a value stored to the given key
-bool HashMapContainsKey(HashMap *h, void* key);
+bool HashMapContains(HashMap *h, void* key);
 // Remove the entry for the given key, if it exists
 bool HashMapRemove(HashMap *h, void* key);
 // Remove all entries from the hash-map, but leave the hash-map allocated and valid
@@ -62,4 +62,26 @@ unsigned int HashMapCount(HashMap *h);
 // Note: The hash map doesn't clean up after key removal/replacement until it is cleared or resized
 // If you are doing lots or remove and replace, call this occasionally to prevent memory growth
 void HashMapPurge(HashMap *h);
+
+
+// Macros to create type-specific versions of the methods above.
+// If you want to use the typed versions, make sure you call `RegisterHashMapFor(typeName, namespace,...)` for EACH type
+
+// These are invariant on type, but can be namespaced
+#define RegisterHashMapStatics(nameSpace) \
+    inline void nameSpace##Deallocate(HashMap *h){ HashMapDeallocate(h); }\
+    inline Vector nameSpace##AllEntries(HashMap *h){ return HashMapAllEntries(h); }\
+    inline void nameSpace##Clear(HashMap *h){ HashMapClear(h); }\
+    inline unsigned int nameSpace##Count(HashMap *h){ return HashMapCount(h); }\
+
+
+// These must be registered for each distinct pair, as they are type variant
+#define RegisterHashMapFor(keyType, valueType, hashFuncPtr, compareFuncPtr, nameSpace) \
+    inline HashMap nameSpace##Allocate_##keyType##_##valueType(unsigned int size){ return HashMapAllocate(size, sizeof(keyType), sizeof(valueType), compareFuncPtr, hashFuncPtr); } \
+    inline bool nameSpace##Get##_##keyType##_##valueType(HashMap *h, keyType key, valueType** outValue){return HashMapGet(h, &key, (void**)(outValue));}\
+    inline bool nameSpace##Put##_##keyType##_##valueType(HashMap *h, keyType key, valueType value, bool replace){return HashMapPut(h, &key, &value, replace); }\
+    inline bool nameSpace##Contains##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapContains(h, &key); }\
+    inline bool nameSpace##Remove##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapRemove(h, &key); }\
+
+
 #endif
