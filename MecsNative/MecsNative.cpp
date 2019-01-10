@@ -3,6 +3,7 @@
 #include "Vector.h"
 #include "HashMap.h"
 #include "Tree.h"
+#include "String.h"
 
 // So, the idea for general containers, have some basic `void*` and size functionality,
 // and some macros to init an inline casting function for each type.
@@ -175,6 +176,22 @@ int TestTree() {
     return 0;
 }
 
+int TestString() {
+    std::cout << "*************** MUTABLE STRING *****************\n";
+
+    String* str1 = StringNew("Hello, ");
+    String* str2 = StringNew("World!");
+
+    StringAppend(str1, str2);
+    StringDeallocate(str2);
+
+    std::cout << StringToCStr(str1) << "\n";
+
+    StringDeallocate(str1);
+
+    return 0;
+}
+
 int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
@@ -184,4 +201,7 @@ int main() {
 
     auto tres = TestTree();
     if (tres != 0) return tres;
+
+    auto sres = TestString();
+    if (sres != 0) return sres;
 }

@@ -261,6 +261,24 @@ void TreeRemoveChild(TreeNode* parent, int targetIndex) {
     DeleteNode(deleteTargetPtr); // clean up
 }
 
+void RecursiveFill(TreeNode* treeNodePtr, Vector *nodeDataList) {
+    auto current = treeNodePtr;
+    while (current != NULL) {
+        if (current->FirstChildPtr != NULL) RecursiveFill(current->FirstChildPtr, nodeDataList);
+
+        auto next = current->NextSiblingPtr;
+        VectorPush(nodeDataList, TreeReadBody(current));
+
+        current = next;
+    }
+}
+
+Vector TreeAllData(Tree * tree) {
+    auto vec = VectorAllocate(sizeof(void*));
+    RecursiveFill(tree->Root, &vec);
+    return vec;
+}
+
 // Deallocate all nodes, and the data held
 void TreeDeallocate(Tree* tree) {
     DeleteNode(tree->Root);

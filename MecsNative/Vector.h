@@ -15,6 +15,7 @@ typedef struct Vector {
 
     // dynamic parts
     unsigned int _elementCount;     // how long is the logical array
+    unsigned int _baseOffset;       // how many elements should be ignored from first chunk (for queueing)
     int  _skipEntries;              // how long is the logical skip table
     bool _skipTableDirty;           // does the skip table need updating?
     bool _rebuilding;               // are we in the middle of rebuilding the skip table?
@@ -42,6 +43,8 @@ bool VectorPush(Vector *v, void* value);
 void* VectorGet(Vector *v, unsigned int index);
 // Copy data from an element in the vector to a pointer
 bool VectorCopy(Vector *v, unsigned int index, void* outValue);
+// Copy data from first element and remove it from the vector
+bool VectorDequeue(Vector *v, void* outValue);
 // Read and remove an element from the vector. A copy of the element is written into the parameter. If null, only the removal is done.
 bool VectorPop(Vector *v, void *target);
 // Write a value at a given position. This must be an existing allocated position (with either push or prealloc).
@@ -69,6 +72,7 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
     inline Vector nameSpace##Allocate_##typeName(){ return VectorAllocate(sizeof(typeName)); } \
     inline bool nameSpace##Push_##typeName(Vector *v, typeName valuePtr){ return VectorPush(v, (void*)&valuePtr); } \
     inline typeName * nameSpace##Get_##typeName(Vector *v, unsigned int index){ return (typeName*)VectorGet(v, index); } \
+    inline bool nameSpace##Copy_##typeName(Vector *v, unsigned int idx, typeName *target){ return VectorCopy(v, idx, (void*) target); } \
     inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } \
     inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName* element, typeName* prevValue){ return VectorSet(v, index, (void*)element, (void*)prevValue); } \
 

@@ -306,6 +306,7 @@ Vector VectorAllocate(int elementSize)
     }
     result._baseChunkTable = baseTable;
     result._elementCount = 0;
+    result._baseOffset = 0;
     RebuildSkipTable(&result);
 
     // All done
@@ -369,6 +370,14 @@ bool VectorCopy(Vector * v, unsigned int index, void * outValue)
 
     writeValue(outValue, 0, ptr, v->ElementByteSize);
     return true;
+}
+
+bool VectorDequeue(Vector * v, void * outValue)
+{
+    // TODO: implement this
+    // read the element at index `_baseOffset`, then increment `_baseOffset`.
+    // if `_baseOffset` is equal to chunk length, deallocate the first chunk, rebuild the skip table and reset base offset.
+    return false;
 }
 
 bool VectorPop(Vector *v, void *target) {

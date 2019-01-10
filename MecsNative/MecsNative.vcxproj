@@ -162,11 +162,13 @@
   <ItemGroup>
     <ClCompile Include="HashMap.cpp" />
     <ClCompile Include="MecsNative.cpp" />
+    <ClCompile Include="String.cpp" />
     <ClCompile Include="Tree.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HashMap.h" />
+    <ClInclude Include="String.h" />
     <ClInclude Include="Tree.h" />
     <ClInclude Include="Vector.h" />
   </ItemGroup>
