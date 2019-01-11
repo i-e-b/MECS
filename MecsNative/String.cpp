@@ -179,7 +179,7 @@ bool StringStartsWith(String* haystack, String *needle) {
     for (uint32_t i = 0; i < len; i++) {
         auto a = VGet_char(&haystack->chars, i);
         auto b = VGet_char(&needle->chars, i);
-        if (a != b) return false;
+        if (*a != *b) return false;
     }
     return true;
 }
@@ -195,6 +195,54 @@ bool StringStartsWith(String* haystack, const char* needle) {
         i++;
     }
     return true;
+}
+
+
+bool StringEndsWith(String* haystack, String *needle) {
+    if (haystack == NULL) return false;
+    if (needle == NULL) return true;
+    auto len = StringLength(needle);
+    auto off = StringLength(haystack);
+    if (len > off) return false;
+    off -= len;
+    for (uint32_t i = 0; i < len; i++) {
+        auto a = VGet_char(&haystack->chars, i + off);
+        auto b = VGet_char(&needle->chars, i);
+        if (*a != *b) return false;
+    }
+    return true;
+}
+bool StringEndsWith(String* haystack, const char* needle) {
+    auto str2 = StringNew(needle);
+    bool match = StringEndsWith(haystack, str2);
+    StringDeallocate(str2);
+    return match;
+}
+
+bool StringAreEqual(String* a, String* b) {
+    if (a == NULL) return false;
+    if (b == NULL) return false;
+    uint32_t len = StringLength(a);
+    if (len != StringLength(b)) return false;
+    for (uint32_t i = 0; i < len; i++) {
+        auto ca = VGet_char(&a->chars, i);
+        auto cb = VGet_char(&b->chars, i);
+        if (*ca != *cb) return false;
+    }
+    return true;
+}
+bool StringAreEqual(String* a, const char* b) {
+    if (a == NULL) return false;
+    if (b == NULL) return false;
+    uint32_t limit = StringLength(a);
+    uint32_t i = 0;
+    while (b[i] != 0) {
+        if (i >= limit) return false;
+        auto chr = VGet_char(&a->chars, i);
+        if (*chr != b[i]) return false;
+        i++;
+    }
+    return i == limit;
 }
 
 bool StringFind(String* haystack, String* needle, unsigned int start, unsigned int* outPosition) {

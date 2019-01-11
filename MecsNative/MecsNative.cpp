@@ -230,13 +230,19 @@ int TestString() {
     cstr = StringToCStr(str2);
     std::cout << cstr << "\n";
     free(cstr);
-    StringDeallocate(str2);
 
     // Comparison
     std::cout << (StringStartsWith(str1, "hello") ? "cmp 1 OK" : "cmp 1 failed") << "\n";
     std::cout << (StringStartsWith(str1, "fish") ? "cmp 2 failed" : "cmp 2 OK") << "\n";
     std::cout << (StringStartsWith(str1, str1) ? "cmp 3 OK" : "cmp 3 failed") << "\n";
+    std::cout << (StringEndsWith(str1, "world!") ? "cmp 4 OK" : "cmp 4 failed") << "\n";
+    std::cout << (StringEndsWith(str1, "fish") ? "cmp 5 failed" : "cmp 5 OK") << "\n";
+    std::cout << (StringEndsWith(str1, str1) ? "cmp 6 OK" : "cmp 6 failed") << "\n";
+    std::cout << (StringAreEqual(str1, "fish") ? "cmp 7 failed" : "cmp 7 OK") << "\n";
+    std::cout << (StringAreEqual(str1, str2) ? "cmp 8 failed" : "cmp 8 OK") << "\n";
+    std::cout << (StringAreEqual(str1, str1) ? "cmp 9 OK" : "cmp 9 failed") << "\n";
 
+    StringDeallocate(str2);
     StringDeallocate(str1);
     return 0;
 }
