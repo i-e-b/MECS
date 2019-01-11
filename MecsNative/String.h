@@ -16,8 +16,8 @@ String *StringNew(const char *str);
 void StringDeallocate(String *str);
 // Length of a string
 unsigned int StringLength(String* str);
-// Get char at index. Returns 0 if invalid
-char StringCharAtIndex(String *str, unsigned int idx);
+// Get char at index. Returns 0 if invalid. Negative indexes are from end
+char StringCharAtIndex(String *str, int idx);
 
 // Add one string to another. `first` is modified.
 void StringAppend(String *first, String *second);
@@ -25,14 +25,14 @@ void StringAppend(String *first, String *second);
 String *StringSlice(String* str, int startIdx, int length);
 // Create a new string from a range in an existing string, and deallocate the original string
 String *StringChop(String* str, int startIdx, int length);
-// Generate a hash-code for a string. Guaranteed to be non-zero
+// Generate a hash-code for a string. Guaranteed to be non-zero for valid strings.
 uint32_t StringHash(String* str);
 // Alloc and copy a new c-string from a mutable string. The result must be deallocated with `free()`
 char *StringToCStr(String *str);
 
-// Change all upper-case letters to lower case
+// Change all upper-case letters to lower case, in place (existing string is modified)
 void StringToLower(String *str);
-// Change all lower-case letters to upper case
+// Change all lower-case letters to upper case, in place (existing string is modified)
 void StringToUpper(String *str);
 
 // Find the position of a substring. If the outPosition is NULL, it is ignored

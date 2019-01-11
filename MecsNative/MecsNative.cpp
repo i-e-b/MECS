@@ -182,10 +182,47 @@ int TestString() {
     String* str1 = StringNew("Hello, ");
     String* str2 = StringNew("World!");
 
+    std::cout << "Hashes of original strings: " << StringHash(str1) << ", " << StringHash(str2) << "\n";
+    std::cout << "String lengths before append: " << StringLength(str1) << ", " << StringLength(str2) << "\n";
     StringAppend(str1, str2);
     StringDeallocate(str2);
+    std::cout << "String length after append: " << StringLength(str1) << "\n";
+    std::cout << "Hashes of result string: " << StringHash(str1) << "\n";
 
-    std::cout << StringToCStr(str1) << "\n";
+    auto cstr = StringToCStr(str1);
+    std::cout << cstr << "\n";
+    free(cstr);
+    std::cout << "First char = '" << StringCharAtIndex(str1, 0) << "'\n";
+    std::cout << "Last char = '" << StringCharAtIndex(str1, -1) << "'\n";
+
+    StringToUpper(str1);
+    cstr = StringToCStr(str1);
+    std::cout << "Upper case: " << cstr << "\n";
+    free(cstr);
+
+    StringToLower(str1);
+    cstr = StringToCStr(str1);
+    std::cout << "Lower case: " << cstr << "\n";
+    free(cstr);
+
+    // Search
+    str2 = StringNew("lo,");
+    unsigned int pos;
+    if (StringFind(str1, str2, 0, &pos)) {
+        std::cout << "Found at " << pos << "\n";
+    } else {
+        std::cout << "Didn't find a string I was expecting!?\n";
+    }
+    if (StringFind(str1, str2, 4, NULL)) {
+        std::cout << "Found a string I wasn't expecting\n";
+    }
+    StringDeallocate(str2);
+
+    str2 = StringNew("l,o");
+    if (StringFind(str1, str2, 0, &pos)) { // this should trigger the 'add' method to a false positive, but still return not found
+        std::cout << "Found a string I wasn't expecting\n";
+    }
+    StringDeallocate(str2);
 
     StringDeallocate(str1);
 
