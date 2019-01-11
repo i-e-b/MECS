@@ -48,7 +48,16 @@ void StringAppend(String *first, String *second) {
     first->hashval = 0;
 }
 
+void StringAppend(String *first, const char *second) {
+    while (*second != 0) {
+        VPush_char(&first->chars, *second);
+        second++;
+    }
+    first->hashval = 0;
+}
+
 unsigned int StringLength(String * str) {
+    if (str == NULL) return 0;
     return VLength(&str->chars);
 }
 
@@ -60,6 +69,28 @@ char StringCharAtIndex(String *str, int idx) {
     auto ok = VCopy_char(&str->chars, idx, &val);
     if (!ok) return 0;
     return val;
+}
+
+String *StringSlice(String* str, int startIdx, int length) {
+    if (str == NULL) return NULL;
+    auto len = StringLength(str);
+    if (len < 1) return NULL;
+
+    String *result = StringEmpty();
+    while (startIdx < 0) { startIdx += len; }
+
+    for (int i = 0; i < length; i++) {
+        uint32_t x = (i + startIdx) % len;
+        VPush_char(&result->chars, *VGet_char(&str->chars, x));
+    }
+
+    return result;
+}
+
+String *StringChop(String* str, int startIdx, int length) {
+    auto result = StringSlice(str, startIdx, length);
+    StringDeallocate(str);
+    return result;
 }
 
 char *StringToCStr(String *str) {
@@ -138,6 +169,32 @@ void StringToUpper(String *str) {
             *chr = *chr - 0x20;
         }
     }
+}
+
+bool StringStartsWith(String* haystack, String *needle) {
+    if (haystack == NULL) return false;
+    if (needle == NULL) return true;
+    auto len = StringLength(needle);
+    if (len > StringLength(haystack)) return false;
+    for (uint32_t i = 0; i < len; i++) {
+        auto a = VGet_char(&haystack->chars, i);
+        auto b = VGet_char(&needle->chars, i);
+        if (a != b) return false;
+    }
+    return true;
+}
+bool StringStartsWith(String* haystack, const char* needle) {
+    if (haystack == NULL) return false;
+    if (needle == NULL) return true;
+    auto limit = StringLength(haystack);
+    uint32_t i = 0;
+    while (needle[i] != 0) {
+        if (i >= limit) return false;
+        auto chr = VGet_char(&haystack->chars, i);
+        if (*chr != needle[i]) return false;
+        i++;
+    }
+    return true;
 }
 
 bool StringFind(String* haystack, String* needle, unsigned int start, unsigned int* outPosition) {

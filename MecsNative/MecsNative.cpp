@@ -180,13 +180,14 @@ int TestString() {
     std::cout << "*************** MUTABLE STRING *****************\n";
 
     String* str1 = StringNew("Hello, ");
-    String* str2 = StringNew("World!");
+    String* str2 = StringNew("World");
 
     std::cout << "Hashes of original strings: " << StringHash(str1) << ", " << StringHash(str2) << "\n";
     std::cout << "String lengths before append: " << StringLength(str1) << ", " << StringLength(str2) << "\n";
     StringAppend(str1, str2);
+    StringAppend(str1, "!");
     StringDeallocate(str2);
-    std::cout << "String length after append: " << StringLength(str1) << "\n";
+    std::cout << "String length after appends: " << StringLength(str1) << "\n";
     std::cout << "Hashes of result string: " << StringHash(str1) << "\n";
 
     auto cstr = StringToCStr(str1);
@@ -224,8 +225,19 @@ int TestString() {
     }
     StringDeallocate(str2);
 
-    StringDeallocate(str1);
+    // Slicing and chopping
+    str2 = StringChop(StringSlice(str1, -2, 2), 0, 5); // last 2 chars = 'd!', then get 5 chars from that str = 'd!d!d'
+    cstr = StringToCStr(str2);
+    std::cout << cstr << "\n";
+    free(cstr);
+    StringDeallocate(str2);
 
+    // Comparison
+    std::cout << (StringStartsWith(str1, "hello") ? "cmp 1 OK" : "cmp 1 failed") << "\n";
+    std::cout << (StringStartsWith(str1, "fish") ? "cmp 2 failed" : "cmp 2 OK") << "\n";
+    std::cout << (StringStartsWith(str1, str1) ? "cmp 3 OK" : "cmp 3 failed") << "\n";
+
+    StringDeallocate(str1);
     return 0;
 }
 
