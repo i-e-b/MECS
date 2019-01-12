@@ -29,6 +29,32 @@ typedef struct HashMap_Entry {
     uint value; // index into the values vector
 } HashMap_Entry;
 
+typedef struct HashMap {
+    // Storage and types
+    Vector* buckets; // this is a Vector<HashMap_Entry>, referencing the other vectors
+    Vector* keys; // these are the stored keys (either data or pointers depending on caller's use)
+    Vector* values; // the stored values (similar to keys)
+
+    int KeyByteSize;
+    int ValueByteSize;
+
+    // Hashmap metrics
+    unsigned int count;
+    unsigned int countMod;
+    unsigned int countUsed;
+    unsigned int growAt;
+    unsigned int shrinkAt;
+
+    bool IsValid; // if false, the hash map has failed
+
+    // Should return true IFF the two key objects are equal
+    bool(*KeyComparer)(void* key_A, void* key_B);
+
+    // Should return a unsigned 32bit hash value for the given key
+    unsigned int(*GetHash)(void* key);
+
+} HashMap;
+
 bool ResizeNext(HashMap * h); // defined below
 
 uint DistanceToInitIndex(HashMap * h, uint indexStored) {
@@ -182,14 +208,14 @@ bool ResizeNext(HashMap * h) {
     return Resize(h, (uint)size, true);
 }
 
-HashMap HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void *key_A, void *key_B), unsigned int(*getHashFunc)(void *key))
+HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void *key_A, void *key_B), unsigned int(*getHashFunc)(void *key))
 {
-    auto result = HashMap(); // need to ensure values are zeroed
-    result.KeyByteSize = keyByteSize;
-    result.ValueByteSize = valueByteSize;
-    result.KeyComparer = keyComparerFunc;
-    result.GetHash = getHashFunc;
-    result.IsValid = Resize(&result, (uint)NextPow2(size), false);
+    auto result = (HashMap*)calloc(1, sizeof(HashMap)); // need to ensure values are zeroed
+    result->KeyByteSize = keyByteSize;
+    result->ValueByteSize = valueByteSize;
+    result->KeyComparer = keyComparerFunc;
+    result->GetHash = getHashFunc;
+    result->IsValid = Resize(result, (uint)NextPow2(size), false);
     return result;
 }
 

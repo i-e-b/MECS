@@ -12,34 +12,10 @@ typedef struct HashMap_KVP {
 
 // A generalised hash-map using the robin-hood strategy and our own Vector class
 // Users must supply their own hashing and equality function pointers
-typedef struct HashMap {
-    // Storage and types
-    Vector* buckets; // this is a Vector<HashMap_Entry>, referencing the other vectors
-    Vector* keys; // these are the stored keys (either data or pointers depending on caller's use)
-    Vector* values; // the stored values (similar to keys)
-
-    int KeyByteSize;
-    int ValueByteSize;
-
-    // Hashmap metrics
-    unsigned int count;
-    unsigned int countMod;
-    unsigned int countUsed;
-    unsigned int growAt;
-    unsigned int shrinkAt;
-
-    bool IsValid; // if false, the hash map has failed
-
-    // Should return true IFF the two key objects are equal
-    bool(*KeyComparer)(void* key_A, void* key_B);
-
-    // Should return a unsigned 32bit hash value for the given key
-    unsigned int(*GetHash)(void* key);
-
-} HashMap;
+typedef struct HashMap HashMap;
 
 // Create a new hash map with an initial size
-HashMap HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));
+HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));
 // Deallocate internal storage of the hash-map. Does not deallocate the keys or values
 void HashMapDeallocate(HashMap *h);
 
@@ -77,7 +53,7 @@ void HashMapPurge(HashMap *h);
 
 // These must be registered for each distinct pair, as they are type variant
 #define RegisterHashMapFor(keyType, valueType, hashFuncPtr, compareFuncPtr, nameSpace) \
-    inline HashMap nameSpace##Allocate_##keyType##_##valueType(unsigned int size){ return HashMapAllocate(size, sizeof(keyType), sizeof(valueType), compareFuncPtr, hashFuncPtr); } \
+    inline HashMap* nameSpace##Allocate_##keyType##_##valueType(unsigned int size){ return HashMapAllocate(size, sizeof(keyType), sizeof(valueType), compareFuncPtr, hashFuncPtr); } \
     inline bool nameSpace##Get##_##keyType##_##valueType(HashMap *h, keyType key, valueType** outValue){return HashMapGet(h, &key, (void**)(outValue));}\
     inline bool nameSpace##Put##_##keyType##_##valueType(HashMap *h, keyType key, valueType value, bool replace){return HashMapPut(h, &key, &value, replace); }\
     inline bool nameSpace##Contains##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapContains(h, &key); }\

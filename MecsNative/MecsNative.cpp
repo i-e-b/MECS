@@ -42,39 +42,37 @@ int TestHashMap() {
     std::cout << "Allocating\n";
     // start small enough that we will go through a grow cycle when adding
     auto hmap = MapAllocate_int_int(64);
-    std::cout << "HashMap OK? " << hmap.IsValid << "\n";
 
     std::cout << "Writing entries\n";
     for (int i = 0; i < 100; i++) {
         int key = i;
         int value = 2 * i;
-        MapPut_int_int(&hmap, key, value, true);
+        MapPut_int_int(hmap, key, value, true);
     }
 
     std::cout << "Looking up data\n";
     int lukey = 40;
     int* lu_val_ptr = NULL;
-    if (!MapGet_int_int(&hmap, lukey, &lu_val_ptr)) {
+    if (!MapGet_int_int(hmap, lukey, &lu_val_ptr)) {
         std::cout << "Get failed!\n";
         return 1;
     }
     std::cout << "Found value " << *lu_val_ptr << " (expected 80)\n";
 
-    auto has50 = MapContains_int_int(&hmap, 50);
-    auto hasNeg1 = MapContains_int_int(&hmap, -1);
+    auto has50 = MapContains_int_int(hmap, 50);
+    auto hasNeg1 = MapContains_int_int(hmap, -1);
     std::cout << "Has 50? " << (has50 ? "yes" : "no") << "; Has -1? " << (hasNeg1 ? "yes" : "no") << "\n";
 
-    MapRemove_int_int(&hmap, 50);
-    has50 = MapContains_int_int(&hmap, 50);
+    MapRemove_int_int(hmap, 50);
+    has50 = MapContains_int_int(hmap, 50);
     std::cout << "Has 50 after removal? " << (has50 ? "yes" : "no") << "\n";
 
-    std::cout << "Count before clear = " << (MapCount(&hmap)) << "\n";
-    MapClear(&hmap);
-    std::cout << "Count after clear = " << (MapCount(&hmap)) << "\n";
+    std::cout << "Count before clear = " << (MapCount(hmap)) << "\n";
+    MapClear(hmap);
+    std::cout << "Count after clear = " << (MapCount(hmap)) << "\n";
 
     std::cout << "Deallocating map\n";
-    MapDeallocate(&hmap);
-    std::cout << "HashMap OK? " << hmap.IsValid << "\n";
+    MapDeallocate(hmap);
     return 0;
 }
 
