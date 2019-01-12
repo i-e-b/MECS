@@ -146,13 +146,13 @@ int TestTree() {
 
     std::cout << "Adding elements\n";
     auto elem1 = exampleElement{ 0,1 };
-    TSetValue_exampleElement(tree.Root, &elem1);
+    TSetValue_exampleElement(TRoot(tree), &elem1);
 
     auto elem2 = exampleElement{ 1,2 };
-    auto node2 = TAddChild_exampleElement(tree.Root, &elem2); // child of root
+    auto node2 = TAddChild_exampleElement(TRoot(tree), &elem2); // child of root
 
     auto elem3 = exampleElement{ 1,3 };
-    auto node3 = TAddChild_exampleElement(tree.Root, &elem3); // child of root, sibling of node2
+    auto node3 = TAddChild_exampleElement(TRoot(tree), &elem3); // child of root, sibling of node2
 
     auto elem4 = exampleElement{ 2,4 };
     auto node4 = TAddChild_exampleElement(node3, &elem4); // child of node3
@@ -163,7 +163,7 @@ int TestTree() {
 
     std::cout << "Reading elements\n";
     // find elem5 the long way...
-    auto find = tree.Root;
+    auto find = TRoot(tree);
     find = TChild(find);
     find = TSibling(find);
     find = TChild(find);
@@ -172,7 +172,7 @@ int TestTree() {
     std::cout << "Element 5 data (expecting 2,5) = " << found->a << ", " << found->b << "\n";
 
     std::cout << "Deallocating\n";
-    TDeallocate(&tree);
+    TDeallocate(tree);
     return 0;
 }
 

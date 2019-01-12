@@ -9,6 +9,11 @@ typedef struct TreeNode {
     int ElementByteSize;      // Number of bytes in element
 } TreeNode;
 
+typedef struct Tree {
+    int ElementByteSize;
+    TreeNode* Root;
+    bool IsValid;
+} Tree;
 
 const unsigned int POINTER_SIZE = sizeof(size_t);
 const unsigned int NODE_HEAD_SIZE = sizeof(TreeNode);
@@ -62,28 +67,32 @@ inline void writeValue(void *ptr, int byteOffset, void* data, int length) {
 
 #pragma endregion
 
-Tree TreeAllocate(int elementSize) {
-    auto result = Tree();
+Tree* TreeAllocate(int elementSize) {
+    auto result = (Tree*)calloc(1, sizeof(Tree));
 
-    result.ElementByteSize = elementSize;
+    result->ElementByteSize = elementSize;
 
     // Make the root node
-    result.Root = (TreeNode*)calloc(1, NODE_HEAD_SIZE + result.ElementByteSize); // notice we actually oversize to hold the node data
-    if (result.Root == NULL) {
-        result.IsValid = false;
+    result->Root = (TreeNode*)calloc(1, NODE_HEAD_SIZE + result->ElementByteSize); // notice we actually oversize to hold the node data
+    if (result->Root == NULL) {
+        result->IsValid = false;
         return result;
     }
 
     // Set initial values
-    result.Root->FirstChildPtr = NULL;
-    result.Root->NextSiblingPtr = NULL;
-    result.Root->ParentPtr = NULL;
-    result.Root->ElementByteSize = elementSize;
+    result->Root->FirstChildPtr = NULL;
+    result->Root->NextSiblingPtr = NULL;
+    result->Root->ParentPtr = NULL;
+    result->Root->ElementByteSize = elementSize;
 
-    result.IsValid = true;
+    result->IsValid = true;
     return result;
 }
 
+TreeNode *TreeRoot(Tree* tree) {
+    if (tree == NULL) return NULL;
+    return tree->Root;
+}
 
 // Write an element value to the given node. If `node` is null, the root element is set
 void TreeSetValue(TreeNode* node, void* element) {
