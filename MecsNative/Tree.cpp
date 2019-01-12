@@ -273,9 +273,9 @@ void RecursiveFill(TreeNode* treeNodePtr, Vector *nodeDataList) {
     }
 }
 
-Vector TreeAllData(Tree * tree) {
+Vector* TreeAllData(Tree * tree) {
     auto vec = VectorAllocate(sizeof(void*));
-    RecursiveFill(tree->Root, &vec);
+    RecursiveFill(tree->Root, vec);
     return vec;
 }
 

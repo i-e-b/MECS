@@ -1,6 +1,34 @@
 #include "Vector.h"
 #include <stdlib.h>
 
+typedef struct Vector {
+    bool IsValid; // if this is false, creation failed
+
+    // Calculated parts
+    int ElemsPerChunk;
+    int ElementByteSize;
+    int ChunkHeaderSize;
+    unsigned short ChunkBytes;
+
+    // dynamic parts
+    unsigned int _elementCount;     // how long is the logical array
+    unsigned int _baseOffset;       // how many elements should be ignored from first chunk (for queueing)
+    int  _skipEntries;              // how long is the logical skip table
+    bool _skipTableDirty;           // does the skip table need updating?
+    bool _rebuilding;               // are we in the middle of rebuilding the skip table?
+
+    // Pointers to data
+    // Start of the chunk chain
+    void* _baseChunkTable;
+
+    // End of the chunk chain
+    void* _endChunkPtr;
+
+    // Pointer to skip table
+    void* _skipTable;
+} Vector;
+
+
 #ifndef NULL
 #define NULL 0
 #endif
@@ -221,7 +249,7 @@ void RebuildSkipTable(Vector *v)
     void *chunkPtr;
     unsigned int chunkIndex;
 
-    for (int i = 0; i < entries; i++) {
+    for (uint i = 0; i < entries; i++) {
         FindNearestChunk(v, target, &found, &chunkPtr, &chunkIndex);
 
         if (!found || chunkPtr == NULL) { // total fail
@@ -269,52 +297,58 @@ void * PtrOfElem(Vector *v, uint index) {
     return byteOffset(chunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
 }
 
-Vector VectorAllocate(int elementSize)
+Vector *VectorAllocate(int elementSize)
 {
-    Vector result = Vector{};
+    auto result = (Vector*)calloc(1, sizeof(Vector));
 
-    result.ElementByteSize = elementSize;
+    result->ElementByteSize = elementSize;
 
     // Work out how many elements can fit in an arena
-    result.ChunkHeaderSize = PTR_SIZE;
-    auto spaceForElements = ARENA_SIZE - result.ChunkHeaderSize; // need pointer space
-    result.ElemsPerChunk = (int)(spaceForElements / result.ElementByteSize);
+    result->ChunkHeaderSize = PTR_SIZE;
+    auto spaceForElements = ARENA_SIZE - result->ChunkHeaderSize; // need pointer space
+    result->ElemsPerChunk = (int)(spaceForElements / result->ElementByteSize);
 
-    if (result.ElemsPerChunk <= 1) {
-        result.IsValid = false;
+    if (result->ElemsPerChunk <= 1) {
+        result->IsValid = false;
         return result;
     }
 
-    if (result.ElemsPerChunk > TARGET_ELEMS_PER_CHUNK)
-        result.ElemsPerChunk = TARGET_ELEMS_PER_CHUNK; // no need to go crazy with small items.
+    if (result->ElemsPerChunk > TARGET_ELEMS_PER_CHUNK)
+        result->ElemsPerChunk = TARGET_ELEMS_PER_CHUNK; // no need to go crazy with small items.
 
-    result.ChunkBytes = (unsigned short)(result.ChunkHeaderSize + (result.ElemsPerChunk * result.ElementByteSize));
+    result->ChunkBytes = (unsigned short)(result->ChunkHeaderSize + (result->ElemsPerChunk * result->ElementByteSize));
 
 
     // Make a table, which can store a few chunks, and can have a next-chunk-table pointer
     // Each chunk can hold a few elements.
-    result._skipEntries = NULL;
-    result._skipTable = NULL;
-    result._endChunkPtr = NULL;
-    result._baseChunkTable = NULL;
+    result->_skipEntries = NULL;
+    result->_skipTable = NULL;
+    result->_endChunkPtr = NULL;
+    result->_baseChunkTable = NULL;
 
-    auto baseTable = NewChunk(&result);
+    auto baseTable = NewChunk(result);
 
     if (baseTable == NULL) {
-        result.IsValid = false;
+        result->IsValid = false;
         return result;
     }
-    result._baseChunkTable = baseTable;
-    result._elementCount = 0;
-    result._baseOffset = 0;
-    RebuildSkipTable(&result);
+    result->_baseChunkTable = baseTable;
+    result->_elementCount = 0;
+    result->_baseOffset = 0;
+    RebuildSkipTable(result);
 
     // All done
-    result.IsValid = true;
+    result->IsValid = true;
     return result;
 }
 
+bool VectorIsValid(Vector *v) {
+    if (v == NULL) return false;
+    return v->IsValid;
+}
+
 void VectorDeallocate(Vector *v) {
+    if (v == NULL) return;
     v->IsValid = false;
     free(v->_skipTable);
     v->_skipTable = NULL;
@@ -329,6 +363,7 @@ void VectorDeallocate(Vector *v) {
         if (next == NULL) return; // end of chunks
         current = next;
     }
+    free(v);
 }
 
 int VectorLength(Vector *v) {

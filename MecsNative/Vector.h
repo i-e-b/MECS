@@ -4,35 +4,12 @@
 
 // Generalised auto-sizing vector
 // Can be used as a stack or array
-typedef struct Vector {
-    bool IsValid; // if this is false, creation failed
-
-    // Calculated parts
-    int ElemsPerChunk;
-    int ElementByteSize;
-    int ChunkHeaderSize;
-    unsigned short ChunkBytes;
-
-    // dynamic parts
-    unsigned int _elementCount;     // how long is the logical array
-    unsigned int _baseOffset;       // how many elements should be ignored from first chunk (for queueing)
-    int  _skipEntries;              // how long is the logical skip table
-    bool _skipTableDirty;           // does the skip table need updating?
-    bool _rebuilding;               // are we in the middle of rebuilding the skip table?
-
-    // Pointers to data
-    // Start of the chunk chain
-    void* _baseChunkTable;
-
-    // End of the chunk chain
-    void* _endChunkPtr;
-
-    // Pointer to skip table
-    void* _skipTable;
-} Vector;
+typedef struct Vector Vector;
 
 // Create a new dynamic vector with the given element size (must be fixed per vector)
-Vector VectorAllocate(int elementSize);
+Vector *VectorAllocate(int elementSize);
+// Check the vector is correctly allocated
+bool VectorIsValid(Vector *v);
 // Deallocate vector (does not deallocate anything held in the elements)
 void VectorDeallocate(Vector *v);
 // Return number of elements in vector. Allocated capacity may be substantially different
@@ -69,7 +46,7 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
 
 // These must be registered for each type, as they are type variant
 #define RegisterVectorFor(typeName, nameSpace) \
-    inline Vector nameSpace##Allocate_##typeName(){ return VectorAllocate(sizeof(typeName)); } \
+    inline Vector* nameSpace##Allocate_##typeName(){ return VectorAllocate(sizeof(typeName)); } \
     inline bool nameSpace##Push_##typeName(Vector *v, typeName valuePtr){ return VectorPush(v, (void*)&valuePtr); } \
     inline typeName * nameSpace##Get_##typeName(Vector *v, unsigned int index){ return (typeName*)VectorGet(v, index); } \
     inline bool nameSpace##Copy_##typeName(Vector *v, unsigned int idx, typeName *target){ return VectorCopy(v, idx, (void*) target); } \

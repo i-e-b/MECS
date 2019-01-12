@@ -14,9 +14,9 @@ typedef struct HashMap_KVP {
 // Users must supply their own hashing and equality function pointers
 typedef struct HashMap {
     // Storage and types
-    Vector buckets; // this is a Vector<HashMap_Entry>, referencing the other vectors
-    Vector keys; // these are the stored keys (either data or pointers depending on caller's use)
-    Vector values; // the stored values (similar to keys)
+    Vector* buckets; // this is a Vector<HashMap_Entry>, referencing the other vectors
+    Vector* keys; // these are the stored keys (either data or pointers depending on caller's use)
+    Vector* values; // the stored values (similar to keys)
 
     int KeyByteSize;
     int ValueByteSize;
@@ -48,7 +48,7 @@ bool HashMapGet(HashMap *h, void* key, void** outValue);
 // Add a key/value pair to the map. If `canReplace` is true, conflicts replace existing data. if false, existing data survives
 bool HashMapPut(HashMap *h, void* key, void* value, bool canReplace);
 // List all keys in the hash map. The vector must be deallocated by the caller.
-Vector HashMapAllEntries(HashMap *h); // returns a Vector<HashMap_KVP>
+Vector *HashMapAllEntries(HashMap *h); // returns a Vector<HashMap_KVP>
 // Returns true if hashmap has a value stored to the given key
 bool HashMapContains(HashMap *h, void* key);
 // Remove the entry for the given key, if it exists
@@ -70,7 +70,7 @@ void HashMapPurge(HashMap *h);
 // These are invariant on type, but can be namespaced
 #define RegisterHashMapStatics(nameSpace) \
     inline void nameSpace##Deallocate(HashMap *h){ HashMapDeallocate(h); }\
-    inline Vector nameSpace##AllEntries(HashMap *h){ return HashMapAllEntries(h); }\
+    inline Vector* nameSpace##AllEntries(HashMap *h){ return HashMapAllEntries(h); }\
     inline void nameSpace##Clear(HashMap *h){ HashMapClear(h); }\
     inline unsigned int nameSpace##Count(HashMap *h){ return HashMapCount(h); }\
 

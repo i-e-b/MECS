@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 typedef struct String {
-    Vector chars; // vector of characters
+    Vector* chars; // vector of characters
     uint32_t hashval; // cached hash value. Any time we change the string, this should be set to 0.
 } String;
 
@@ -13,7 +13,7 @@ RegisterVectorFor(char, V)
 
 String * StringEmpty() {
     auto vec = VAllocate_char();
-    if (!vec.IsValid) return NULL;
+    if (!VectorIsValid(vec)) return NULL;
 
     auto str = (String*)calloc(1, sizeof(String));
     str->chars = vec;
@@ -24,33 +24,33 @@ String * StringEmpty() {
 
 void StringDeallocate(String *str) {
     if (str == NULL) return;
-    if (str->chars.IsValid == true) VDeallocate(&str->chars);
+    if (VectorIsValid(str->chars) == true) VDeallocate(str->chars);
     free(str);
 }
 
 String * StringNew(const char * str) {
     auto result = StringEmpty();
     if (result == NULL) return NULL;
-    if (result->chars.IsValid == false) return NULL;
+    if (VectorIsValid(result->chars) == false) return NULL;
 
     while (*str != 0) {
-        VPush_char(&result->chars, *str);
+        VPush_char(result->chars, *str);
         str++;
     }
     return result;
 }
 
 void StringAppend(String *first, String *second) {
-    unsigned int len = VLength(&second->chars);
+    unsigned int len = VLength(second->chars);
     for (unsigned int i = 0; i < len; i++) {
-        VPush_char(&first->chars, *VGet_char(&second->chars, i));
+        VPush_char(first->chars, *VGet_char(second->chars, i));
     }
     first->hashval = 0;
 }
 
 void StringAppend(String *first, const char *second) {
     while (*second != 0) {
-        VPush_char(&first->chars, *second);
+        VPush_char(first->chars, *second);
         second++;
     }
     first->hashval = 0;
@@ -58,15 +58,15 @@ void StringAppend(String *first, const char *second) {
 
 unsigned int StringLength(String * str) {
     if (str == NULL) return 0;
-    return VLength(&str->chars);
+    return VLength(str->chars);
 }
 
 char StringCharAtIndex(String *str, int idx) {
     char val = 0;
     if (idx < 0) { // from end
-        idx += VLength(&str->chars);
+        idx += VLength(str->chars);
     }
-    auto ok = VCopy_char(&str->chars, idx, &val);
+    auto ok = VCopy_char(str->chars, idx, &val);
     if (!ok) return 0;
     return val;
 }
@@ -81,7 +81,7 @@ String *StringSlice(String* str, int startIdx, int length) {
 
     for (int i = 0; i < length; i++) {
         uint32_t x = (i + startIdx) % len;
-        VPush_char(&result->chars, *VGet_char(&str->chars, x));
+        VPush_char(result->chars, *VGet_char(str->chars, x));
     }
 
     return result;
@@ -97,7 +97,7 @@ char *StringToCStr(String *str) {
     auto len = StringLength(str);
     auto result = (char*)malloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
     for (unsigned int i = 0; i < len; i++) {
-        result[i] = *VGet_char(&str->chars, i);
+        result[i] = *VGet_char(str->chars, i);
     }
     result[len] = 0;
     return result;
@@ -112,7 +112,7 @@ char *StringToCStr(String *str, int start) {
 
     auto result = (char*)malloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
     for (unsigned int i = 0; i < len; i++) {
-        result[i] = *VGet_char(&str->chars, i + start);
+        result[i] = *VGet_char(str->chars, i + start);
     }
     result[len] = 0;
     return result;
@@ -125,7 +125,7 @@ uint32_t StringHash(String* str) {
     uint32_t len = StringLength(str);
     uint32_t hash = len;
     for (uint32_t i = 0; i < len; i++) {
-        hash += *VGet_char(&str->chars, i);;
+        hash += *VGet_char(str->chars, i);;
         hash ^= hash >> 16;
         hash *= 0x7feb352d;
         hash ^= hash >> 15;
@@ -149,9 +149,9 @@ void StringToLower(String *str) {
     if (str == NULL) return;
     str->hashval = 0;
     // Simple 7-bit ASCII only at present
-    uint32_t len = VLength(&str->chars);
+    uint32_t len = VLength(str->chars);
     for (uint32_t i = 0; i < len; i++) {
-        auto chr = VGet_char(&str->chars, i);
+        auto chr = VGet_char(str->chars, i);
         if (*chr >= 'A' && *chr <= 'Z') {
             *chr = *chr + 0x20;
         }
@@ -162,9 +162,9 @@ void StringToUpper(String *str) {
     if (str == NULL) return;
     str->hashval = 0;
     // Simple 7-bit ASCII only at present
-    uint32_t len = VLength(&str->chars);
+    uint32_t len = VLength(str->chars);
     for (uint32_t i = 0; i < len; i++) {
-        auto chr = VGet_char(&str->chars, i);
+        auto chr = VGet_char(str->chars, i);
         if (*chr >= 'a' && *chr <= 'z') {
             *chr = *chr - 0x20;
         }
@@ -177,8 +177,8 @@ bool StringStartsWith(String* haystack, String *needle) {
     auto len = StringLength(needle);
     if (len > StringLength(haystack)) return false;
     for (uint32_t i = 0; i < len; i++) {
-        auto a = VGet_char(&haystack->chars, i);
-        auto b = VGet_char(&needle->chars, i);
+        auto a = VGet_char(haystack->chars, i);
+        auto b = VGet_char(needle->chars, i);
         if (*a != *b) return false;
     }
     return true;
@@ -190,7 +190,7 @@ bool StringStartsWith(String* haystack, const char* needle) {
     uint32_t i = 0;
     while (needle[i] != 0) {
         if (i >= limit) return false;
-        auto chr = VGet_char(&haystack->chars, i);
+        auto chr = VGet_char(haystack->chars, i);
         if (*chr != needle[i]) return false;
         i++;
     }
@@ -206,8 +206,8 @@ bool StringEndsWith(String* haystack, String *needle) {
     if (len > off) return false;
     off -= len;
     for (uint32_t i = 0; i < len; i++) {
-        auto a = VGet_char(&haystack->chars, i + off);
-        auto b = VGet_char(&needle->chars, i);
+        auto a = VGet_char(haystack->chars, i + off);
+        auto b = VGet_char(needle->chars, i);
         if (*a != *b) return false;
     }
     return true;
@@ -225,8 +225,8 @@ bool StringAreEqual(String* a, String* b) {
     uint32_t len = StringLength(a);
     if (len != StringLength(b)) return false;
     for (uint32_t i = 0; i < len; i++) {
-        auto ca = VGet_char(&a->chars, i);
-        auto cb = VGet_char(&b->chars, i);
+        auto ca = VGet_char(a->chars, i);
+        auto cb = VGet_char(b->chars, i);
         if (*ca != *cb) return false;
     }
     return true;
@@ -238,7 +238,7 @@ bool StringAreEqual(String* a, const char* b) {
     uint32_t i = 0;
     while (b[i] != 0) {
         if (i >= limit) return false;
-        auto chr = VGet_char(&a->chars, i);
+        auto chr = VGet_char(a->chars, i);
         if (*chr != b[i]) return false;
         i++;
     }
@@ -251,8 +251,8 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
     if (outPosition != NULL) *outPosition = 0;
     if (needle == NULL) return true; // treating null as empty
 
-    uint32_t hayLen = VLength(&haystack->chars);
-    uint32_t needleLen = VLength(&needle->chars);
+    uint32_t hayLen = VLength(haystack->chars);
+    uint32_t needleLen = VLength(needle->chars);
     if (needleLen > hayLen) return false;
     if (start < 0) { // from end
         start += hayLen;

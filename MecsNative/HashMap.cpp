@@ -32,9 +32,9 @@ typedef struct HashMap_Entry {
 bool ResizeNext(HashMap * h); // defined below
 
 uint DistanceToInitIndex(HashMap * h, uint indexStored) {
-    if (!h->buckets.IsValid) return indexStored + h->count;
+    if (!VectorIsValid(h->buckets)) return indexStored + h->count;
 
-    var entry = (HashMap_Entry*)VectorGet(&(h->buckets), indexStored);
+    var entry = (HashMap_Entry*)VectorGet(h->buckets, indexStored);
     var indexInit = entry->hash & h->countMod;
     if (indexInit <= indexStored) return indexStored - indexInit;
     return indexStored + (h->count - indexInit);
@@ -58,23 +58,23 @@ bool PutInternal(HashMap * h, HashMap_Entry* entry, bool canReplace, bool checkD
     for (uint i = 0; i < h->count; i++) {
         var indexCurrent = (indexInit + i) & h->countMod;
 
-        if (!h->buckets.IsValid) return false;
-        var current = (HashMap_Entry*)VectorGet(&(h->buckets), indexCurrent);
+        if (!VectorIsValid(h->buckets)) return false;
+        var current = (HashMap_Entry*)VectorGet(h->buckets, indexCurrent);
         if (current == NULL) return false; // internal failure
 
         if (current->hash == 0) {
             h->countUsed++;
-            VectorSet(&(h->buckets), indexCurrent, entry, NULL);
+            VectorSet(h->buckets, indexCurrent, entry, NULL);
             return true;
         }
 
         if (checkDuplicates && (entry->hash == current->hash)
-            && h->KeyComparer(VectorGet(&h->keys, entry->key), VectorGet(&h->keys, current->key))
+            && h->KeyComparer(VectorGet(h->keys, entry->key), VectorGet(h->keys, current->key))
             ) {
             if (!canReplace) return false;
 
-            if (!h->buckets.IsValid) return false;
-            VectorSet(&(h->buckets), indexCurrent, entry, NULL);
+            if (!VectorIsValid(h->buckets)) return false;
+            VectorSet(h->buckets, indexCurrent, entry, NULL);
             return true;
         }
 
@@ -82,7 +82,7 @@ bool PutInternal(HashMap * h, HashMap_Entry* entry, bool canReplace, bool checkD
         var probeDistance = DistanceToInitIndex(h, indexCurrent);
         if (probeCurrent > probeDistance) {
             probeCurrent = probeDistance;
-            if (!Swap(&(h->buckets), indexCurrent, entry)) return false;
+            if (!Swap(h->buckets, indexCurrent, entry)) return false;
         }
         probeCurrent++;
     }
@@ -105,16 +105,16 @@ bool Resize(HashMap * h, uint newSize, bool autoSize) {
     h->countMod = newSize - 1;
 
     auto newBuckets = VectorAllocate(sizeof(HashMap_Entry));
-    if (!newBuckets.IsValid || !VectorPrealloc(&newBuckets, newSize)) return false;
+    if (!VectorIsValid(newBuckets) || !VectorPrealloc(newBuckets, newSize)) return false;
 
     auto newKeys = VectorAllocate(h->KeyByteSize);
-    if (!newKeys.IsValid) {
-        VectorDeallocate(&newBuckets); return false;
+    if (!VectorIsValid(newKeys)) {
+        VectorDeallocate(newBuckets); return false;
     }
 
     auto newValues = VectorAllocate(h->ValueByteSize);
-    if (!newValues.IsValid) {
-        VectorDeallocate(&newBuckets); VectorDeallocate(&newKeys); return false;
+    if (!VectorIsValid(newValues)) {
+        VectorDeallocate(newBuckets); VectorDeallocate(newKeys); return false;
     }
 
     h->buckets = newBuckets;
@@ -127,20 +127,20 @@ bool Resize(HashMap * h, uint newSize, bool autoSize) {
     h->countUsed = 0;
 
     // if the old buckets are null or empty, there are no values to copy
-    if (!oldBuckets.IsValid) return true;
+    if (!VectorIsValid(oldBuckets)) return true;
 
     // old values need adding to the new hashmap
     if (newSize > 0) {
         for (uint i = 0; i < oldCount; i++) {
             // Read and validate old bucket entry
-            var oldEntry = (HashMap_Entry*)VectorGet(&oldBuckets, i);
+            var oldEntry = (HashMap_Entry*)VectorGet(oldBuckets, i);
             if (oldEntry == NULL || oldEntry->hash == 0) continue;
 
             // Copy key and value data across
-            uint keyIdx = VectorLength(&h->keys);
-            VectorPush(&h->keys, VectorGet(&oldKeyVec, oldEntry->key));
-            uint valueIdx = VectorLength(&h->values);
-            VectorPush(&h->values, VectorGet(&oldValVec, oldEntry->value));
+            uint keyIdx = VectorLength(h->keys);
+            VectorPush(h->keys, VectorGet(oldKeyVec, oldEntry->key));
+            uint valueIdx = VectorLength(h->values);
+            VectorPush(h->values, VectorGet(oldValVec, oldEntry->value));
 
             // Put new etry into new bucket vector
             auto newEntry = HashMap_Entry{ oldEntry->hash, keyIdx, valueIdx };
@@ -148,9 +148,9 @@ bool Resize(HashMap * h, uint newSize, bool autoSize) {
         }
     }
 
-    VectorDeallocate(&oldBuckets);
-    if (oldKeyVec.IsValid) VectorDeallocate(&oldKeyVec);
-    if (oldValVec.IsValid) VectorDeallocate(&oldValVec);
+    VectorDeallocate(oldBuckets);
+    if (VectorIsValid(oldKeyVec)) VectorDeallocate(oldKeyVec);
+    if (VectorIsValid(oldValVec)) VectorDeallocate(oldValVec);
     return true;
 }
 
@@ -197,15 +197,15 @@ void HashMapDeallocate(HashMap * h)
 {
     h->IsValid = false;
     h->count = 0;
-    if (h->buckets.IsValid) VectorDeallocate(&(h->buckets));
-    if (h->keys.IsValid) VectorDeallocate(&(h->keys));
-    if (h->values.IsValid) VectorDeallocate(&(h->values));
+    if (h->buckets != NULL) VectorDeallocate(h->buckets);
+    if (h->keys != NULL) VectorDeallocate(h->keys);
+    if (h->values != NULL) VectorDeallocate(h->values);
 }
 
 bool Find(HashMap* h, void* key, uint* index) {
     *index = 0;
     if (h->countUsed <= 0) return false;
-    if (!h->buckets.IsValid) return false;
+    if (!VectorIsValid(h->buckets)) return false;
 
     uint hash = h->GetHash(key);
     uint indexInit = hash & h->countMod;
@@ -213,10 +213,10 @@ bool Find(HashMap* h, void* key, uint* index) {
 
     for (uint i = 0; i < h->count; i++) {
         *index = (indexInit + i) & h->countMod;
-        var res = (HashMap_Entry*)VectorGet(&(h->buckets), *index);
+        var res = (HashMap_Entry*)VectorGet(h->buckets, *index);
         if (res == NULL) return false; // internal failure
 
-        auto keyData = VectorGet(&h->keys, res->key);
+        auto keyData = VectorGet(h->keys, res->key);
 
         // found?
         if ((hash == res->hash) && h->KeyComparer(key, keyData)) return true;
@@ -236,13 +236,13 @@ bool HashMapGet(HashMap* h, void* key, void** outValue) {
     if (!Find(h, key, &index)) return false;
 
     // look up the entry
-    var res = (HashMap_Entry*)VectorGet(&(h->buckets), index);
+    var res = (HashMap_Entry*)VectorGet(h->buckets, index);
     if (res == NULL) {
         return false;
     }
 
     // look up the value
-    *outValue = VectorGet(&(h->values), res->value);
+    *outValue = VectorGet(h->values, res->value);
     return true;
 }
 
@@ -253,10 +253,10 @@ bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
     }
 
     // Copy key and value bytes into our vectors
-    uint valueIdx = VectorLength(&h->values);
-    VectorPush(&h->values, value);
-    uint keyIdx = VectorLength(&h->keys);
-    VectorPush(&h->keys, key);
+    uint valueIdx = VectorLength(h->values);
+    VectorPush(h->values, value);
+    uint keyIdx = VectorLength(h->keys);
+    VectorPush(h->keys, key);
 
     uint safeHash = h->GetHash(key);
     if (safeHash == 0) safeHash = SAFE_HASH; // can't allow hash of zero
@@ -266,23 +266,22 @@ bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
     return PutInternal(h, &entry, canReplace, true);
 }
 
-Vector HashMapAllEntries(HashMap* h) {
-    if (!h->buckets.IsValid) return Vector();
-
+Vector *HashMapAllEntries(HashMap* h) {
     var result = VectorAllocate(sizeof(HashMap_KVP));
+    if (!VectorIsValid(h->buckets)) return result;
 
     for (uint i = 0; i < h->count; i++) {
         // Read and validate entry
-        var ent = (HashMap_Entry*)VectorGet(&(h->buckets), i);
+        var ent = (HashMap_Entry*)VectorGet(h->buckets, i);
         if (ent->hash == 0) continue;
 
         // Look up pointers to the data
-        auto keyPtr = VectorGet(&h->keys, ent->key);
-        auto valuePtr = VectorGet(&h->values, ent->value);
+        auto keyPtr = VectorGet(h->keys, ent->key);
+        auto valuePtr = VectorGet(h->values, ent->value);
 
         // Add Key-Value pair to output
         auto kvp = HashMap_KVP { keyPtr, valuePtr };
-        VectorPush(&result, &kvp);
+        VectorPush(result, &kvp);
     }
     return result;
 }
@@ -303,20 +302,20 @@ bool HashMapRemove(HashMap* h, void* key) {
         var curIndex = (index + i) & h->countMod;
         var nextIndex = (index + i + 1) & h->countMod;
 
-        var res = (HashMap_Entry*)VectorGet(&(h->buckets), nextIndex);
+        var res = (HashMap_Entry*)VectorGet(h->buckets, nextIndex);
         if (res == NULL) return false; // internal failure
 
         if ((res->hash == 0) || (DistanceToInitIndex(h, nextIndex) == 0))
         {
             auto empty = HashMap_Entry();
-            VectorSet(&(h->buckets), curIndex, &empty, NULL);
+            VectorSet(h->buckets, curIndex, &empty, NULL);
 
             if (--(h->countUsed) == h->shrinkAt) Resize(h, h->shrinkAt, true);
 
             return true;
         }
 
-        VectorSwap(&(h->buckets), curIndex, nextIndex);
+        VectorSwap(h->buckets, curIndex, nextIndex);
     }
 
     return false;

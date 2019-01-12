@@ -34,7 +34,7 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element);
 // Remove a child by index and stitch the chain back together
 void TreeRemoveChild(TreeNode* parent, int targetIndex);
 // Provide a vector of pointers to all node data. Order is depth-first. The vector must be deallocated by the caller
-Vector TreeAllData(Tree *tree);
+Vector* TreeAllData(Tree *tree);
 
 
 // Macros to create type-specific versions of the methods above.
@@ -46,7 +46,7 @@ Vector TreeAllData(Tree *tree);
     inline TreeNode *nameSpace##Child(TreeNode *t){ return TreeChild(t); }\
     inline TreeNode *nameSpace##Sibling(TreeNode *t){ return TreeSibling(t); }\
     inline void nameSpace##RemoveChild(TreeNode *t, int idx){ return TreeRemoveChild(t, idx); }\
-    inline Vector nameSpace##AllData(Tree *t){ return TreeAllData(t);}\
+    inline Vector* nameSpace##AllData(Tree *t){ return TreeAllData(t);}\
 
 
 // These must be registered for each distinct pair, as they are type variant
