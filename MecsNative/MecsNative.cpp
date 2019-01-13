@@ -29,6 +29,7 @@ unsigned int IntKeyHash(void* key) {
 RegisterVectorStatics(Vec)
 RegisterVectorFor(exampleElement, Vec)
 RegisterVectorFor(HashMap_KVP, Vec)
+RegisterVectorFor(char, Vec)
 
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(int, int, IntKeyHash, IntKeyCompare, Map)
@@ -120,19 +121,58 @@ int TestVector() {
     VecSet_exampleElement(gvec, 70, &newData, &capturedOldData);
     std::cout << "Replace value at 70. Old data = " << capturedOldData.a << ", " << capturedOldData.b << "\n";
     r = VecGet_exampleElement(gvec, 70);
-    std::cout << "Element 70 new data = " << r->a << ", " << r->b << "\n";
+    std::cout << "Element 70 new data = " << r->a << ", " << r->b << " (should be 255,511)\n";
 
     // Swap elements by index pair
-    std::cout << "Swapping\n";
+    std::cout << "Swapping 60 and 70\n";
     VectorSwap(gvec, 60, 70);
     r = VecGet_exampleElement(gvec, 60);
-    std::cout << "Element 60 new data = " << r->a << ", " << r->b << "\n";
+    std::cout << "Element 60 new data = " << r->a << ", " << r->b << " (255,511)\n";
     r = VecGet_exampleElement(gvec, 70);
-    std::cout << "Element 70 new data = " << r->a << ", " << r->b << "\n";
+    std::cout << "Element 70 new data = " << r->a << ", " << r->b << " (20,5)\n";
 
     std::cout << "Deallocating\n";
     VectorDeallocate(gvec);
     std::cout << "Vector OK? " << VectorIsValid(gvec) << "\n";
+    return 0;
+}
+
+int TestQueue() {
+    std::cout << "**************** QUEUE (VECTOR) *******************\n";
+    // queues are a feature of vectors (makes things a bit complex)
+
+    auto q = VecAllocate_char();
+    auto str = "This is a string of chars to fill our vector. It has to be pretty long to cross chunk boundaries. Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.";
+    // fill up vector
+    auto ptr = str;
+    while (*ptr != 0) { VecPush_char(q, *ptr++); }
+
+    // empty it back into std-out
+    char c;
+    while (VecDequeue_char(q, &c)) { std::cout << c; }
+    std::cout << "\n";
+
+    // Fill up again and empty from both ends...
+    auto pal = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzzyxwvutsrqponmlkjihgfedcba9876543210ZYXWVUTSRQPONMLKJIHGFEDCBA";
+    ptr = pal;
+    while (*ptr != 0) { VecPush_char(q, *ptr++); }
+    while (VecLength(q) > 0) {
+        VecDequeue_char(q, &c); std::cout << c;
+        VecPop_char(q, &c); std::cout << c;
+    }
+    std::cout << "\n";
+
+    // Fill up again and empty from both ends, but using indexes
+    ptr = pal;
+    while (*ptr != 0) { VecPush_char(q, *ptr++); }
+    while (VecLength(q) > 0) {
+        VecCopy_char(q, 0, &c); std::cout << c;
+        VecCopy_char(q, VecLength(q) - 1, &c); std::cout << c;
+        VecDequeue_char(q, &c);
+        VecPop_char(q, &c);
+    }
+    std::cout << "\n";
+
     return 0;
 }
 
@@ -251,6 +291,9 @@ int main() {
 
     auto vres = TestVector();
     if (vres != 0) return vres;
+
+    auto qres = TestQueue();
+    if (qres != 0) return qres;
 
     auto tres = TestTree();
     if (tres != 0) return tres;

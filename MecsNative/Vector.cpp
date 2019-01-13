@@ -12,7 +12,7 @@ typedef struct Vector {
 
     // dynamic parts
     unsigned int _elementCount;     // how long is the logical array
-    unsigned int _baseOffset;       // how many elements should be ignored from first chunk (for queueing)
+    unsigned int _baseOffset;       // how many elements should be ignored from first chunk (for de-queueing)
     int  _skipEntries;              // how long is the logical skip table
     bool _skipTableDirty;           // does the skip table need updating?
     bool _rebuilding;               // are we in the middle of rebuilding the skip table?
@@ -59,7 +59,7 @@ const long SKIP_TABLE_SIZE_LIMIT = 1024;
 /*
  * Structure of the element chunk:
  *
- * [Ptr to next chunk, or -1]    <- 8 bytes (ptr)
+ * [Ptr to next chunk, or -1]    <- sizeof(void*)
  * [Chunk value (if set)]        <- sizeof(Element)
  * . . .
  * [Chunk value]                 <- ... up to ChunkBytes
@@ -133,9 +133,13 @@ void *NewChunk(Vector *v)
 }
 
 void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **chunkPtr, unsigned int *chunkIndex) {
+    // 0. Apply offsets
+    uint realIndex = targetIndex + v->_baseOffset;
+    uint realElemCount = v->_elementCount + v->_baseOffset;
+
     // 1. Calculate desired chunk index
-    uint targetChunkIdx = (uint)(targetIndex / v->ElemsPerChunk);
-    uint endChunkIdx = (uint)((v->_elementCount - 1) / v->ElemsPerChunk);
+    uint targetChunkIdx = (uint)(realIndex / v->ElemsPerChunk);
+    uint endChunkIdx = (uint)((realElemCount - 1) / v->ElemsPerChunk);
 
     // 2. Optimise for start- and end- of chain (small lists & very likely for Push & Pop)
     if (targetChunkIdx == 0)
@@ -287,7 +291,7 @@ void MaybeRebuildSkipTable(Vector *v) {
 void * PtrOfElem(Vector *v, uint index) {
     if (index >= v->_elementCount) return NULL;
 
-    var entryIdx = index % v->ElemsPerChunk;
+    var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
 
     bool found;
     void *chunkPtr = NULL;
@@ -297,8 +301,7 @@ void * PtrOfElem(Vector *v, uint index) {
     return byteOffset(chunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
 }
 
-Vector *VectorAllocate(int elementSize)
-{
+Vector *VectorAllocate(int elementSize) {
     auto result = (Vector*)calloc(1, sizeof(Vector));
 
     result->ElementByteSize = elementSize;
@@ -371,7 +374,7 @@ int VectorLength(Vector *v) {
 }
 
 bool VectorPush(Vector *v, void* value) {
-    var entryIdx = v->_elementCount % v->ElemsPerChunk;
+    var entryIdx = (v->_elementCount + v->_baseOffset) % v->ElemsPerChunk;
 
     bool found;
     void *chunkPtr = NULL;
@@ -407,19 +410,63 @@ bool VectorCopy(Vector * v, unsigned int index, void * outValue)
     return true;
 }
 
-bool VectorDequeue(Vector * v, void * outValue)
-{
-    // TODO: implement this
+bool VectorDequeue(Vector * v, void * outValue) {
+    // Special cases:
+    if (v == NULL) return false;
+    if (!v->IsValid) return false;
+    if (v->_elementCount < 1) return false;
+
     // read the element at index `_baseOffset`, then increment `_baseOffset`.
-    // if `_baseOffset` is equal to chunk length, deallocate the first chunk, rebuild the skip table and reset base offset.
-    return false;
+    auto ptr = byteOffset(v->_baseChunkTable, v->ChunkHeaderSize + (v->_baseOffset * v->ElementByteSize));
+    writeValue(outValue, 0, ptr, v->ElementByteSize);
+    v->_baseOffset++;
+    v->_elementCount--;
+
+    // If there's no clean-up to be done, jump out now.
+    if (v->_baseOffset < v->ElemsPerChunk) return true;
+
+    // If `_baseOffset` is equal to chunk length, deallocate the first chunk.
+    // When we we deallocate a chunk, copy a trunated version of the skip table
+    // if we're on the last chunk, don't deallocate, but just reset the base offset.
+
+    v->_baseOffset = 0;
+    auto nextChunk = readPtr(v->_baseChunkTable, 0);
+    if (nextChunk == NULL || v->_baseChunkTable == v->_endChunkPtr) { // this is the only chunk
+        return true;
+    }
+    // Advance the base and free the old
+    auto oldChunk = v->_baseChunkTable;
+    v->_baseChunkTable = nextChunk;
+    free(oldChunk);
+
+    if (v->_skipTable == NULL) return true; // don't need to fix the table
+
+    // Make a truncated version of the skip table
+    v->_skipEntries--;
+    if (v->_skipEntries < 4) { // no point having a table
+        free(v->_skipTable);
+        v->_skipEntries = 0;
+        v->_skipTable = NULL;
+        return true;
+    }
+    // Copy of the skip table with first element gone
+    uint length = SKIP_ELEM_SIZE * v->_skipEntries;
+    auto newTablePtr = (char*)malloc(length);
+    auto oldTablePtr = (char*)v->_skipTable;
+    for (uint i = 0; i < length; i++) {
+        newTablePtr[i] = oldTablePtr[i + SKIP_ELEM_SIZE];
+    }
+    v->_skipTable = newTablePtr;
+    free(oldTablePtr);
+
+    return true;
 }
 
 bool VectorPop(Vector *v, void *target) {
     if (v->_elementCount == 0) return false;
 
     var index = v->_elementCount - 1;
-    var entryIdx = index % v->ElemsPerChunk;
+    var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
 
     // Get the value
     var result = byteOffset(v->_endChunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));

@@ -9,11 +9,12 @@ Components to do:
 * [x] Macros for hash map
 * [x] Macros for tree
 * [x] Mutable string (Vector of char + manipulation tools -- including hashing)
-* [ ] Change all structs to use anon types (move alloc to pointer return)
-* [ ] Queue (maybe a version of vector, or extend it, to keep a start index, and cleans up chunks when they are behind it?)
+* [x] Change all structs to use anon types (move alloc to pointer return)
+* [x] Queue: Dequeue (enqueue == push). Could do 'push-left' at some point.
 * [ ] Fixed point real?
 * [ ] Tagged data format reader for 32-bit cpu 
-* [ ] Bring heap in from scan-line experiments
+* [ ] Bring heap in from scan-line experiments (and generalise)
+* [ ] Add optimised sorting to vector
 
 Actor model stuff:
 ------------------

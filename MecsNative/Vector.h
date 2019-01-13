@@ -52,6 +52,7 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
     inline bool nameSpace##Copy_##typeName(Vector *v, unsigned int idx, typeName *target){ return VectorCopy(v, idx, (void*) target); } \
     inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } \
     inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName* element, typeName* prevValue){ return VectorSet(v, index, (void*)element, (void*)prevValue); } \
+    inline bool nameSpace##Dequeue_##typeName(Vector *v, typeName* outValue) { return VectorDequeue(v, (void*)outValue);}\
 
 
 
