@@ -160,6 +160,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Fix16.cpp" />
     <ClCompile Include="HashMap.cpp" />
     <ClCompile Include="MecsNative.cpp" />
     <ClCompile Include="String.cpp" />
@@ -167,6 +168,7 @@
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Fix16.h" />
     <ClInclude Include="HashMap.h" />
     <ClInclude Include="String.h" />
     <ClInclude Include="Tree.h" />

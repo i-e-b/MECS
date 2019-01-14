@@ -1,9 +1,13 @@
 #include <iostream>
 
+// Containers:
 #include "Vector.h"
 #include "HashMap.h"
 #include "Tree.h"
 #include "String.h"
+
+// Math:
+#include "Fix16.h"
 
 // So, the idea for general containers, have some basic `void*` and size functionality,
 // and some macros to init an inline casting function for each type.
@@ -282,6 +286,46 @@ int TestString() {
 
     StringDeallocate(str2);
     StringDeallocate(str1);
+
+    // number strings
+    str1 = StringEmpty();
+    StringAppendInt32(str1, 1234);
+    StringAppend(str1, ", ");
+    StringAppendInt32(str1, -4567);
+    StringAppend(str1, ", ");
+    StringAppendInt32(str1, 0);
+    StringAppend(str1, ", ");
+    StringAppendInt32(str1, 2147483647);
+    StringAppend(str1, ", ");
+    StringAppendInt32Hex(str1, 0x0123ABCD);
+
+    cstr = StringToCStr(str1);
+    std::cout << cstr << "\n";
+    std::cout << "1234, -4567, 0, 2147483647, 0123ABCD\n";
+    free(cstr);
+    StringDeallocate(str1);
+    return 0;
+}
+
+int TestFixedPoint() {
+    std::cout << "*************** FIXED POINT *****************\n";
+
+    fix16_t fexpected = FOUR_DIV_PI;
+    fix16_t fpi = fix16_pi;
+    fix16_t f4 = fix16_from_int(4);
+    fix16_t fresult = fix16_div(f4, fpi);
+
+    fix16_t diff = fix16_abs(fix16_sub(fresult, fexpected));
+
+    auto str1 = StringEmpty();
+    StringAppendInt32Hex(str1, diff);
+
+    auto cstr = StringToCStr(str1);
+    std::cout << "Raw difference: " << cstr << "\n";
+    free(cstr);
+    StringDeallocate(str1);
+
+
     return 0;
 }
 
@@ -300,4 +344,7 @@ int main() {
 
     auto sres = TestString();
     if (sres != 0) return sres;
+
+    auto fpres = TestFixedPoint();
+    if (fpres != 0) return fpres;
 }

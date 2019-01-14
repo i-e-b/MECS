@@ -40,6 +40,49 @@ String * StringNew(const char * str) {
     return result;
 }
 
+void StringAppendInt32(String *str, int32_t value) {
+    if (str == NULL) return;
+    if (VectorIsValid(str->chars) == false) return;
+
+    bool latch = false; // have we got a sig digit yet?
+    int64_t remains = value;
+    if (remains < 0) {
+        VPush_char(str->chars, '-');
+        remains = -remains;
+    }
+    int64_t scale = 1000000000;// max value of int32 = 2147483647
+    int64_t digit = 0;
+
+    while (remains > 0) {
+        digit = remains / scale;
+
+        if (digit > 0 || latch) {
+            latch = true;
+            VPush_char(str->chars, '0' + digit);
+            remains = remains % scale;
+        }
+
+        scale /= 10;
+    }
+
+    // if zero...
+    if (!latch) VPush_char(str->chars, '0');
+}
+
+void StringAppendInt32Hex(String *str, uint32_t value) {
+    if (str == NULL) return;
+    if (VectorIsValid(str->chars) == false) return;
+
+    uint32_t nybble = 0xF0000000;
+    uint32_t digit = 0;
+    for (int i = 28; i >= 0; i-=4) {
+        digit = (value & nybble) >> i;
+        if (digit <= 9) VPush_char(str->chars, '0' + digit);
+        else VPush_char(str->chars, '7' + digit); // line up with capital 'A'
+        nybble >>= 4;
+    }
+}
+
 void StringAppend(String *first, String *second) {
     unsigned int len = VLength(second->chars);
     for (unsigned int i = 0; i < len; i++) {

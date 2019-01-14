@@ -12,8 +12,10 @@ typedef struct String String;
 String *StringEmpty();
 // Create a mutable string from a c-string
 String *StringNew(const char *str);
+
 // Deallocate a string
 void StringDeallocate(String *str);
+
 // Length of a string
 unsigned int StringLength(String* str);
 // Get char at index. Returns 0 if invalid. Negative indexes are from end
@@ -47,5 +49,18 @@ bool StringEndsWith(String* haystack, const char* needle);
 // Test if two strings are equal
 bool StringAreEqual(String* a, String* b);
 bool StringAreEqual(String* a, const char* b);
+
+
+// Append an integer as a decimal string
+void StringAppendInt32(String *str, int32_t value);
+// Append an integer as a fixed length hex string
+void StringAppendInt32Hex(String *str, uint32_t value);
+// Append a fixed-point number as a decimal string (F16.16, passed as int32)
+void StringAppendF16(String *str, int32_t value); // TODO...
+
+// Parse an int from a decimal string
+bool StringTryParse_int32(String *str, int32_t *dest); // TODO
+// Parse a fixed-point number from a decimal string (F16.16, passed as int32)
+bool StringTryParse_f16(String *str, int32_t *dest); // TODO
 
 #endif
