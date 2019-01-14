@@ -10,11 +10,11 @@ Components to do:
 * [x] Macros for tree
 * [x] Mutable string (Vector of char + manipulation tools -- including hashing)
 * [x] Change all structs to use anon types (move alloc to pointer return)
-* [x] Queue: Dequeue (enqueue == push). Could do 'push-left' at some point.
-* [ ] Fixed point real?
-* [ ] Tagged data format reader for 32-bit cpu 
-* [ ] Bring heap in from scan-line experiments (and generalise)
+* [x] Queue: Dequeue (enqueue == push). (Could do 'push-left' at some point)
 * [ ] Add optimised sorting to vector
+* [ ] Tagged data format reader for 32-bit cpu
+* [ ] Fixed point real?
+* [ ] Bring heap in from scan-line experiments (and generalise)
 
 Actor model stuff:
 ------------------
