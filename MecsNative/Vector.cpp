@@ -350,10 +350,37 @@ bool VectorIsValid(Vector *v) {
     return v->IsValid;
 }
 
+void VectorClear(Vector *v) {
+    if (v == NULL) return;
+    if (v->IsValid == false) return;
+
+    v->_elementCount = 0;
+    v->_baseOffset = 0;
+    v->_skipEntries = 0;
+
+    // empty out the skip table, if present
+    if (v->_skipTable != NULL) {
+        free(v->_skipTable);
+        v->_skipTable = NULL;
+    }
+
+    // Walk through the chunk chain, removing until we hit an invalid pointer
+    var current = readPtr(v->_baseChunkTable, 0); // read from *second* chunk, if present
+    v->_endChunkPtr = v->_baseChunkTable;
+    writePtr(v->_baseChunkTable, 0, NULL); // write a null into the chain link
+
+    while (current != NULL) {
+        var next = readPtr(current, 0);
+        writePtr(current, 0, NULL); // just in case we have a loop
+        free(current);
+        current = next;
+    }
+}
+
 void VectorDeallocate(Vector *v) {
     if (v == NULL) return;
     v->IsValid = false;
-    free(v->_skipTable);
+    if (v->_skipTable != NULL) free(v->_skipTable);
     v->_skipTable = NULL;
     // Walk through the chunk chain, removing until we hit an invalid pointer
     var current = v->_baseChunkTable;

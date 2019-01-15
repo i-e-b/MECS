@@ -12,6 +12,8 @@ typedef struct String String;
 String *StringEmpty();
 // Create a mutable string from a c-string
 String *StringNew(const char *str);
+// Clear the contents of a string, but leave it allocated
+void StringClear(String *str);
 
 // Deallocate a string
 void StringDeallocate(String *str);

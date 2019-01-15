@@ -1,5 +1,6 @@
 #include "String.h"
 #include "Vector.h"
+#include "Fix16.h"
 
 #include <stdlib.h>
 
@@ -22,9 +23,17 @@ String * StringEmpty() {
     return str;
 }
 
+void StringClear(String *str) {
+    if (str == NULL) return;
+    if (VectorIsValid(str->chars) == false) return;
+
+    str->hashval = 0;
+    VClear(str->chars);
+}
+
 void StringDeallocate(String *str) {
     if (str == NULL) return;
-    if (VectorIsValid(str->chars) == true) VDeallocate(str->chars);
+    if (VectorIsValid(str->chars) == true) VectorDeallocate(str->chars);
     free(str);
 }
 
@@ -44,6 +53,7 @@ void StringAppendInt32(String *str, int32_t value) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == false) return;
 
+    str->hashval = 0;
     bool latch = false; // have we got a sig digit yet?
     int64_t remains = value;
     if (remains < 0) {
@@ -73,6 +83,7 @@ void StringAppendInt32Hex(String *str, uint32_t value) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == false) return;
 
+    str->hashval = 0;
     uint32_t nybble = 0xF0000000;
     uint32_t digit = 0;
     for (int i = 28; i >= 0; i-=4) {
@@ -81,6 +92,42 @@ void StringAppendInt32Hex(String *str, uint32_t value) {
         else VPush_char(str->chars, '7' + digit); // line up with capital 'A'
         nybble >>= 4;
     }
+}
+
+void StringAppendF16(String *str, int32_t value) {
+    if (str == NULL) return;
+    if (VectorIsValid(str->chars) == false) return;
+
+    str->hashval = 0;
+
+    uint32_t uvalue = value;
+    if (value < 0) {
+        VPush_char(str->chars, '-');
+        uvalue = -value;
+    }
+
+    unsigned intpart = uvalue >> 16;
+    uint32_t fracpart = uvalue & 0xFFFF;
+
+    StringAppendInt32(str, intpart);
+    VPush_char(str->chars, '.');
+
+    int64_t digit = 0;
+
+    uint32_t scale = 100000;// max scale of uint16 = 65535
+    fracpart = fix16_mul(fracpart, scale * 10);
+    bool tail = true;
+    while (fracpart > 0 && scale > 0) {
+        digit = fracpart / scale;
+
+        tail = false;
+        VPush_char(str->chars, '0' + digit);
+        fracpart = fracpart % scale;
+
+        scale /= 10;
+    }
+
+    if (tail) VPush_char(str->chars, '0'); // fractional part is exactly zero
 }
 
 void StringAppend(String *first, String *second) {

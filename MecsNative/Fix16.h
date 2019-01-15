@@ -1,5 +1,6 @@
 #pragma once
 
+// FROM https://github.com/PetteriAimonen/libfixmath
 // https://github.com/PetteriAimonen/libfixmath/blob/master/libfixmath/fix16.h
 
 #ifndef __libfixmath_fix16_h__
@@ -129,7 +130,7 @@
 
     /*! Multiplies the two given fix16_t's and returns the result.
     */
-    fix16_t fix16_mul(fix16_t inArg0, fix16_t inArg1) FIXMATH_FUNC_ATTRS;
+    extern fix16_t fix16_mul(fix16_t inArg0, fix16_t inArg1) FIXMATH_FUNC_ATTRS;
 
     /*! Divides the first given fix16_t by the second and returns the result.
     */
@@ -233,17 +234,6 @@
     /*! Returns the saturated base 2 logarithm of the given fix16_t.
      */
     extern fix16_t fix16_slog2(fix16_t x) FIXMATH_FUNC_ATTRS;
-
-    /*! Convert fix16_t value to a string.
-     * Required buffer length for largest values is 13 bytes.
-     */
-    extern void fix16_to_str(fix16_t value, char *buf, int decimals);
-
-    /*! Convert string to a fix16_t value
-     * Ignores spaces at beginning and end. Returns fix16_overflow if
-     * value is too large or there were garbage characters.
-     */
-    extern fix16_t fix16_from_str(const char *buf);
 
     /** Helper macro for F16C. Replace token with its number of characters/digits. */
 #define FIXMATH_TOKLEN(token) ( sizeof( #token ) - 1 )

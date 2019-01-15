@@ -10,6 +10,8 @@ typedef struct Vector Vector;
 Vector *VectorAllocate(int elementSize);
 // Check the vector is correctly allocated
 bool VectorIsValid(Vector *v);
+// Clear all elements out of the vector, but leave it valid
+void VectorClear(Vector *v);
 // Deallocate vector (does not deallocate anything held in the elements)
 void VectorDeallocate(Vector *v);
 // Return number of elements in vector. Allocated capacity may be substantially different
@@ -43,6 +45,7 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
     inline int nameSpace##Length(Vector *v){ return VectorLength(v); }\
     inline bool nameSpace##Prealloc(Vector *v, unsigned int length){ return VectorPrealloc(v, length); }\
     inline bool nameSpace##Swap(Vector *v, unsigned int index1, unsigned int index2){ return VectorSwap(v, index1, index2); }\
+    inline void nameSpace##Clear(Vector *v) { VectorClear(v); }\
 
 // These must be registered for each type, as they are type variant
 #define RegisterVectorFor(typeName, nameSpace) \

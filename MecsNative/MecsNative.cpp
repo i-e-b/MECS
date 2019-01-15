@@ -42,6 +42,12 @@ RegisterHashMapFor(int, float, IntKeyHash, IntKeyCompare, Map)
 RegisterTreeStatics(T)
 RegisterTreeFor(exampleElement, T)
 
+void WriteStr(String *str) {
+    auto cstr = StringToCStr(str);
+    std::cout << cstr << "\n";
+    free(cstr);
+}
+
 int TestHashMap() {
     std::cout << "*************** HASH MAP *****************\n";
     std::cout << "Allocating\n";
@@ -310,6 +316,7 @@ int TestString() {
 int TestFixedPoint() {
     std::cout << "*************** FIXED POINT *****************\n";
 
+    // Test basic operations against constant
     fix16_t fexpected = FOUR_DIV_PI;
     fix16_t fpi = fix16_pi;
     fix16_t f4 = fix16_from_int(4);
@@ -317,12 +324,42 @@ int TestFixedPoint() {
 
     fix16_t diff = fix16_abs(fix16_sub(fresult, fexpected));
 
-    auto str1 = StringEmpty();
+    auto str1 = StringNew("Raw difference: ");
     StringAppendInt32Hex(str1, diff);
+    WriteStr(str1);
 
-    auto cstr = StringToCStr(str1);
-    std::cout << "Raw difference: " << cstr << "\n";
-    free(cstr);
+    // Test constants and conversions with string generation
+    StringClear(str1);
+    StringAppend(str1, "Pi: ");
+    StringAppendF16(str1, fix16_pi);
+    StringAppend(str1, ", e: ");
+    StringAppendF16(str1, fix16_e);
+    StringAppend(str1, ", 1.0: ");
+    StringAppendF16(str1, fix16_one);
+    StringAppend(str1, ", FIX16.16 maximum: ");
+    StringAppendF16(str1, fix16_maximum);
+    WriteStr(str1);
+
+    StringClear(str1);
+    StringAppend(str1, "1.03: ");
+    StringAppendF16(str1, fix16_from_float(1.03));
+    StringAppend(str1, ", 100.001: ");
+    StringAppendF16(str1, fix16_from_float(100.001));
+    StringAppend(str1, ", 0.9999: ");
+    StringAppendF16(str1, fix16_from_float(0.9999));
+
+    WriteStr(str1);
+
+    // Test of saturating math
+    StringClear(str1);
+    auto big = fix16_from_float(30000.1234);
+    auto bigger = fix16_sadd(big, big);
+    StringAppend(str1, "Sat add: ");
+    StringAppendF16(str1, bigger);
+    StringAppend(str1, " (expecting max F16 ~ 32767.9999)");
+    WriteStr(str1);
+
+
     StringDeallocate(str1);
 
 
