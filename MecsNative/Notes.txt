@@ -13,8 +13,8 @@ Components to do:
 * [x] Queue: Dequeue (enqueue == push). (Could do 'push-left' at some point)
 * [ ] Add optimised sorting to vector
 * [ ] Tagged data format reader for 32-bit cpu
-* [ ] Fixed point real?
-* [ ] string-to-num & num-to-string
+* [x] Fixed point real? (imported)
+* [ ] string-to-num parsing
 * [ ] Bring heap in from scan-line experiments (and generalise)
 
 Actor model stuff:

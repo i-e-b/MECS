@@ -34,6 +34,10 @@ bool VectorPrealloc(Vector *v, unsigned int length);
 // Swaps the values at two positions in the vector
 bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
 
+// Sort the vector in-place using the given compare function.
+// Compare should return 0 if the two values are equal, negative if A should be before B, and positive if B should be before A.
+void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B));
+
 
 // Macros to create type-specific versions of the methods above.
 // If you want to use the typed versions, make sure you call `RegisterContainerFor(typeName, namespace)` for EACH type
@@ -56,6 +60,7 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
     inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } \
     inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName* element, typeName* prevValue){ return VectorSet(v, index, (void*)element, (void*)prevValue); } \
     inline bool nameSpace##Dequeue_##typeName(Vector *v, typeName* outValue) { return VectorDequeue(v, (void*)outValue);}\
+    inline void nameSpace##Sort_##typeName(Vector *v, int(*compareFunc)(typeName* A, typeName* B)) {VectorSort(v, (int(*)(void* A, void* B))compareFunc);}\
 
 
 

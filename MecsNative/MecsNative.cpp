@@ -28,6 +28,9 @@ unsigned int IntKeyHash(void* key) {
     auto A = *((unsigned int*)key);
     return A;
 }
+int CompareExampleElement(exampleElement *left, exampleElement *right) {
+    return left->a - right->a;
+}
 
 // Register type specifics
 RegisterVectorStatics(Vec)
@@ -144,6 +147,28 @@ int TestVector() {
     std::cout << "Deallocating\n";
     VectorDeallocate(gvec);
     std::cout << "Vector OK? " << VectorIsValid(gvec) << "\n";
+
+    // Test sorting
+    gvec = VecAllocate_exampleElement();
+    int sal = 70;
+    for (int i = 0; i < sal; i++) {
+        VecPush_exampleElement(gvec, exampleElement{ ((i * 6543127) % sal) - 10, i }); // a very crappy random
+    }
+    std::cout << "Before sort:\n";
+    for (int i = 0; i < sal; i++) {
+        std::cout << VecGet_exampleElement(gvec, i)->a << ", ";
+    }
+    std::cout << "\n";
+
+    std::cout << "After sort:\n";
+    VecSort_exampleElement(gvec, CompareExampleElement); // sort into ascending order (reverse the compare to reverse the order)
+    for (int i = 0; i < sal; i++) {
+        std::cout << VecGet_exampleElement(gvec, i)->a << ", ";
+    }
+    std::cout << "\n";
+    VectorDeallocate(gvec);
+
+
     return 0;
 }
 
