@@ -728,3 +728,8 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     free(arr1);
     free(arr2);
 }
+
+int VectorElementSize(Vector * v) {
+    if (v == NULL) return 0;
+    return v->ElementByteSize;
+}

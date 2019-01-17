@@ -146,6 +146,12 @@ void StringAppend(String *first, const char *second) {
     first->hashval = 0;
 }
 
+
+void StringAppendChar(String *str, char c) {
+    VPush_char(str->chars, c);
+    str->hashval = 0;
+}
+
 unsigned int StringLength(String * str) {
     if (str == NULL) return 0;
     return VLength(str->chars);

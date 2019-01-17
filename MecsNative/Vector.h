@@ -38,6 +38,9 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
 // Compare should return 0 if the two values are equal, negative if A should be before B, and positive if B should be before A.
 void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B));
 
+// Size of vector elements, in bytes
+int VectorElementSize(Vector *v);
+
 
 // Macros to create type-specific versions of the methods above.
 // If you want to use the typed versions, make sure you call `RegisterContainerFor(typeName, namespace)` for EACH type

@@ -5,6 +5,7 @@
 #include "HashMap.h"
 #include "Tree.h"
 #include "String.h"
+#include "Heap.h"
 
 // Math:
 #include "Fix16.h"
@@ -391,6 +392,31 @@ int TestFixedPoint() {
     return 0;
 }
 
+int TestHeaps() {
+    std::cout << "*************** BINARY HEAP (Priority Queue) *****************\n";
+    auto str1 = StringEmpty();
+    auto heap = HeapAllocate(sizeof(char));
+    // add out-of-order, but with alphabetical priority
+    HeapInsert(heap, 1, (void*)"A");
+    HeapInsert(heap, 6, (void*)"F");
+    HeapInsert(heap, 7, (void*)"G");
+    HeapInsert(heap, 5, (void*)"E");
+    HeapInsert(heap, 2, (void*)"B");
+    HeapInsert(heap, 4, (void*)"D");
+    HeapInsert(heap, 3, (void*)"C");
+
+    // Now loop until empty in order
+    char c;
+    while (!HeapIsEmpty(heap)) {
+        HeapDeleteMin(heap, &c);
+        StringAppendChar(str1, c);
+    }
+    WriteStr(str1);
+    StringDeallocate(str1);
+
+    return 0;
+}
+
 int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
@@ -409,4 +435,7 @@ int main() {
 
     auto fpres = TestFixedPoint();
     if (fpres != 0) return fpres;
+
+    auto hres = TestHeaps();
+    if (hres != 0) return hres;
 }

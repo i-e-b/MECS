@@ -19,6 +19,9 @@
     <Filter Include="Source Files\Math">
       <UniqueIdentifier>{7c49d92d-4736-4059-8201-932e18832803}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Encoding">
+      <UniqueIdentifier>{3181dd68-1be0-45bd-bcad-52f9fc72cf89}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MecsNative.cpp">
@@ -39,6 +42,9 @@
     <ClCompile Include="Fix16.cpp">
       <Filter>Source Files\Math</Filter>
     </ClCompile>
+    <ClCompile Include="Heap.cpp">
+      <Filter>Source Files\Containers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -55,6 +61,9 @@
     </ClInclude>
     <ClInclude Include="Fix16.h">
       <Filter>Source Files\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Heap.h">
+      <Filter>Source Files\Containers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

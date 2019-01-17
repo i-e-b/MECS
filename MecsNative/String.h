@@ -26,6 +26,7 @@ char StringCharAtIndex(String *str, int idx);
 // Add one string to another. `first` is modified.
 void StringAppend(String *first, String *second);
 void StringAppend(String *first, const char *second);
+void StringAppendChar(String *str, char c);
 // Create a new string from a range in an existing string. The existing string is not modified
 String *StringSlice(String* str, int startIdx, int length);
 // Create a new string from a range in an existing string, and DEALLOCATE the original string

@@ -11,11 +11,11 @@ Components to do:
 * [x] Mutable string (Vector of char + manipulation tools -- including hashing)
 * [x] Change all structs to use anon types (move alloc to pointer return)
 * [x] Queue: Dequeue (enqueue == push). (Could do 'push-left' at some point)
-* [ ] Add optimised sorting to vector
-* [ ] Tagged data format reader for 32-bit cpu
+* [x] Add optimised sorting to vector
 * [x] Fixed point real? (imported)
-* [ ] string-to-num parsing
 * [ ] Bring heap in from scan-line experiments (and generalise)
+* [ ] Tagged data format reader for 32-bit cpu
+* [ ] string-to-num parsing
 
 Actor model stuff:
 ------------------
