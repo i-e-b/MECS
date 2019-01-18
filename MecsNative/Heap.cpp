@@ -1,37 +1,11 @@
 #include "Heap.h"
 #include "Vector.h"
 
+#include "RawData.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 
-
-
-inline int readInt(void* ptr) {
-    return ((int*)ptr)[0];
-}
-inline void writeInt(void *ptr, int data) {
-    ((int*)ptr)[0] = data;
-}
-inline void writeValue(void *dst, int priority, void* data, int length) {
-    char* src = (char*)data;
-    int* prioPtr = (int*)dst;
-    char* elemPtr = (char*)dst;
-    elemPtr += sizeof(int);
-
-    *prioPtr = priority;
-    for (int i = 0; i < length; i++) {
-        *(elemPtr++) = *(src++);
-    }
-}
-inline void readElemValue(void *dest, void* vecEntry, int length) {
-    char* dst = (char*)dest;
-    char* src = (char*)vecEntry;
-    src += sizeof(int);
-
-    for (int i = 0; i < length; i++) {
-        *(dst++) = *(src++);
-    }
-}
 
 typedef struct Heap {
     Vector *Elements;
@@ -81,7 +55,7 @@ void HeapInsert(Heap * H, int priority, void * element) {
     auto temp = malloc(H->elementSize + sizeof(int));
     if (temp == NULL) return;
     
-    writeValue(temp, priority, element, H->elementSize);
+    writeIntPrefixValue(temp, priority, element, H->elementSize);
 
     VectorPush(H->Elements, temp); // this is a dummy value, we will overwrite it
     uint32_t size = VectorLength(H->Elements);
@@ -115,7 +89,7 @@ bool HeapDeleteMin(Heap * H, void* element) {
     if (LastElement == NULL) { free(MinElement); return false; }
 
     VectorCopy(H->Elements, 1, MinElement); // the first element is always minimum
-    if (element != NULL) readElemValue(element, MinElement, H->elementSize); // so copy it out
+    if (element != NULL) readIntPrefixValue(element, MinElement, H->elementSize); // so copy it out
     free(MinElement);
 
     // Now re-enforce the heap property
@@ -125,7 +99,7 @@ bool HeapDeleteMin(Heap * H, void* element) {
     auto size = VectorLength(H->Elements) - 1;
 
     for (i = 1; i * 2 <= size; i = Child) {
-        /* Find smaller child */
+        // Find smaller child
         Child = i * 2;
 
         if (Child != size &&
@@ -133,7 +107,7 @@ bool HeapDeleteMin(Heap * H, void* element) {
             Child++;
         }
 
-        /* Percolate one level */
+        // Percolate one level
         //if (Compare(LastElement, H->Elements[Child])) {
         if (endPrio > ElementPriority(H, Child)) {
             VectorSwap(H->Elements, i, Child);

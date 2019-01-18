@@ -411,16 +411,17 @@ int TestHeaps() {
         HeapDeleteMin(heap, &c);
         StringAppendChar(str1, c);
     }
+    StringAppend(str1, " (expected ABCDEFG)");
     WriteStr(str1);
     StringDeallocate(str1);
-
+    
     return 0;
 }
 
 int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
-
+    
     auto vres = TestVector();
     if (vres != 0) return vres;
 

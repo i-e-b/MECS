@@ -172,6 +172,7 @@
     <ClInclude Include="Fix16.h" />
     <ClInclude Include="HashMap.h" />
     <ClInclude Include="Heap.h" />
+    <ClInclude Include="RawData.h" />
     <ClInclude Include="String.h" />
     <ClInclude Include="Tree.h" />
     <ClInclude Include="Vector.h" />

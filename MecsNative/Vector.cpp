@@ -1,4 +1,7 @@
 #include "Vector.h"
+
+#include "RawData.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -80,63 +83,6 @@ const long SKIP_TABLE_SIZE_LIMIT = 1024;
   * have been added. This table could be biased, but for simplicity just
   * evenly distribute for now.
   */
-
-// A bunch of little memory helpers
-inline void * byteOffset(void *ptr, int byteOffset) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    return (void*)x;
-}
-inline uint readUint(void* ptr, int byteOffset) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    return ((uint*)x)[0];
-}
-inline void* readPtr(void* ptr, int byteOffset) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    return ((void**)x)[0];
-}
-inline void writeUint(void *ptr, int byteOffset, uint data) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    ((uint*)x)[0] = data;
-}
-inline void writePtr(void *ptr, int byteOffset, void* data) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    ((size_t*)x)[0] = (size_t)data;
-}
-inline void writeValue(void *ptr, int byteOffset, void* data, int length) {
-    char* dst = (char*)ptr;
-    dst += byteOffset;
-    char* src = (char*)data;
-
-    for (int i = 0; i < length; i++) {
-        *(dst++) = *(src++);
-    }
-}
-inline void copyAnonArray(void *dstPtr, int dstIndex, void* srcPtr, int srcIndex, int length) {
-    char* dst = (char*)dstPtr;
-    dst += dstIndex * length;
-    char* src = (char*)srcPtr;
-    src += srcIndex * length;
-
-    for (int i = 0; i < length; i++) {
-        *(dst++) = *(src++);
-    }
-}
-inline void swapMem(void * const a, void * const b, int n) {
-    unsigned char* p = (unsigned char*)a;
-    unsigned char* q = (unsigned char*)b;
-    unsigned char* const sentry = (unsigned char*)a + n;
-
-    for (; p < sentry; ++p, ++q) {
-        const unsigned char t = *p;
-        *p = *q;
-        *q = t;
-    }
-}
 
 void MaybeRebuildSkipTable(Vector *v); // defined later
 
@@ -406,15 +352,18 @@ void VectorDeallocate(Vector *v) {
     v->_skipTable = NULL;
     // Walk through the chunk chain, removing until we hit an invalid pointer
     var current = v->_baseChunkTable;
-    v->_baseChunkTable = NULL;
-    v->_endChunkPtr = NULL;
     while (true) {
+        if (current == NULL) break; // end of chunks
+
         var next = readPtr(current, 0);
         writePtr(current, 0, NULL); // just in case we have a loop
         free(current);
-        if (next == NULL) return; // end of chunks
+
+        if (current == v->_endChunkPtr) break; // sentinel
         current = next;
     }
+    v->_baseChunkTable = NULL;
+    v->_endChunkPtr = NULL;
     free(v);
 }
 

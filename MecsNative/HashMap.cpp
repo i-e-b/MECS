@@ -175,7 +175,7 @@ bool Resize(HashMap * h, uint newSize, bool autoSize) {
     }
 
     VectorDeallocate(oldBuckets);
-    if (VectorIsValid(oldKeyVec)) VectorDeallocate(oldKeyVec);
+    if (VectorIsValid(oldKeyVec)) VectorDeallocate(oldKeyVec); // TODO: this is breaking. I think the chain pointers are being corrupted.
     if (VectorIsValid(oldValVec)) VectorDeallocate(oldValVec);
     return true;
 }

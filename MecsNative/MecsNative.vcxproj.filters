@@ -65,6 +65,9 @@
     <ClInclude Include="Heap.h">
       <Filter>Source Files\Containers</Filter>
     </ClInclude>
+    <ClInclude Include="RawData.h">
+      <Filter>Source Files\Encoding</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes.txt" />

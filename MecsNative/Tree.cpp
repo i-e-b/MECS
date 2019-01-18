@@ -1,4 +1,7 @@
 #include "Tree.h"
+
+#include "RawData.h"
+
 #include <stdlib.h>
 
 // Header for each tree node. This covers the first bytes of a node
@@ -28,42 +31,6 @@ const unsigned int NODE_HEAD_SIZE = sizeof(TreeNode);
 #ifndef var
 #define var auto
 #endif
-
-// A bunch of little memory helpers
-inline void * byteOffset(void *ptr, int byteOffset) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    return (void*)x;
-}
-inline uint readUint(void* ptr, int byteOffset) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    return ((uint*)x)[0];
-}
-inline void* readPtr(void* ptr, int byteOffset) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    return ((void**)x)[0];
-}
-inline void writeUint(void *ptr, int byteOffset, uint data) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    ((uint*)x)[0] = data;
-}
-inline void writePtr(void *ptr, int byteOffset, void* data) {
-    char* x = (char*)ptr;
-    x += byteOffset;
-    ((size_t*)x)[0] = (size_t)data;
-}
-inline void writeValue(void *ptr, int byteOffset, void* data, int length) {
-    char* dst = (char*)ptr;
-    dst += byteOffset;
-    char* src = (char*)data;
-
-    for (int i = 0; i < length; i++) {
-        *(dst++) = *(src++);
-    }
-}
 
 #pragma endregion
 
