@@ -13,7 +13,7 @@ Components to do:
 * [x] Queue: Dequeue (enqueue == push). (Could do 'push-left' at some point)
 * [x] Add optimised sorting to vector
 * [x] Fixed point real? (imported)
-* [ ] Bring heap in from scan-line experiments (and generalise)
+* [x] Bring heap in from scan-line experiments (and generalise)
 * [ ] Tagged data format reader for 32-bit cpu
 * [ ] string-to-num parsing
 

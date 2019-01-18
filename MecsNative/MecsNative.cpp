@@ -46,6 +46,9 @@ RegisterHashMapFor(int, float, IntKeyHash, IntKeyCompare, Map)
 RegisterTreeStatics(T)
 RegisterTreeFor(exampleElement, T)
 
+RegisterHeapStatics(H)
+RegisterHeapFor(char, H)
+
 void WriteStr(String *str) {
     auto cstr = StringToCStr(str);
     std::cout << cstr << "\n";
@@ -395,26 +398,42 @@ int TestFixedPoint() {
 int TestHeaps() {
     std::cout << "*************** BINARY HEAP (Priority Queue) *****************\n";
     auto str1 = StringEmpty();
-    auto heap = HeapAllocate(sizeof(char));
+    auto str2 = StringEmpty();
+    auto str3 = StringEmpty();
+    auto heap = HAllocate_char();
     // add out-of-order, but with alphabetical priority
-    HeapInsert(heap, 1, (void*)"A");
-    HeapInsert(heap, 6, (void*)"F");
-    HeapInsert(heap, 7, (void*)"G");
-    HeapInsert(heap, 5, (void*)"E");
-    HeapInsert(heap, 2, (void*)"B");
-    HeapInsert(heap, 4, (void*)"D");
-    HeapInsert(heap, 3, (void*)"C");
+    HInsert_char(heap, 1, "A");
+    HInsert_char(heap, 6, "F");
+    HInsert_char(heap, 7, "G");
+    HInsert_char(heap, 5, "E");
+    HInsert_char(heap, 2, "B");
+    HInsert_char(heap, 4, "D");
+    HInsert_char(heap, 3, "C");
 
     // Now loop until empty in order
     char c;
-    while (!HeapIsEmpty(heap)) {
-        HeapDeleteMin(heap, &c);
+    while (!HIsEmpty(heap)) {
+        if (HTryFindNext_char(heap, &c)) { // find the 2nd lowest priority
+            StringAppendChar(str2, c);
+        }
+
+        StringAppendChar(str3, *HPeekMin_char(heap));
+
+        HDeleteMin_char(heap, &c);
         StringAppendChar(str1, c);
     }
     StringAppend(str1, " (expected ABCDEFG)");
+    StringAppend(str2, " (expected BCDEFG)");
+    StringAppend(str3, " (expected ABCDEFG)");
     WriteStr(str1);
+    WriteStr(str2);
+    WriteStr(str3);
     StringDeallocate(str1);
+    StringDeallocate(str2);
+    StringDeallocate(str3);
     
+    HDeallocate(heap);
+
     return 0;
 }
 

@@ -94,7 +94,6 @@ bool HeapDeleteMin(Heap * H, void* element) {
 
     // Now re-enforce the heap property
     VectorPop(H->Elements, LastElement);
-    //LastElement = H->Elements[H->Size--];
     auto endPrio = readInt(LastElement);
     auto size = VectorLength(H->Elements) - 1;
 
@@ -108,15 +107,47 @@ bool HeapDeleteMin(Heap * H, void* element) {
         }
 
         // Percolate one level
-        //if (Compare(LastElement, H->Elements[Child])) {
         if (endPrio > ElementPriority(H, Child)) {
             VectorSwap(H->Elements, i, Child);
-            //H->Elements[i] = H->Elements[Child];
         }
         else break;
     }
 
     VectorSet(H->Elements, i, LastElement, NULL);
-    //H->Elements[i] = LastElement;
     return MinElement;
+}
+
+void* HeapPeekMin(Heap* H) {
+    if (!HeapIsEmpty(H)) return byteOffset(VectorGet(H->Elements, 1), sizeof(int));
+
+    return NULL;
+}
+
+bool HeapTryFindMin(Heap* H, void * found) {
+    if (!HeapIsEmpty(H)) {
+        readIntPrefixValue(found, VectorGet(H->Elements, 1), H->elementSize);
+        return true;
+    }
+    return false;
+}
+
+// find the 2nd least element
+bool HeapTryFindNext(Heap* H, void * found) {
+    if (H == NULL) return false;
+    auto size = VectorLength(H->Elements);
+    if (size < 3) return false;
+
+    if (size == 3) { // exactly 2 real elements
+        readIntPrefixValue(found, VectorGet(H->Elements, 2), H->elementSize);
+        return true;
+    }
+
+    // inspect top two and pick the smallest
+    if (ElementPriority(H, 2) > ElementPriority(H, 3)) {
+        readIntPrefixValue(found, VectorGet(H->Elements, 3), H->elementSize);
+    } else {
+        readIntPrefixValue(found, VectorGet(H->Elements, 2), H->elementSize);
+    }
+
+    return true;
 }

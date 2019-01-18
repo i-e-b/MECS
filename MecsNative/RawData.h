@@ -31,7 +31,6 @@ inline void readIntPrefixValue(void *dest, void* vecEntry, int length) {
         *(dst++) = *(src++);
     }
 }
-
 inline void * byteOffset(void *ptr, int byteOffset) {
     char* x = (char*)ptr;
     x += byteOffset;
