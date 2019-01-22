@@ -14,8 +14,15 @@ Components to do:
 * [x] Add optimised sorting to vector
 * [x] Fixed point real? (imported)
 * [x] Bring heap in from scan-line experiments (and generalise)
-* [ ] Tagged data format reader for 32-bit cpu
+* [x] Tagged data format reader for 32-bit cpu
 * [ ] string-to-num parsing
+
+Input handling:
+---------------
+
+* [ ] File system abstraction
+* [ ] Convert parser & compiler.
+
 
 Actor model stuff:
 ------------------
