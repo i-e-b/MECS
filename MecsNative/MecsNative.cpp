@@ -10,14 +10,13 @@
 // Math:
 #include "Fix16.h"
 
-// So, the idea for general containers, have some basic `void*` and size functionality,
-// and some macros to init an inline casting function for each type.
-// Like this:
+// Encoding:
+#include "TagData.h"
+
 
 typedef struct exampleElement {
     int a; int b;
 } exampleElement;
-exampleElement fakeData = exampleElement{ 5,15 };
 
 
 bool IntKeyCompare(void* key_A, void* key_B) {
@@ -324,6 +323,8 @@ int TestString() {
 
     // number strings
     str1 = StringEmpty();
+    StringAppendInt32(str1, 1000);
+    StringAppend(str1, ", ");
     StringAppendInt32(str1, 1234);
     StringAppend(str1, ", ");
     StringAppendInt32(str1, -4567);
@@ -336,7 +337,7 @@ int TestString() {
 
     cstr = StringToCStr(str1);
     std::cout << cstr << "\n";
-    std::cout << "1234, -4567, 0, 2147483647, 0123ABCD\n";
+    std::cout << "1000, 1234, -4567, 0, 2147483647, 0123ABCD\n";
     free(cstr);
     StringDeallocate(str1);
     return 0;
@@ -376,6 +377,8 @@ int TestFixedPoint() {
     StringAppendF16(str1, fix16_from_float(100.001));
     StringAppend(str1, ", 0.9999: ");
     StringAppendF16(str1, fix16_from_float(0.9999));
+    StringAppend(str1, ", 1000.0: ");
+    StringAppendF16(str1, fix16_from_float(1000.0));
 
     WriteStr(str1);
 
@@ -437,6 +440,55 @@ int TestHeaps() {
     return 0;
 }
 
+int TestTagData() {
+    std::cout << "***************** TAG DATA ******************\n";
+
+    auto tag = DataTag { DataType::VectorPtr, ALLOCATED_TYPE + 2, 0x82 }; // these should be the same
+
+    auto str = StringEmpty();
+    StringAppend(str, "Tag: ");
+    StringAppendInt32(str, tag.type);
+    StringAppend(str, ", Params: ");
+    StringAppendInt32(str, tag.params);
+    StringAppend(str, ", Data: ");
+    StringAppendInt32(str, tag.data);
+    WriteStr(str);
+    StringClear(str);
+
+    tag = EncodeOpcode('x', 'a', 1, 1);
+
+    char p1, p2;
+    uint32_t param;
+    DecodeLongOpcode(tag, &p1, &p2, &param);
+
+    if (p1 == 'x' && p2 == 'a' && param == 0x00010001) { StringAppend(str, "OpCodes OK;"); }
+    else { StringAppend(str, "OPCODES FAILED;"); }
+    WriteStr(str);
+
+    StringClear(str);
+    StringAppend(str, "ShrtStr");
+    tag = EncodeShortStr(str);
+    StringAppend(str, "decoded: '");
+    DecodeShortStr(tag, str);
+    StringAppend(str, "' (expected 'ShrtStr')");
+    WriteStr(str);
+
+
+    StringClear(str);
+    Describe(EncodeOpcode('j', 'F', 1, 1), str);
+    StringNL(str);
+    Describe(RuntimeError(0xDEAD), str);
+    StringNL(str);
+    Describe(EncodeVariableRef(str, NULL), str);
+    StringNL(str);
+    WriteStr(str);
+
+
+    StringDeallocate(str);
+
+    return 0;
+}
+
 int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
@@ -458,4 +510,7 @@ int main() {
 
     auto hres = TestHeaps();
     if (hres != 0) return hres;
+
+    auto tagres = TestTagData();
+    if (tagres != 0) return tagres;
 }

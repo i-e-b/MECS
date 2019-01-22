@@ -63,7 +63,7 @@ void StringAppendInt32(String *str, int32_t value) {
     int64_t scale = 1000000000;// max value of int32 = 2147483647
     int64_t digit = 0;
 
-    while (remains > 0) {
+    while (remains > 0 || scale > 0) {
         digit = remains / scale;
 
         if (digit > 0 || latch) {
@@ -75,7 +75,7 @@ void StringAppendInt32(String *str, int32_t value) {
         scale /= 10;
     }
 
-    // if zero...
+    // if exactly zero...
     if (!latch) VPush_char(str->chars, '0');
 }
 
@@ -150,6 +150,19 @@ void StringAppend(String *first, const char *second) {
 void StringAppendChar(String *str, char c) {
     VPush_char(str->chars, c);
     str->hashval = 0;
+}
+
+void StringNL(String *str) {
+    VPush_char(str->chars, '\n');
+    str->hashval = 0;
+}
+
+char StringDequeue(String* str) {
+    if (str == NULL) return '\0';
+    str->hashval = 0;
+    char c;
+    if (!VDequeue_char(str->chars, &c)) return '\0';
+    return c;
 }
 
 unsigned int StringLength(String * str) {

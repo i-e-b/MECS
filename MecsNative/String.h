@@ -27,10 +27,16 @@ char StringCharAtIndex(String *str, int idx);
 void StringAppend(String *first, String *second);
 void StringAppend(String *first, const char *second);
 void StringAppendChar(String *str, char c);
+// Add a newline character
+void StringNL(String *str);
 // Create a new string from a range in an existing string. The existing string is not modified
 String *StringSlice(String* str, int startIdx, int length);
 // Create a new string from a range in an existing string, and DEALLOCATE the original string
 String *StringChop(String* str, int startIdx, int length);
+
+// remove and return the first char of the string. If string is empty, returns '\0'
+char StringDequeue(String* str);
+
 // Generate a hash-code for a string. Guaranteed to be non-zero for valid strings.
 uint32_t StringHash(String* str);
 // Alloc and copy a new c-string from a mutable string. The result must be deallocated with `free()`

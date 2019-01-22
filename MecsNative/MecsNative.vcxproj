@@ -88,7 +88,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
@@ -97,6 +97,12 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <WholeProgramOptimization>false</WholeProgramOptimization>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <AdditionalOptions>/EHsc- %(AdditionalOptions)</AdditionalOptions>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <CompileAsManaged>false</CompileAsManaged>
+      <CompileAsWinRT>false</CompileAsWinRT>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -165,6 +171,7 @@
     <ClCompile Include="Heap.cpp" />
     <ClCompile Include="MecsNative.cpp" />
     <ClCompile Include="String.cpp" />
+    <ClCompile Include="TagData.cpp" />
     <ClCompile Include="Tree.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
@@ -174,6 +181,7 @@
     <ClInclude Include="Heap.h" />
     <ClInclude Include="RawData.h" />
     <ClInclude Include="String.h" />
+    <ClInclude Include="TagData.h" />
     <ClInclude Include="Tree.h" />
     <ClInclude Include="Vector.h" />
   </ItemGroup>
