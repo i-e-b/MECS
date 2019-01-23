@@ -29,6 +29,7 @@ void StringAppend(String *first, const char *second);
 void StringAppendChar(String *str, char c);
 // Add a newline character
 void StringNL(String *str);
+
 // Create a new string from a range in an existing string. The existing string is not modified
 String *StringSlice(String* str, int startIdx, int length);
 // Create a new string from a range in an existing string, and DEALLOCATE the original string
@@ -68,7 +69,7 @@ void StringAppendInt32Hex(String *str, uint32_t value);
 void StringAppendF16(String *str, int32_t value); // TODO...
 
 // Parse an int from a decimal string
-bool StringTryParse_int32(String *str, int32_t *dest); // TODO
+bool StringTryParse_int32(String *str, int32_t *dest);
 // Parse a fixed-point number from a decimal string (F16.16, passed as int32)
 bool StringTryParse_f16(String *str, int32_t *dest); // TODO
 

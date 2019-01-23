@@ -146,7 +146,6 @@ void StringAppend(String *first, const char *second) {
     first->hashval = 0;
 }
 
-
 void StringAppendChar(String *str, char c) {
     VPush_char(str->chars, c);
     str->hashval = 0;
@@ -187,6 +186,7 @@ String *StringSlice(String* str, int startIdx, int length) {
 
     String *result = StringEmpty();
     while (startIdx < 0) { startIdx += len; }
+    if (length < 0) { length += len; length -= startIdx - 1; }
 
     for (int i = 0; i < length; i++) {
         uint32_t x = (i + startIdx) % len;
@@ -414,4 +414,75 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
     free(matchStr);
     free(scanStr);
     return false;
+}
+
+bool StringTryParse_int32(String *str, int32_t *dest) {
+    if (str == NULL || dest == NULL) return false;
+
+    int len = StringLength(str);
+    int32_t result = 0;
+    bool invert = false;
+
+    int i = 0;
+    if (StringCharAtIndex(str, 0) == '-') { invert = true; i++; }
+
+    for (; i < len; i++) {
+        char c = StringCharAtIndex(str, i);
+
+        int d = c - '0';
+        if (d > 9 || d < 0) return false;
+
+        result *= 10;
+        result += d;
+    }
+
+    if (invert) *dest = -result;
+    else *dest = result;
+    return true;
+}
+
+
+bool StringTryParse_f16(String *str, int32_t *dest) {
+    if (str == NULL || dest == NULL) return false;
+
+    // TODO: Implement!
+    // Plan: parse each side of the '.' as int32, truncate and weld
+    uint32_t point = 0;
+    String *pt = StringNew(".");
+
+    int32_t intpart = 0;
+    int32_t fracpart = 0;
+
+    bool found = StringFind(str, pt, 0, &point);
+
+    // Integer only
+    if (!found) {
+        int32_t res;
+        bool ok = StringTryParse_int32(str, &res);
+        if (ok) *dest = fix16_from_int(res);
+        return ok;
+    }
+
+    // Integer and fraction
+    if (point > 0) { // has integer part
+        auto intp = StringSlice(str, 0, point);
+
+        bool ok = StringTryParse_int32(intp, &intpart);
+        StringDeallocate(intp);
+
+        if (!ok) return false;
+    }
+
+    auto fracp = StringSlice(str, point + 1, -1);
+    int flen = StringLength(fracp);
+    bool ok = StringTryParse_int32(fracp, &fracpart);
+    StringDeallocate(fracp);
+    if (!ok) fracpart = 0;
+
+    // Combine int and frac
+    int32_t scale = 1;
+    for (int s = 0; s < flen; s++) { scale *= 10; }
+    *dest = fix16_sadd(intpart << 16, fix16_div(fracpart << 16, scale << 16));
+
+    return true;
 }

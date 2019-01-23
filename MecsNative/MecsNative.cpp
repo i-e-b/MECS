@@ -273,14 +273,12 @@ int TestString() {
     std::cout << "Last char = '" << StringCharAtIndex(str1, -1) << "'\n";
 
     StringToUpper(str1);
-    cstr = StringToCStr(str1);
-    std::cout << "Upper case: " << cstr << "\n";
-    free(cstr);
+    std::cout << "Upper case: ";
+    WriteStr(str1);
 
     StringToLower(str1);
-    cstr = StringToCStr(str1);
-    std::cout << "Lower case: " << cstr << "\n";
-    free(cstr);
+    std::cout << "Lower case: ";
+    WriteStr(str1);
 
     // Search
     str2 = StringNew("lo,");
@@ -303,9 +301,7 @@ int TestString() {
 
     // Slicing and chopping
     str2 = StringChop(StringSlice(str1, -2, 2), 0, 5); // last 2 chars = 'd!', then get 5 chars from that str = 'd!d!d'
-    cstr = StringToCStr(str2);
-    std::cout << cstr << "\n";
-    free(cstr);
+    WriteStr(str2);
 
     // Comparison
     std::cout << (StringStartsWith(str1, "hello") ? "cmp 1 OK" : "cmp 1 failed") << "\n";
@@ -318,7 +314,6 @@ int TestString() {
     std::cout << (StringAreEqual(str1, str2) ? "cmp 8 failed" : "cmp 8 OK") << "\n";
     std::cout << (StringAreEqual(str1, str1) ? "cmp 9 OK" : "cmp 9 failed") << "\n";
 
-    StringDeallocate(str2);
     StringDeallocate(str1);
 
     // number strings
@@ -335,10 +330,75 @@ int TestString() {
     StringAppend(str1, ", ");
     StringAppendInt32Hex(str1, 0x0123ABCD);
 
-    cstr = StringToCStr(str1);
-    std::cout << cstr << "\n";
+    WriteStr(str1);
     std::cout << "1000, 1234, -4567, 0, 2147483647, 0123ABCD\n";
-    free(cstr);
+
+    // Parsing strings
+    // INTEGERS
+    StringClear(str1);
+    StringAppend(str1, "1000");
+    int32_t int32res = 0;
+    bool ok = StringTryParse_int32(str1, &int32res);
+    StringAppend(str1, ok ? " (ok)" : " (fail)");
+    StringAppend(str1, " = ");
+    StringAppendInt32(str1, int32res);
+    WriteStr(str1);
+
+    StringClear(str1);
+    StringAppend(str1, "0001234000");
+    ok = StringTryParse_int32(str1, &int32res);
+    StringAppend(str1, ok ? " (ok)" : " (fail)");
+    StringAppend(str1, " = ");
+    StringAppendInt32(str1, int32res);
+    WriteStr(str1);
+
+    StringClear(str1);
+    StringAppend(str1, "-123");
+    ok = StringTryParse_int32(str1, &int32res);
+    StringAppend(str1, ok ? " (ok)" : " (fail)");
+    StringAppend(str1, " = ");
+    StringAppendInt32(str1, int32res);
+    WriteStr(str1);
+
+    // Parsing strings
+    // FIXED POINT
+    StringClear(str1);
+    StringAppend(str1, "-110.001");
+    fix16_t fix = 0;
+    ok = StringTryParse_f16(str1, &fix);
+    StringAppend(str1, ok ? " (ok)" : " (fail)");
+    StringAppend(str1, " = ");
+    StringAppendF16(str1, fix);
+    WriteStr(str1);
+
+    StringClear(str1);
+    StringAppend(str1, "110.01");
+    fix = 0;
+    ok = StringTryParse_f16(str1, &fix);
+    StringAppend(str1, ok ? " (ok)" : " (fail)");
+    StringAppend(str1, " = ");
+    StringAppendF16(str1, fix);
+    WriteStr(str1);
+
+    StringClear(str1);
+    StringAppend(str1, "-110");
+    fix = 0;
+    ok = StringTryParse_f16(str1, &fix);
+    StringAppend(str1, ok ? " (ok)" : " (fail)");
+    StringAppend(str1, " = ");
+    StringAppendF16(str1, fix);
+    WriteStr(str1);
+
+    StringClear(str1);
+    StringAppend(str1, "3000.0123");
+    fix = 0;
+    ok = StringTryParse_f16(str1, &fix);
+    StringAppend(str1, ok ? " (ok)" : " (fail)");
+    StringAppend(str1, " = ");
+    StringAppendF16(str1, fix);
+    WriteStr(str1);
+
+    StringDeallocate(str2);
     StringDeallocate(str1);
     return 0;
 }
