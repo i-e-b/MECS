@@ -22,6 +22,9 @@
     <Filter Include="Source Files\Encoding">
       <UniqueIdentifier>{3181dd68-1be0-45bd-bcad-52f9fc72cf89}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\System">
+      <UniqueIdentifier>{6d8f58e2-788a-4038-84fc-2768a24fdc1d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MecsNative.cpp">
@@ -48,6 +51,9 @@
     <ClCompile Include="TagData.cpp">
       <Filter>Source Files\Encoding</Filter>
     </ClCompile>
+    <ClCompile Include="FileSys.cpp">
+      <Filter>Source Files\System</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -73,6 +79,9 @@
     </ClInclude>
     <ClInclude Include="TagData.h">
       <Filter>Source Files\Encoding</Filter>
+    </ClInclude>
+    <ClInclude Include="FileSys.h">
+      <Filter>Source Files\System</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

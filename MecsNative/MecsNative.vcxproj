@@ -166,6 +166,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FileSys.cpp" />
     <ClCompile Include="Fix16.cpp" />
     <ClCompile Include="HashMap.cpp" />
     <ClCompile Include="Heap.cpp" />
@@ -176,6 +177,7 @@
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FileSys.h" />
     <ClInclude Include="Fix16.h" />
     <ClInclude Include="HashMap.h" />
     <ClInclude Include="Heap.h" />

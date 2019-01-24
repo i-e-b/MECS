@@ -13,6 +13,9 @@
 // Encoding:
 #include "TagData.h"
 
+// System abstractions
+#include "FileSys.h"
+
 
 typedef struct exampleElement {
     int a; int b;
@@ -549,6 +552,51 @@ int TestTagData() {
     return 0;
 }
 
+int TestFileSystem() {
+    std::cout << "***************** FILE SYS ******************\n";
+    auto vec = VecAllocate_char();
+
+    auto path = StringNew("Test.txt");
+    uint64_t read = 0;
+    bool ok = FileLoadChunk(path, vec, 0, 1000, &read);
+
+    std::cout << "Existing file read OK = " << ok << "; Bytes read: " << read << "\n";
+    std::cout << "File contents:\n";
+    char c = 0;
+    while (VecDequeue_char(vec, &c)) {
+        std::cout << c;
+    }
+    std::cout << "\n";
+
+    for (int i = 32; i < 255; i++) {
+        VecPush_char(vec, i);
+    }
+    StringClear(path);
+    StringAppend(path, "output.txt");
+    ok = FileWriteAll(path, vec);
+    std::cout << "Trunc & Write OK = " << ok << "; Bytes not written: " << VectorLength(vec) << "\n";
+
+    for (int i = 32; i < 255; i++) {
+        VecPush_char(vec, i);
+    }
+    ok = FileAppendAll(path, vec);
+    std::cout << " append Write OK = " << ok << "; Bytes not written: " << VectorLength(vec) << "\n";
+
+    ok = FileLoadChunk(path, vec, 0, 1000, &read);
+    std::cout << "Read OK = " << ok << "; Bytes read: " << read << "\n";
+    std::cout << "File contents:\n";
+    c = 0;
+    while (VecDequeue_char(vec, &c)) {
+        std::cout << c;
+    }
+    std::cout << "\n";
+
+    StringDeallocate(path);
+    VectorDeallocate(vec);
+
+    return 0;
+}
+
 int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
@@ -573,4 +621,7 @@ int main() {
 
     auto tagres = TestTagData();
     if (tagres != 0) return tagres;
+
+    auto fsres = TestFileSystem();
+    if (fsres != 0) return fsres;
 }

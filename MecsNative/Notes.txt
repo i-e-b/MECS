@@ -15,12 +15,12 @@ Components to do:
 * [x] Fixed point real? (imported)
 * [x] Bring heap in from scan-line experiments (and generalise)
 * [x] Tagged data format reader for 32-bit cpu
-* [ ] string-to-num parsing
+* [x] string-to-num parsing
 
 Input handling:
 ---------------
 
-* [ ] File system abstraction
+* [x] File system abstraction
 * [ ] Convert parser & compiler.
 
 
