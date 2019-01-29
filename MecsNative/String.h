@@ -30,6 +30,7 @@ char StringCharAtIndex(String *str, int idx);
 void StringAppend(String *first, String *second);
 void StringAppend(String *first, const char *second);
 void StringAppendChar(String *str, char c);
+void StringAppendChar(String *str, char c, int count);
 // Add a newline character
 void StringNL(String *str);
 

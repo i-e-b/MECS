@@ -636,6 +636,7 @@ int TestCompiler() {
         return -4;
     }
 
+    //###################################################################
     std::cout << "Reading a valid source code file: ";
     syntaxTree = Read(code, true);
     if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -5; }
@@ -648,8 +649,16 @@ int TestCompiler() {
         return -6;
     }
 
-    std::cout << "The source file was parsed correctly\n";
+    std::cout << "The source file was parsed correctly:\n\n";
 
+    auto nstr = Render(syntaxTree);
+    if (nstr == NULL) {
+        std::cout << "Failed to render AST\n";
+        return -8;
+    }
+    WriteStr(nstr);
+
+    StringDeallocate(nstr);
     StringDeallocate(pathOfValid);
     DeallocateAST(syntaxTree);
 

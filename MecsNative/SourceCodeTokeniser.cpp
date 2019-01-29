@@ -1,6 +1,10 @@
 
 #include "SourceCodeTokeniser.h"
 
+//remove after debug:
+#include <iostream>
+
+
 typedef SourceNode Node; // 'SourceNode'. Typedef just for brevity
 
 RegisterTreeStatics(T)
@@ -11,7 +15,18 @@ Node newNode(int sourceLoc, String* text, NodeType type) {
     n.NodeType = type;
     n.IsValid = true;
     n.Text = text;
+    n.Unescaped = NULL;
     n.SourceLocation = sourceLoc;
+    n.ErrorMessage = NULL;
+    return n;
+}
+Node newNodeInvalid() {
+    auto n = Node{};
+    n.NodeType = NodeType::InvalidNode;
+    n.IsValid = false;
+    n.Text = NULL;
+    n.Unescaped = NULL;
+    n.SourceLocation = -1;
     return n;
 }
 Node newNodeOpenCall(int sourceLoc) {
@@ -28,6 +43,7 @@ Node newNodeCloseCall(int sourceLoc) {
     n.NodeType = NodeType::ScopeDelimiter;
     n.IsValid = true;
     n.Text = StringNew(")");
+    n.Unescaped = NULL;
     n.SourceLocation = sourceLoc;
     return n;
 }
@@ -36,6 +52,7 @@ Node newNodeWhitespace(int sourceLoc, const char* str) {
     n.NodeType = NodeType::Whitespace;
     n.IsValid = true;
     n.Text = StringNew(str);
+    n.Unescaped = NULL;
     n.SourceLocation = sourceLoc;
     return n;
 }
@@ -44,6 +61,7 @@ Node newNodeDelimiter(int sourceLoc, char c) {
     n.NodeType = NodeType::Whitespace;
     n.IsValid = true;
     n.Text = StringNew(c);
+    n.Unescaped = NULL;
     n.SourceLocation = sourceLoc;
     return n;
 }
@@ -52,6 +70,7 @@ Node newNodeString(int sourceLoc, String* str) {
     n.NodeType = NodeType::StringLiteral;
     n.IsValid = true;
     n.Text = str;
+    n.Unescaped = NULL;
     n.SourceLocation = sourceLoc;
     return n;
 }
@@ -60,6 +79,7 @@ Node newNodeAtom(int sourceLoc, String* str) {
     n.NodeType = NodeType::Atom;
     n.IsValid = true;
     n.Text = str;
+    n.Unescaped = NULL;
     n.SourceLocation = sourceLoc;
     return n;
 }
@@ -67,12 +87,15 @@ Node newNodeAtom(int sourceLoc, String* str) {
 // skip any whitespace (any of ' ', '\t', '\r', '\n'). Most of the complexity is to capture metadata for auto-format
 int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* mdParent)
 {
+    if (mdParent == NULL) return position;
+
     int lastcap = position;
     int i = position;
     int length = StringLength(exp);
 
     bool capWS = false;
     bool capNL = false;
+    auto tmp = Node{};
 
     while (i < length)
     {
@@ -84,15 +107,12 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
         case ' ':
         case '\t':
             found = true;
-            if (preserveMetadata)
-            {
-                if (capNL)
-                { // switch from newlines to regular space
-                  // output NL so far
-                    auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline);
-                    TAddChild_Node(mdParent, &tmp);
-                    lastcap = i;
-                }
+            if (preserveMetadata && capNL) {
+                // switch from newlines to regular space
+                // output NL so far
+                tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline);
+                TAddChild_Node(mdParent, &tmp);
+                lastcap = i;
             }
             capNL = false;
             capWS = true;
@@ -102,15 +122,12 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
         case '\r':
         case '\n':
             found = true;
-            if (preserveMetadata)
-            {
-                if (capWS)
-                { // switch from regular space to newlines
-                    // output WS so far
-                    auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
-                    TAddChild_Node(mdParent, &tmp);
-                    lastcap = i;
-                }
+            if (preserveMetadata && capWS) {
+                // switch from regular space to newlines
+                // output WS so far
+                tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
+                TAddChild_Node(mdParent, &tmp);
+                lastcap = i;
             }
             i++;
             capNL = true;
@@ -124,15 +141,12 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
     }
 
 
-    if (preserveMetadata && i != lastcap)
-    {
-        if (capNL)
-        {
+    if (preserveMetadata && i != lastcap) {
+        if (capNL) {
             auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline);
             TAddChild_Node(mdParent, &tmp);
         }
-        if (capWS)
-        {
+        if (capWS) {
             auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
             TAddChild_Node(mdParent, &tmp);
         }
@@ -199,8 +213,7 @@ String* ReadString (String* exp, int* inOutPosition, char end, bool* outEndedCor
     return sb;
 }
 
-int NextNewline(String* source, int i)
-{
+int NextNewline(String* source, int i) {
     unsigned int npos;
     unsigned int rpos;
     bool nfound = StringFind(source, '\n', i, &npos);
@@ -247,7 +260,7 @@ bool TryCaptureComment(String* source, int* inOutPosition, bool preserveMetadata
     int i = *inOutPosition;
     if (i >= StringLength(source)) return false;
     char k = StringCharAtIndex(source, i + 1);
-    Node tmp;
+    Node tmp = newNodeInvalid();
 
     switch (k)
     {
@@ -291,8 +304,9 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
         char car = StringCharAtIndex(source, i);
 
-        Node tmp;
-        TreeNode* parent;
+        Node tmp = newNodeInvalid();
+        TreeNode* parent = NULL;
+
         switch (car)
         {
         case '(': // start of call
@@ -401,11 +415,13 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                         }
                         TAddChild_Node(current, &newNodeOpenCall(i));
                     }
-                } else
+                }
+                else
                 {
                     i--;
                     tmp = newNodeAtom(startLoc, word);
                     if (IsNumeric(word)) tmp.NodeType = NodeType::Numeric;
+
 
                     TAddChild_Node(current, &tmp);
                     if (preserveMetadata) {
@@ -432,6 +448,8 @@ Tree* Read(String* source, bool preserveMetadata) {
     root.SourceLocation = 0;
     root.IsValid = true;
     root.Text = NULL;
+    root.Unescaped = NULL;
+    root.FormattedLocation = 0;
 
     auto tree = TAllocate_Node();
     auto tnode = TRoot(tree);
@@ -460,4 +478,49 @@ void DeallocateAST(Tree* ast) {
 
     VectorDeallocate(vec);
     TreeDeallocate(ast);
+}
+
+// Recursively descend into the nodes.
+// TODO: handle highlighting, cursor position
+void Render_Rec(TreeNode* node, int indent, String* outp) {
+
+    Node* n = TReadBody_Node(node);
+
+    // Write the node contents
+    StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
+
+    // Recursively write child nodes
+    bool leadingWhite = false;
+    auto child = TChild(node);
+    while (child != NULL) {
+        n = TReadBody_Node(child);
+
+        // Handle re-indenting
+        if (leadingWhite) {
+            if (n->NodeType == NodeType::Whitespace) {
+                child = TSibling(child);
+                continue;
+            }
+            leadingWhite = false;
+            if (n->NodeType == NodeType::ScopeDelimiter) { StringAppendChar(outp, ' ', (indent - 1) * 4); }
+            else { StringAppendChar(outp, ' ', indent * 4); }
+        }
+        if (n->NodeType == NodeType::Newline) leadingWhite = true;
+
+        // write node text
+        Render_Rec(child, indent + 1, outp);
+        child = TSibling(child);
+    }
+
+}
+
+String* Render(Tree* ast) {
+    if (ast == NULL) return NULL;
+
+    auto rootNode = TreeRoot(ast);
+    auto outp = StringEmpty();
+
+    Render_Rec(rootNode, 0, outp);
+    
+    return outp;
 }

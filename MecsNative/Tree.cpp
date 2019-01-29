@@ -18,7 +18,7 @@ typedef struct Tree {
     bool IsValid;
 } Tree;
 
-const unsigned int POINTER_SIZE = sizeof(size_t);
+const unsigned int POINTER_SIZE = sizeof(void*);
 const unsigned int NODE_HEAD_SIZE = sizeof(TreeNode);
 
 #pragma region helperjunk
@@ -77,18 +77,11 @@ TreeNode* AllocateAndWriteNode(TreeNode* parent, int elementByteSize, void* elem
     // Write a node head and data into memory
     newChildHead->ParentPtr = parent;
     newChildHead->ElementByteSize = elementByteSize;
+    newChildHead->NextSiblingPtr = NULL;
+    newChildHead->FirstChildPtr = NULL;
 
     writeValue((void*)newChildHead, NODE_HEAD_SIZE, element, newChildHead->ElementByteSize);
     return newChildHead;
-}
-
-TreeNode* WriteNode(TreeNode* parent, TreeNode* element) {
-    // Write a node head and data into memory
-    element->ParentPtr = parent;
-    element->ElementByteSize = parent->ElementByteSize;
-
-    writeValue((void*)element, NODE_HEAD_SIZE, element, element->ElementByteSize);
-    return element;
 }
 
 TreeNode* TreeAddSibling(TreeNode* treeNodePtr, void* element) {
@@ -221,7 +214,7 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child) {
     // Walk the child sibling chain and update the parent
     auto sibChain = child;
     while (sibChain != NULL) {
-        sibChain->ParentPtr = parent;
+        if (sibChain->ParentPtr == NULL) sibChain->ParentPtr = parent;
         sibChain = sibChain->NextSiblingPtr;
     }
 
@@ -232,16 +225,10 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child) {
             next = next->NextSiblingPtr;
         }
 
-        // Make a new node
-        WriteNode(next->ParentPtr, child);
-
         // Write ourself into the chain
         next->NextSiblingPtr = child;
         return;
     }
-
-    // This is the first child of this parent
-    var newChildPtr = WriteNode(parent, child);
 
     // Set ourself as the parent's first child
     head->FirstChildPtr = child;

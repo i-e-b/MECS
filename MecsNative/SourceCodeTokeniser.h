@@ -18,18 +18,21 @@ enum NodeType {
     // The root of a parsed document
     Root = 4,
 
-    // Negative values are only included if meta-data is retained
+    // A node that has not been correctly configured
+    InvalidNode = 255,
+
+    // Only included if meta-data is retained:
 
     // A comment block (including delimiters)
-    Comment = -1,
+    Comment = 101,
     // Whitespace excluding newlines. The *does* include ignored characters like ',' and ';'
-    Whitespace = -2,
+    Whitespace = 102,
     // A single newline
-    Newline = -3,
+    Newline = 103,
     // Opening or closing parenthesis
-    ScopeDelimiter = -4,
+    ScopeDelimiter = 104,
     // String delimiter or similar
-    Delimiter = -5
+    Delimiter = 105
 };
 
 typedef struct SourceNode {
@@ -65,7 +68,10 @@ typedef struct SourceNode {
 /// <param name="preserveMetadata">if true, comments and spacing will be included</param>
 Tree* Read(String* source, bool preserveMetadata);
 
-// Clean up tree
+// Write the abstract syntax tree out as a source code string. This does auto-formatting
+String* Render(Tree* ast);
+
+// Clean up tree, deallocating anything stored during the `Read` process
 void DeallocateAST(Tree* ast);
 
 #endif
