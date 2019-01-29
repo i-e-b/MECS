@@ -25,6 +25,12 @@
     <Filter Include="Source Files\System">
       <UniqueIdentifier>{6d8f58e2-788a-4038-84fc-2768a24fdc1d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\InputOutput">
+      <UniqueIdentifier>{77db85aa-b286-48e0-bf5f-429cdaf0c73c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Compiler">
+      <UniqueIdentifier>{8f094668-a236-45d1-89e8-1b5db2ea652a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MecsNative.cpp">
@@ -54,6 +60,9 @@
     <ClCompile Include="FileSys.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
+    <ClCompile Include="SourceCodeTokeniser.cpp">
+      <Filter>Source Files\Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -82,6 +91,9 @@
     </ClInclude>
     <ClInclude Include="FileSys.h">
       <Filter>Source Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="SourceCodeTokeniser.h">
+      <Filter>Source Files\Compiler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -14,14 +14,14 @@ namespace MecsCore.Compiler
         public Node Read(string source, bool preserveMetadata)
         {
             var root = Node.RootNode();
-            var valid = Read(source, root, 0, preserveMetadata);
+            var valid = ParseSource(source, root, 0, preserveMetadata);
             if (!valid) {
                 root.IsValid = false;
             }
             return root;
         }
 
-        private bool Read(string source, Node root, int position, bool preserveMetadata)
+        private bool ParseSource(string source, Node root, int position, bool preserveMetadata)
         {
             int i = position;
             int length = source.Length;
@@ -210,7 +210,7 @@ namespace MecsCore.Compiler
             return double.TryParse(word.Replace("_",""), out _);
         }
 
-        public int SkipWhitespace(string exp, int position, bool preserveMetadata, Node mdParent)
+        private int SkipWhitespace(string exp, int position, bool preserveMetadata, Node mdParent)
         {
             int lastcap = position;
             int i = position;
@@ -298,7 +298,7 @@ namespace MecsCore.Compiler
             return i;
         }
 
-        public static string ReadString(string exp, ref int position, char end, out bool endedCorrectly)
+        private static string ReadString(string exp, ref int position, char end, out bool endedCorrectly)
         {
             int i = position;
             int length = exp.Length;
@@ -371,7 +371,7 @@ namespace MecsCore.Compiler
             }
         }
 
-        public static string ReadWord(string expression, int position)
+        private static string ReadWord(string expression, int position)
         {
             int i = position;
             int length = expression.Length;

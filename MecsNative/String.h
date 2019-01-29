@@ -3,6 +3,7 @@
 #ifndef string_h
 #define string_h
 
+#include "Vector.h"
 #include <stdint.h>
 
 // A mutable variable length string structure
@@ -12,10 +13,12 @@ typedef struct String String;
 String *StringEmpty();
 // Create a mutable string from a c-string
 String *StringNew(const char *str);
+// Create a mutable string from a single character
+String *StringNew(char c);
 // Clear the contents of a string, but leave it allocated
 void StringClear(String *str);
 
-// Deallocate a string
+// Deallocate a string. Ignores if you pass NULL
 void StringDeallocate(String *str);
 
 // Length of a string
@@ -42,6 +45,8 @@ char StringDequeue(String* str);
 uint32_t StringHash(String* str);
 // Alloc and copy a new c-string from a mutable string. The result must be deallocated with `free()`
 char *StringToCStr(String *str);
+// Access the underlying byte vector of the string
+Vector* StringGetByteVector(String* str);
 
 // Change all upper-case letters to lower case, in place (existing string is modified)
 void StringToLower(String *str);
@@ -50,6 +55,11 @@ void StringToUpper(String *str);
 
 // Find the position of a substring. If the outPosition is NULL, it is ignored
 bool StringFind(String* haystack, String* needle, unsigned int start, unsigned int* outPosition);
+// Find the position of a substring. If the outPosition is NULL, it is ignored
+bool StringFind(String* haystack, const char * needle, unsigned int start, unsigned int* outPosition);
+// Find the next position of a character. If the outPosition is NULL, it is ignored
+bool StringFind(String* haystack, char needle, unsigned int start, unsigned int* outPosition);
+
 // Test if one string starts with another
 bool StringStartsWith(String* haystack, String *needle);
 bool StringStartsWith(String* haystack, const char* needle);

@@ -171,6 +171,7 @@
     <ClCompile Include="HashMap.cpp" />
     <ClCompile Include="Heap.cpp" />
     <ClCompile Include="MecsNative.cpp" />
+    <ClCompile Include="SourceCodeTokeniser.cpp" />
     <ClCompile Include="String.cpp" />
     <ClCompile Include="TagData.cpp" />
     <ClCompile Include="Tree.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="HashMap.h" />
     <ClInclude Include="Heap.h" />
     <ClInclude Include="RawData.h" />
+    <ClInclude Include="SourceCodeTokeniser.h" />
     <ClInclude Include="String.h" />
     <ClInclude Include="TagData.h" />
     <ClInclude Include="Tree.h" />

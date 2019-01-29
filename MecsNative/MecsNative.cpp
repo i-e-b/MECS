@@ -16,6 +16,8 @@
 // System abstractions
 #include "FileSys.h"
 
+#include "SourceCodeTokeniser.h"
+
 
 typedef struct exampleElement {
     int a; int b;
@@ -597,6 +599,63 @@ int TestFileSystem() {
     return 0;
 }
 
+
+int TestCompiler() {
+    std::cout << "***************** COMPILER ******************\n";
+    auto code = StringEmpty();
+    auto pathOfInvalid = StringNew("Test.txt"); // not valid source
+    auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
+
+    auto vec = StringGetByteVector(code);
+    uint64_t read = 0;
+    if (!FileLoadChunk(pathOfInvalid, vec, 0, 10000, &read)) {
+        std::cout << "Failed to read file. Test inconclusive.\n";
+        return -1;
+    }
+
+    std::cout << "Reading a non-source code file: ";
+    auto syntaxTree = Read(code, false);
+    if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -2; }
+
+    auto rootNode = TreeRoot(syntaxTree);
+    SourceNode *result = (SourceNode*)TreeReadBody(rootNode);
+
+    if (result->IsValid) {
+        std::cout << "The source file was parsed correctly!? It should not have been!\n";
+        return -3;
+    }
+
+    std::cout << "The source file was not valid (this is ok)\n";
+
+    StringDeallocate(pathOfInvalid);
+    DeallocateAST(syntaxTree);
+
+    StringClear(code); // also clears the underlying vector
+    if (!FileLoadChunk(pathOfValid, vec, 0, 10000, &read)) {
+        std::cout << "Failed to read file. Test inconclusive.\n";
+        return -4;
+    }
+
+    std::cout << "Reading a valid source code file: ";
+    syntaxTree = Read(code, true);
+    if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -5; }
+
+    rootNode = TreeRoot(syntaxTree);
+    result = (SourceNode*)TreeReadBody(rootNode);
+
+    if (!result->IsValid) {
+        std::cout << "The source file was not valid (FAIL!)\n";
+        return -6;
+    }
+
+    std::cout << "The source file was parsed correctly\n";
+
+    StringDeallocate(pathOfValid);
+    DeallocateAST(syntaxTree);
+
+    return 0;
+}
+
 int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
@@ -624,4 +683,7 @@ int main() {
 
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
+
+    auto bigone = TestCompiler();
+    if (bigone != 0) return bigone;
 }

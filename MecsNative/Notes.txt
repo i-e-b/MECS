@@ -21,8 +21,8 @@ Input handling:
 ---------------
 
 * [x] File system abstraction
+* [ ] improve filesystem to allow non-byte sized vectors
 * [ ] Convert parser & compiler.
-
 
 Actor model stuff:
 ------------------

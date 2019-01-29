@@ -27,12 +27,19 @@ void* TreeReadBody(TreeNode* treeNodePtr);
 TreeNode *TreeChild(TreeNode* parentPtr);
 // Returns the next sibling of a node, or null
 TreeNode *TreeSibling(TreeNode* olderSiblingPtr);
+// Returns the parent node of a child, or null if this is the root
+TreeNode *TreeParent(TreeNode* childPtr);
 // Add a child node into the given index in the child chain
 TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element);
 // Remove a child by index and stitch the chain back together
 void TreeRemoveChild(TreeNode* parent, int targetIndex);
 // Provide a vector of pointers to all node data. Order is depth-first. The vector must be deallocated by the caller
 Vector* TreeAllData(Tree *tree);
+
+// Create a node not connected to a tree
+TreeNode* TreeBareNode(int elementSize);
+// Add a bare node into a tree
+void TreeAppendNode(TreeNode* parent, TreeNode* child);
 
 
 // Macros to create type-specific versions of the methods above.
@@ -43,8 +50,10 @@ Vector* TreeAllData(Tree *tree);
     inline TreeNode * nameSpace##Root(Tree* tree){return TreeRoot(tree);}\
     inline void nameSpace##Deallocate(Tree *t){ TreeDeallocate(t); }\
     inline TreeNode *nameSpace##Child(TreeNode *t){ return TreeChild(t); }\
+    inline TreeNode *nameSpace##Parent(TreeNode *t){ return TreeParent(t); }\
     inline TreeNode *nameSpace##Sibling(TreeNode *t){ return TreeSibling(t); }\
     inline void nameSpace##RemoveChild(TreeNode *t, int idx){ return TreeRemoveChild(t, idx); }\
+    inline void nameSpace##AppendNode(TreeNode *parent, TreeNode *child){ return TreeAppendNode(parent, child); }\
     inline Vector* nameSpace##AllData(Tree *t){ return TreeAllData(t);}\
 
 
@@ -52,6 +61,7 @@ Vector* TreeAllData(Tree *tree);
 #define RegisterTreeFor(elemType, nameSpace) \
     inline elemType* nameSpace##ReadBody_##elemType(TreeNode *node){return (elemType*)TreeReadBody(node);}\
     inline TreeNode* nameSpace##InsertChild_##elemType(TreeNode* parent, int idx, elemType* element){return TreeInsertChild(parent,idx,element);}\
+    inline TreeNode* nameSpace##BareNode_##elemType(){return TreeBareNode(sizeof(elemType));}\
     inline void nameSpace##SetValue_##elemType(TreeNode* node, elemType* element){TreeSetValue(node,element);}\
     inline TreeNode* nameSpace##AddChild_##elemType(TreeNode* parent, elemType* element){return TreeAddChild(parent, element);}\
     inline TreeNode* nameSpace##AddSibling_##elemType(TreeNode* node, elemType* element){return TreeAddSibling(node,element);}\

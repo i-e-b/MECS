@@ -66,9 +66,9 @@ void TreeSetValue(TreeNode* node, void* element) {
     writeValue((void*)node, NODE_HEAD_SIZE, element, node->ElementByteSize);
 }
 
-TreeNode* AllocateAndWriteNode(TreeNode* parent, void* element) {
+TreeNode* AllocateAndWriteNode(TreeNode* parent, int elementByteSize, void* element) {
     // Allocate new node and header
-    auto nodeSize = NODE_HEAD_SIZE + parent->ElementByteSize;
+    auto nodeSize = NODE_HEAD_SIZE + elementByteSize;
     auto newChildHead = (TreeNode*)calloc(1, nodeSize);
     if (newChildHead == NULL) {
         return NULL;
@@ -76,13 +76,24 @@ TreeNode* AllocateAndWriteNode(TreeNode* parent, void* element) {
 
     // Write a node head and data into memory
     newChildHead->ParentPtr = parent;
-    newChildHead->ElementByteSize = parent->ElementByteSize;
+    newChildHead->ElementByteSize = elementByteSize;
 
     writeValue((void*)newChildHead, NODE_HEAD_SIZE, element, newChildHead->ElementByteSize);
     return newChildHead;
 }
 
+TreeNode* WriteNode(TreeNode* parent, TreeNode* element) {
+    // Write a node head and data into memory
+    element->ParentPtr = parent;
+    element->ElementByteSize = parent->ElementByteSize;
+
+    writeValue((void*)element, NODE_HEAD_SIZE, element, element->ElementByteSize);
+    return element;
+}
+
 TreeNode* TreeAddSibling(TreeNode* treeNodePtr, void* element) {
+    if (treeNodePtr == NULL) return NULL;
+
     // Walk the sibling link chain until we hit the last element
     var next = treeNodePtr;
     while (next->NextSiblingPtr != NULL) {
@@ -90,7 +101,7 @@ TreeNode* TreeAddSibling(TreeNode* treeNodePtr, void* element) {
     }
 
     // Make a new node
-    var newChildPtr = AllocateAndWriteNode(next->ParentPtr, element);
+    var newChildPtr = AllocateAndWriteNode(next->ParentPtr, treeNodePtr->ElementByteSize, element);
     if (newChildPtr == NULL) return NULL;
 
     // Write ourself into the chain
@@ -108,7 +119,7 @@ TreeNode* TreeAddChild(TreeNode* parent, void* element) {
     }
 
     // This is the first child of this parent
-    var newChildPtr = AllocateAndWriteNode(parent, element);
+    var newChildPtr = AllocateAndWriteNode(parent, parent->ElementByteSize, element);
     if (newChildPtr == NULL) return NULL;
 
     // Set ourself as the parent's first child
@@ -125,12 +136,18 @@ TreeNode *TreeChild(TreeNode* parentPtr) {
     return parentPtr->FirstChildPtr;
 }
 
+TreeNode *TreeParent(TreeNode* childPtr) {
+    if (childPtr == NULL) return NULL;
+    return childPtr->ParentPtr;
+}
+
 TreeNode *TreeSibling(TreeNode* olderSiblingPtr) {
     if (olderSiblingPtr == NULL) return NULL;
     return olderSiblingPtr->NextSiblingPtr;
 }
 
 TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
+    if (parent == NULL) return NULL;
 
     // Simplest case: a plain add
     if (parent->FirstChildPtr == NULL) {
@@ -140,7 +157,7 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
 
     // Special case: insert at start (need to update parent)
     if (targetIndex == 0) {
-        var newRes = AllocateAndWriteNode(parent, element);
+        var newRes = AllocateAndWriteNode(parent, parent->ElementByteSize, element);
         if (newRes == NULL) return NULL;
         var next = parent->FirstChildPtr;
         parent->FirstChildPtr = newRes;
@@ -166,7 +183,7 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
 
     // Inject into chain.
     // New node
-    var newNode = AllocateAndWriteNode(parent, element);
+    var newNode = AllocateAndWriteNode(parent, parent->ElementByteSize, element);
     if (newNode == NULL) return NULL;
 
     // Swap pointers around
@@ -174,6 +191,61 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
     prevSibling->NextSiblingPtr = newNode;
 
     return newNode;
+}
+
+
+
+// Create a node not connected to a tree
+TreeNode* TreeBareNode(int elementSize) {
+    // Make the root node
+    auto Root = (TreeNode*)calloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
+    if (Root == NULL) {
+        return NULL;
+    }
+
+    // Set initial values
+    Root->FirstChildPtr = NULL;
+    Root->NextSiblingPtr = NULL;
+    Root->ParentPtr = NULL;
+    Root->ElementByteSize = elementSize;
+    return Root;
+}
+
+// Add a bare node into a tree
+void TreeAppendNode(TreeNode* parent, TreeNode* child) {
+    if (parent == NULL) return;
+    if (child == NULL) return;
+
+    var head = parent;
+
+    // Walk the child sibling chain and update the parent
+    auto sibChain = child;
+    while (sibChain != NULL) {
+        sibChain->ParentPtr = parent;
+        sibChain = sibChain->NextSiblingPtr;
+    }
+
+    if (head->FirstChildPtr != NULL) { // part of a chain.
+        // Walk the sibling link chain until we hit the last element
+        var next = head->FirstChildPtr;
+        while (next->NextSiblingPtr != NULL) {
+            next = next->NextSiblingPtr;
+        }
+
+        // Make a new node
+        WriteNode(next->ParentPtr, child);
+
+        // Write ourself into the chain
+        next->NextSiblingPtr = child;
+        return;
+    }
+
+    // This is the first child of this parent
+    var newChildPtr = WriteNode(parent, child);
+
+    // Set ourself as the parent's first child
+    head->FirstChildPtr = child;
+    return;
 }
 
 

@@ -49,6 +49,14 @@ String * StringNew(const char * str) {
     return result;
 }
 
+String *StringNew(char c) {
+    auto result = StringEmpty();
+    if (result == NULL) return NULL;
+    if (VectorIsValid(result->chars) == false) return NULL;
+    VPush_char(result->chars, c);
+    return result;
+}
+
 void StringAppendInt32(String *str, int32_t value) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == false) return;
@@ -225,6 +233,11 @@ char *StringToCStr(String *str, int start) {
     }
     result[len] = 0;
     return result;
+}
+
+Vector* StringGetByteVector(String* str) {
+    if (str == NULL) return NULL;
+    return str->chars;
 }
 
 uint32_t StringHash(String* str) {
@@ -416,6 +429,39 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
     return false;
 }
 
+
+// Find the position of a substring. If the outPosition is NULL, it is ignored
+bool StringFind(String* haystack, const char * needle, unsigned int start, unsigned int* outPosition) {
+    auto needl = StringNew(needle);
+    bool result = StringFind(haystack, needl, start, outPosition);
+    StringDeallocate(needl);
+    return result;
+}
+
+// Find the next position of a character. If the outPosition is NULL, it is ignored
+bool StringFind(String* haystack, char needle, unsigned int start, unsigned int* outPosition) {
+    if (haystack == NULL) return false;
+    if (outPosition != NULL) *outPosition = 0;
+    if (needle == NULL) return true; // treating null as empty
+
+    uint32_t hayLen = VLength(haystack->chars);
+    if (start < 0) { // from end
+        start += hayLen;
+    }
+    if (hayLen < start) return false;
+
+    for (int i = start; i < hayLen; i++) {
+        char c = StringCharAtIndex(haystack, i);
+        if (c == needle) {
+            if (outPosition != NULL) *outPosition = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 bool StringTryParse_int32(String *str, int32_t *dest) {
     if (str == NULL || dest == NULL) return false;
 
@@ -428,6 +474,7 @@ bool StringTryParse_int32(String *str, int32_t *dest) {
 
     for (; i < len; i++) {
         char c = StringCharAtIndex(str, i);
+        if (c == '_') continue;
 
         int d = c - '0';
         if (d > 9 || d < 0) return false;
@@ -443,7 +490,7 @@ bool StringTryParse_int32(String *str, int32_t *dest) {
 
 
 bool StringTryParse_f16(String *str, int32_t *dest) {
-    if (str == NULL || dest == NULL) return false;
+    if (str == NULL) return false;
 
     // TODO: Implement!
     // Plan: parse each side of the '.' as int32, truncate and weld
@@ -459,7 +506,7 @@ bool StringTryParse_f16(String *str, int32_t *dest) {
     if (!found) {
         int32_t res;
         bool ok = StringTryParse_int32(str, &res);
-        if (ok) *dest = fix16_from_int(res);
+        if (ok && dest != NULL) *dest = fix16_from_int(res);
         return ok;
     }
 
@@ -482,7 +529,7 @@ bool StringTryParse_f16(String *str, int32_t *dest) {
     // Combine int and frac
     int32_t scale = 1;
     for (int s = 0; s < flen; s++) { scale *= 10; }
-    *dest = fix16_sadd(intpart << 16, fix16_div(fracpart << 16, scale << 16));
+    if (dest != NULL) *dest = fix16_sadd(intpart << 16, fix16_div(fracpart << 16, scale << 16));
 
     return true;
 }
