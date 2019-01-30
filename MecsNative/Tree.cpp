@@ -12,12 +12,6 @@ typedef struct TreeNode {
     int ElementByteSize;      // Number of bytes in element
 } TreeNode;
 
-typedef struct Tree {
-    int ElementByteSize;
-    TreeNode* Root;
-    bool IsValid;
-} Tree;
-
 const unsigned int POINTER_SIZE = sizeof(void*);
 const unsigned int NODE_HEAD_SIZE = sizeof(TreeNode);
 
@@ -34,31 +28,20 @@ const unsigned int NODE_HEAD_SIZE = sizeof(TreeNode);
 
 #pragma endregion
 
-Tree* TreeAllocate(int elementSize) {
-    auto result = (Tree*)calloc(1, sizeof(Tree));
-
-    result->ElementByteSize = elementSize;
-
+TreeNode* TreeAllocate(int elementSize) {
     // Make the root node
-    result->Root = (TreeNode*)calloc(1, NODE_HEAD_SIZE + result->ElementByteSize); // notice we actually oversize to hold the node data
-    if (result->Root == NULL) {
-        result->IsValid = false;
-        return result;
+    auto Root = (TreeNode*)calloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
+    if (Root == NULL) {
+        return NULL;
     }
 
     // Set initial values
-    result->Root->FirstChildPtr = NULL;
-    result->Root->NextSiblingPtr = NULL;
-    result->Root->ParentPtr = NULL;
-    result->Root->ElementByteSize = elementSize;
+    Root->FirstChildPtr = NULL;
+    Root->NextSiblingPtr = NULL;
+    Root->ParentPtr = NULL;
+    Root->ElementByteSize = elementSize;
 
-    result->IsValid = true;
-    return result;
-}
-
-TreeNode *TreeRoot(Tree* tree) {
-    if (tree == NULL) return NULL;
-    return tree->Root;
+    return Root;
 }
 
 // Write an element value to the given node. If `node` is null, the root element is set
@@ -186,8 +169,6 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
     return newNode;
 }
 
-
-
 // Create a node not connected to a tree
 TreeNode* TreeBareNode(int elementSize) {
     // Make the root node
@@ -214,7 +195,7 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child) {
     // Walk the child sibling chain and update the parent
     auto sibChain = child;
     while (sibChain != NULL) {
-        if (sibChain->ParentPtr == NULL) sibChain->ParentPtr = parent;
+        sibChain->ParentPtr = parent;
         sibChain = sibChain->NextSiblingPtr;
     }
 
@@ -308,13 +289,13 @@ void RecursiveFill(TreeNode* treeNodePtr, Vector *nodeDataList) {
     }
 }
 
-Vector* TreeAllData(Tree * tree) {
+Vector* TreeAllData(TreeNode * tree) {
     auto vec = VectorAllocate(sizeof(void*));
-    RecursiveFill(tree->Root, vec);
+    RecursiveFill(tree, vec);
     return vec;
 }
 
 // Deallocate all nodes, and the data held
-void TreeDeallocate(Tree* tree) {
-    DeleteNode(tree->Root);
+void TreeDeallocate(TreeNode* tree) {
+    DeleteNode(tree);
 }

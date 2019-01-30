@@ -66,12 +66,12 @@ typedef struct SourceNode {
 /// </summary>
 /// <param name="source">Input text</param>
 /// <param name="preserveMetadata">if true, comments and spacing will be included</param>
-Tree* Read(String* source, bool preserveMetadata);
+TreeNode* Read(String* source, bool preserveMetadata);
 
 // Write the abstract syntax tree out as a source code string. This does auto-formatting
-String* Render(Tree* ast);
+String* Render(TreeNode* ast);
 
 // Clean up tree, deallocating anything stored during the `Read` process
-void DeallocateAST(Tree* ast);
+void DeallocateAST(TreeNode* ast);
 
 #endif

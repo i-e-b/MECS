@@ -227,13 +227,13 @@ int TestTree() {
 
     std::cout << "Adding elements\n";
     auto elem1 = exampleElement{ 0,1 };
-    TSetValue_exampleElement(TRoot(tree), &elem1);
+    TSetValue_exampleElement(tree, &elem1);
 
     auto elem2 = exampleElement{ 1,2 };
-    auto node2 = TAddChild_exampleElement(TRoot(tree), &elem2); // child of root
+    auto node2 = TAddChild_exampleElement(tree, &elem2); // child of root
 
     auto elem3 = exampleElement{ 1,3 };
-    auto node3 = TAddChild_exampleElement(TRoot(tree), &elem3); // child of root, sibling of node2
+    auto node3 = TAddChild_exampleElement(tree, &elem3); // child of root, sibling of node2
 
     auto elem4 = exampleElement{ 2,4 };
     auto node4 = TAddChild_exampleElement(node3, &elem4); // child of node3
@@ -244,7 +244,7 @@ int TestTree() {
 
     std::cout << "Reading elements\n";
     // find elem5 the long way...
-    auto find = TRoot(tree);
+    auto find = tree;
     find = TChild(find);
     find = TSibling(find);
     find = TChild(find);
@@ -642,17 +642,15 @@ int TestCompiler() {
     auto syntaxTree = Read(code, true);
     if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -5; }
 
-    auto rootNode = TreeRoot(syntaxTree);
-    auto result = (SourceNode*)TreeReadBody(rootNode);
+    auto result = (SourceNode*)TreeReadBody(syntaxTree);
 
     if (!result->IsValid) {
         std::cout << "The source file was not valid (FAIL!)\n";
-        return -6;
+    } else {
+        std::cout << "The source file was parsed correctly:\n\n";
     }
 
-    std::cout << "The source file was parsed correctly:\n\n";
-
-    auto nstr = Render(syntaxTree);
+    auto nstr = Render(syntaxTree); // render it even if bad -- as it contains error details
     if (nstr == NULL) {
         std::cout << "Failed to render AST\n";
         return -8;

@@ -95,10 +95,8 @@ Node newNodeAtom(int sourceLoc, String* str) {
 }
 
 // skip any whitespace (any of ',', ' ', '\t', '\r', '\n'). Most of the complexity is to capture metadata for auto-format
-int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* mdParent)
+int SkipWhitespace(String* exp, int position, TreeNode* mdParent)
 {
-    //if (mdParent == NULL) return position;
-
     int lastcap = position;
     int i = position;
     int length = StringLength(exp);
@@ -118,11 +116,11 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
         case ',':
         case '\t':
             found = true;
-            if (preserveMetadata && capNL) {
+            if (capNL) {
                 // switch from newlines to regular space
                 // output NL so far
                 tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline);
-                TAddChild_Node(mdParent, &tmp);
+                if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
                 lastcap = i;
             }
             capNL = false;
@@ -133,11 +131,11 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
         case '\r':
         case '\n':
             found = true;
-            if (preserveMetadata && capWS) {
+            if (capWS) {
                 // switch from regular space to newlines
                 // output WS so far
                 tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
-                TAddSibling_Node(mdParent, &tmp);
+                if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
                 lastcap = i;
             }
             i++;
@@ -152,14 +150,14 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
     }
 
 
-    if (preserveMetadata && i != lastcap) {
+    if (i != lastcap) {
         if (capNL) {
             auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline);
-            TAddChild_Node(mdParent, &tmp);
+            if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
         }
         if (capWS) {
             auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
-            TAddSibling_Node(mdParent, &tmp);
+            if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
         }
     }
 
@@ -308,10 +306,18 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
     auto current = root;
     Node tmp = newNodeInvalid();
     TreeNode* parent = current;
+    TreeNode* wsNode = NULL;
 
     while (i < length)
     {
-        i = SkipWhitespace(source, i, preserveMetadata, current);
+        if (wsNode != NULL) TDeallocate(wsNode);
+        wsNode = TBareNode_Node();
+        i = SkipWhitespace(source, i, wsNode);
+        if (preserveMetadata) {
+            TAppendNode(current, TChild(wsNode));
+            free(wsNode); // specifically NOT dealloc the whole chain
+            wsNode = NULL;
+        }
 
         if (i >= length) { break; }
 
@@ -383,17 +389,17 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                 int startLoc = i;
                 i += wordLength;
 
-                auto wsNode = TBareNode_Node();
-                i = SkipWhitespace(source, i, preserveMetadata, wsNode);
+                if (wsNode != NULL) TDeallocate(wsNode);
+                wsNode = TBareNode_Node();
+                i = SkipWhitespace(source, i, wsNode);
                 if (i >= length) {
                     // Unexpected end of input
                     // To help formatting and diagnosis, write the last bits.
                     TAddSibling_Node(current, &newNodeAtom(startLoc, word));
                     if (preserveMetadata) {
-                        auto chain = TSibling(wsNode);
-                        if (chain != NULL) {
-                            TAppendNode(current, chain); // this should include the whole chain
-                        }
+                        TAppendNode(current, TChild(wsNode));
+                        free(wsNode); // specifically NOT dealloc the whole chain
+                        wsNode = NULL;
                     }
                     return false;
                 }
@@ -414,10 +420,9 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                     current = TAddChild_Node(parent, &tmp);
 
                     if (preserveMetadata) {
-                        auto chain = TSibling(wsNode);
-                        if (chain != NULL) {
-                            TAppendNode(current, chain); // this should include the whole chain
-                        }
+                        TAppendNode(current, TChild(wsNode));
+                        free(wsNode); // specifically NOT dealloc the whole chain
+                        wsNode = NULL;
                         TAddChild_Node(current, &newNodeOpenCall(i));
                     }
                 }
@@ -430,10 +435,9 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                     TAddChild_Node(current, &tmp);
 
                     if (preserveMetadata) {
-                        auto chain = TSibling(wsNode);
-                        if (chain != NULL) {
-                            TAppendNode(current, chain); // this should include the whole chain
-                        }
+                        TAppendNode(current, TChild(wsNode));
+                        free(wsNode); // specifically NOT dealloc the whole chain
+                        wsNode = NULL;
                     }
                 }
             }
@@ -444,10 +448,11 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
         i++;
     }
+    if (wsNode != NULL) TDeallocate(wsNode);
     return true;
 }
 
-Tree* Read(String* source, bool preserveMetadata) {
+TreeNode* Read(String* source, bool preserveMetadata) {
     auto root = Node();
     root.NodeType = NodeType::Root;
     root.SourceLocation = 0;
@@ -457,20 +462,19 @@ Tree* Read(String* source, bool preserveMetadata) {
     root.FormattedLocation = 0;
 
     auto tree = TAllocate_Node();
-    auto tnode = TRoot(tree);
-    TSetValue_Node(tnode, &root);
+    TSetValue_Node(tree, &root);
 
-    bool valid = ParseSource(source, tnode, 0, preserveMetadata);
+    bool valid = ParseSource(source, tree, 0, preserveMetadata);
 
     if (!valid) {
         root.IsValid = false;
-        TSetValue_Node(tnode, &root);
+        TSetValue_Node(tree, &root);
     }
 
     return tree;
 }
 
-void DeallocateAST(Tree* ast) {
+void DeallocateAST(TreeNode* ast) {
     if (ast == NULL) return;
     auto vec = TAllData(ast); // vector of SourceNode
 
@@ -493,10 +497,10 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
 
     // Write the node contents
     //if (n->NodeType != NodeType::Whitespace) {
-    //StringAppend(outp, "[");
-    //StringAppendInt32(outp, indent);
+    StringAppend(outp, "[");
+    StringAppendInt32(outp, indent);
         StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
-    //    StringAppend(outp, "]");
+        StringAppend(outp, "]");
     //}
 
     // Recursively write child nodes
@@ -507,16 +511,17 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
 
         // Handle re-indenting
         if (leadingWhite) {
-            if (n->NodeType == NodeType::Whitespace) {
+            if (n->NodeType == NodeType::Whitespace) { // skip leading whitespace
                 child = TSibling(child);
                 continue;
             }
             leadingWhite = false;
-            if (n->NodeType == NodeType::ScopeDelimiter) { 
-                StringAppendChar(outp, ' ', (indent - 1) * 4);
+            if (n->NodeType == NodeType::ScopeDelimiter) {
+                StringAppendChar(outp, '£');
+                StringAppendChar(outp, ' ', (indent + 1) * 4);
             }
             else {
-                StringAppendChar(outp, ' ', indent * 4);
+                StringAppendChar(outp, ' ', (indent+1) * 4);
             }
         }
         if (n->NodeType == NodeType::Newline) {
@@ -525,17 +530,16 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
 
         // write node text
         Render_Rec(child, indent + 1, outp);
-        child = TSibling(child);
+        child = TSibling(child); // next node at this level
     }
 }
 
-String* Render(Tree* ast) {
+String* Render(TreeNode* ast) {
     if (ast == NULL) return NULL;
 
-    auto rootNode = TreeRoot(ast);
     auto outp = StringEmpty();
 
-    Render_Rec(rootNode, 0, outp);
+    Render_Rec(ast, 0, outp);
     
     return outp;
 }
