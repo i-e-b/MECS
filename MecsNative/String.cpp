@@ -502,12 +502,13 @@ bool StringTryParse_f16(String *str, int32_t *dest) {
     // TODO: Implement!
     // Plan: parse each side of the '.' as int32, truncate and weld
     uint32_t point = 0;
-    String *pt = StringNew(".");
 
     int32_t intpart = 0;
     int32_t fracpart = 0;
 
+    String *pt = StringNew(".");
     bool found = StringFind(str, pt, 0, &point);
+    StringDeallocate(pt);
 
     // Integer only
     if (!found) {
@@ -520,7 +521,6 @@ bool StringTryParse_f16(String *str, int32_t *dest) {
     // Integer and fraction
     if (point > 0) { // has integer part
         auto intp = StringSlice(str, 0, point);
-
         bool ok = StringTryParse_int32(intp, &intpart);
         StringDeallocate(intp);
 

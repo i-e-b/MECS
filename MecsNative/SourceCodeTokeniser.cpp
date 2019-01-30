@@ -95,8 +95,7 @@ Node newNodeAtom(int sourceLoc, String* str) {
 }
 
 // skip any whitespace (any of ',', ' ', '\t', '\r', '\n'). Most of the complexity is to capture metadata for auto-format
-int SkipWhitespace(String* exp, int position, TreeNode* mdParent)
-{
+int SkipWhitespace(String* exp, int position, TreeNode* mdParent) {
     int lastcap = position;
     int i = position;
     int length = StringLength(exp);
@@ -119,8 +118,7 @@ int SkipWhitespace(String* exp, int position, TreeNode* mdParent)
             if (capNL) {
                 // switch from newlines to regular space
                 // output NL so far
-                tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline);
-                if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
+                if (mdParent != NULL) TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline));
                 lastcap = i;
             }
             capNL = false;
@@ -134,8 +132,7 @@ int SkipWhitespace(String* exp, int position, TreeNode* mdParent)
             if (capWS) {
                 // switch from regular space to newlines
                 // output WS so far
-                tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
-                if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
+                if (mdParent != NULL) TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace));
                 lastcap = i;
             }
             i++;
@@ -152,12 +149,14 @@ int SkipWhitespace(String* exp, int position, TreeNode* mdParent)
 
     if (i != lastcap) {
         if (capNL) {
-            auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline);
-            if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
+            if (mdParent != NULL) {
+                TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline));
+            }
         }
         if (capWS) {
-            auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
-            if (mdParent != NULL) TAddChild_Node(mdParent, &tmp);
+            if (mdParent != NULL) {
+                TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace));
+            }
         }
     }
 
@@ -300,6 +299,23 @@ bool IsNumeric(String* word) {
     return StringTryParse_f16(word, NULL);
 }
 
+void MaybeIncludeWhitespace(bool y, TreeNode** wsNode, TreeNode* target) {
+    if (wsNode == NULL || *wsNode == NULL) return;
+    if (y) {
+        TAppendNode(target, TChild(*wsNode)); // include any childen, but not the top node
+        free(*wsNode); // specifically NOT dealloc the whole chain -- it's added to 'target' now
+        *wsNode = NULL; // kill the whitespace node ref
+    } else {
+        TDeallocate(*wsNode); // Not using the whitespace. Clean it all up
+        *wsNode = NULL; // kill the whitespace node ref
+    }
+}
+void PrepareWhitespaceContainer(TreeNode** wsNode) {
+    if (wsNode == NULL) return;
+    if (*wsNode != NULL) TDeallocate(*wsNode); // didn't get used. Clean it up.
+    *wsNode = TBareNode_Node();
+}
+
 bool ParseSource(String* source, TreeNode* root, int position, bool preserveMetadata) {
     int i = position;
     int length = StringLength(source);
@@ -310,14 +326,9 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
     while (i < length)
     {
-        if (wsNode != NULL) TDeallocate(wsNode);
-        wsNode = TBareNode_Node();
+        PrepareWhitespaceContainer(&wsNode);
         i = SkipWhitespace(source, i, wsNode);
-        if (preserveMetadata) {
-            TAppendNode(current, TChild(wsNode));
-            free(wsNode); // specifically NOT dealloc the whole chain
-            wsNode = NULL;
-        }
+        MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
 
         if (i >= length) { break; }
 
@@ -385,22 +396,19 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
         {
             auto word = ReadWord(source, i);
             int wordLength = StringLength(word);
-            if (wordLength != 0) {
+            if (wordLength == 0) {
+                StringDeallocate(word);
+            } else {
                 int startLoc = i;
                 i += wordLength;
 
-                if (wsNode != NULL) TDeallocate(wsNode);
-                wsNode = TBareNode_Node();
+                PrepareWhitespaceContainer(&wsNode);
                 i = SkipWhitespace(source, i, wsNode);
                 if (i >= length) {
                     // Unexpected end of input
                     // To help formatting and diagnosis, write the last bits.
                     TAddSibling_Node(current, &newNodeAtom(startLoc, word));
-                    if (preserveMetadata) {
-                        TAppendNode(current, TChild(wsNode));
-                        free(wsNode); // specifically NOT dealloc the whole chain
-                        wsNode = NULL;
-                    }
+                    MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
                     return false;
                 }
                 car = StringCharAtIndex(source, i);
@@ -419,10 +427,8 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                     tmp = newNodeAtom(startLoc, word);
                     current = TAddChild_Node(parent, &tmp);
 
+                    MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
                     if (preserveMetadata) {
-                        TAppendNode(current, TChild(wsNode));
-                        free(wsNode); // specifically NOT dealloc the whole chain
-                        wsNode = NULL;
                         TAddChild_Node(current, &newNodeOpenCall(i));
                     }
                 }
@@ -434,11 +440,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
                     TAddChild_Node(current, &tmp);
 
-                    if (preserveMetadata) {
-                        TAppendNode(current, TChild(wsNode));
-                        free(wsNode); // specifically NOT dealloc the whole chain
-                        wsNode = NULL;
-                    }
+                    MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
                 }
             }
         }
@@ -476,6 +478,7 @@ TreeNode* Read(String* source, bool preserveMetadata) {
 
 void DeallocateAST(TreeNode* ast) {
     if (ast == NULL) return;
+
     auto vec = TAllData(ast); // vector of SourceNode
 
     Node n = Node{};

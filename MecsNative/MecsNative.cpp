@@ -602,6 +602,7 @@ int TestFileSystem() {
 
 int TestCompiler() {
     std::cout << "***************** COMPILER ******************\n";
+
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
     auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
@@ -612,13 +613,13 @@ int TestCompiler() {
         std::cout << "Failed to read file. Test inconclusive.\n";
         return -1;
     }
-    /*
+
     std::cout << "Reading a non-source code file: ";
     auto syntaxTree = Read(code, false);
+    StringClear(code); // also clears the underlying vector
     if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -2; }
 
-    auto rootNode = TreeRoot(syntaxTree);
-    SourceNode *result = (SourceNode*)TreeReadBody(rootNode);
+    SourceNode *result = (SourceNode*)TreeReadBody(syntaxTree);
 
     if (result->IsValid) {
         std::cout << "The source file was parsed correctly!? It should not have been!\n";
@@ -630,19 +631,17 @@ int TestCompiler() {
     StringDeallocate(pathOfInvalid);
     DeallocateAST(syntaxTree);
 
-    */
-
     //###################################################################
     std::cout << "Reading a valid source code file: ";
-    StringClear(code); // also clears the underlying vector
     if (!FileLoadChunk(pathOfValid, vec, 0, 10000, &read)) {
         std::cout << "Failed to read file. Test inconclusive.\n";
         return -4;
     }
-    auto syntaxTree = Read(code, true);
+    syntaxTree = Read(code, true);
+    StringDeallocate(code);
     if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -5; }
 
-    auto result = (SourceNode*)TreeReadBody(syntaxTree);
+    result = (SourceNode*)TreeReadBody(syntaxTree);
 
     if (!result->IsValid) {
         std::cout << "The source file was not valid (FAIL!)\n";

@@ -290,7 +290,7 @@ void RecursiveFill(TreeNode* treeNodePtr, Vector *nodeDataList) {
 }
 
 Vector* TreeAllData(TreeNode * tree) {
-    auto vec = VectorAllocate(sizeof(void*));
+    auto vec = VectorAllocate(tree->ElementByteSize);
     RecursiveFill(tree, vec);
     return vec;
 }
