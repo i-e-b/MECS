@@ -333,16 +333,16 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
             break;
         case ')': // end of call
         {
+            if (preserveMetadata) {
+                tmp = newNodeCloseCall(i);
+                TAddChild_Node(current, &tmp);
+            }
+
             current = TParent(current);
             if (current == NULL) {
                 tmp = newNodeError(i, StringNew("###PARSER ERROR: ROOT CRASH###"));
                 TAddChild_Node(current, &tmp);
                 return false;
-            }
-
-            if (preserveMetadata) {
-                tmp = newNodeCloseCall(i);
-                TAddChild_Node(current, &tmp);
             }
             break;
         }
@@ -496,12 +496,7 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
     Node* n = TReadBody_Node(node);
 
     // Write the node contents
-    //if (n->NodeType != NodeType::Whitespace) {
-    StringAppend(outp, "[");
-    StringAppendInt32(outp, indent);
-        StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
-        StringAppend(outp, "]");
-    //}
+    StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
 
     // Recursively write child nodes
     bool leadingWhite = false;
@@ -517,11 +512,10 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
             }
             leadingWhite = false;
             if (n->NodeType == NodeType::ScopeDelimiter) {
-                StringAppendChar(outp, '£');
-                StringAppendChar(outp, ' ', (indent + 1) * 4);
+                StringAppendChar(outp, ' ', (indent - 1) * 4);
             }
             else {
-                StringAppendChar(outp, ' ', (indent+1) * 4);
+                StringAppendChar(outp, ' ', (indent) * 4);
             }
         }
         if (n->NodeType == NodeType::Newline) {
