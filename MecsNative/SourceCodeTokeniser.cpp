@@ -20,6 +20,16 @@ Node newNode(int sourceLoc, String* text, NodeType type) {
     n.ErrorMessage = NULL;
     return n;
 }
+Node newNodeError(int sourceLoc, String* text) {
+    auto n = Node{};
+    n.NodeType = NodeType::InvalidNode;
+    n.IsValid = false;
+    n.Text = NULL;
+    n.Unescaped = NULL;
+    n.SourceLocation = sourceLoc;
+    n.ErrorMessage = text;
+    return n;
+}
 Node newNodeInvalid() {
     auto n = Node{};
     n.NodeType = NodeType::InvalidNode;
@@ -84,10 +94,10 @@ Node newNodeAtom(int sourceLoc, String* str) {
     return n;
 }
 
-// skip any whitespace (any of ' ', '\t', '\r', '\n'). Most of the complexity is to capture metadata for auto-format
+// skip any whitespace (any of ',', ' ', '\t', '\r', '\n'). Most of the complexity is to capture metadata for auto-format
 int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* mdParent)
 {
-    if (mdParent == NULL) return position;
+    //if (mdParent == NULL) return position;
 
     int lastcap = position;
     int i = position;
@@ -105,6 +115,7 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
         switch (c)
         {
         case ' ':
+        case ',':
         case '\t':
             found = true;
             if (preserveMetadata && capNL) {
@@ -126,7 +137,7 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
                 // switch from regular space to newlines
                 // output WS so far
                 tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
-                TAddChild_Node(mdParent, &tmp);
+                TAddSibling_Node(mdParent, &tmp);
                 lastcap = i;
             }
             i++;
@@ -148,7 +159,7 @@ int SkipWhitespace(String* exp, int position, bool preserveMetadata, TreeNode* m
         }
         if (capWS) {
             auto tmp = newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace);
-            TAddChild_Node(mdParent, &tmp);
+            TAddSibling_Node(mdParent, &tmp);
         }
     }
 
@@ -295,6 +306,8 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
     int i = position;
     int length = StringLength(source);
     auto current = root;
+    Node tmp = newNodeInvalid();
+    TreeNode* parent = current;
 
     while (i < length)
     {
@@ -304,8 +317,6 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
         char car = StringCharAtIndex(source, i);
 
-        Node tmp = newNodeInvalid();
-        TreeNode* parent = NULL;
 
         switch (car)
         {
@@ -316,22 +327,19 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
             break;
         case ')': // end of call
         {
+            current = TParent(current);
+            if (current == NULL) {
+                tmp = newNodeError(i, StringNew("###PARSER ERROR: ROOT CRASH###"));
+                TAddChild_Node(current, &tmp);
+                return false;
+            }
+
             if (preserveMetadata) {
                 tmp = newNodeCloseCall(i);
                 TAddChild_Node(current, &tmp);
             }
-
-            auto p = TParent(current);
-            if (p != NULL) current = p;
             break;
         }
-        case ',': // optional separator
-            // Ignore.
-            if (preserveMetadata) {
-                tmp = newNodeWhitespace(i, ",");
-                TAddChild_Node(current, &tmp);
-            }
-            break;
 
         case '"': // start of strings
         case '\'':
@@ -376,14 +384,13 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                 i += wordLength;
 
                 auto wsNode = TBareNode_Node();
-                TSetValue_Node(wsNode, &newNode(i, NULL, NodeType::Whitespace));
                 i = SkipWhitespace(source, i, preserveMetadata, wsNode);
                 if (i >= length) {
                     // Unexpected end of input
                     // To help formatting and diagnosis, write the last bits.
                     TAddSibling_Node(current, &newNodeAtom(startLoc, word));
                     if (preserveMetadata) {
-                        auto chain = TChild(wsNode);
+                        auto chain = TSibling(wsNode);
                         if (chain != NULL) {
                             TAppendNode(current, chain); // this should include the whole chain
                         }
@@ -393,23 +400,21 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                 car = StringCharAtIndex(source, i);
                 if (car == '(')
                 {
-                    parent = current;
-                    tmp = newNodeAtom(startLoc, word);
-
                     if (IsNumeric(word)) {
-                        tmp.IsValid = false;
-                        tmp.ErrorMessage = StringNew("Parser error: '");
+                        tmp = newNodeError(i, StringNew("Error: '"));
                         StringAppend(tmp.ErrorMessage, word);
                         StringAppend(tmp.ErrorMessage, "' used like a function name, but looks like a number");
 
-                        current = TAddChild_Node(parent, &tmp);
+                        TAddChild_Node(current, &tmp);
                         return false;
                     }
 
+                    parent = current;
+                    tmp = newNodeAtom(startLoc, word);
                     current = TAddChild_Node(parent, &tmp);
 
                     if (preserveMetadata) {
-                        auto chain = TChild(wsNode);
+                        auto chain = TSibling(wsNode);
                         if (chain != NULL) {
                             TAppendNode(current, chain); // this should include the whole chain
                         }
@@ -422,10 +427,10 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                     tmp = newNodeAtom(startLoc, word);
                     if (IsNumeric(word)) tmp.NodeType = NodeType::Numeric;
 
-
                     TAddChild_Node(current, &tmp);
+
                     if (preserveMetadata) {
-                        auto chain = TChild(wsNode);
+                        auto chain = TSibling(wsNode);
                         if (chain != NULL) {
                             TAppendNode(current, chain); // this should include the whole chain
                         }
@@ -434,7 +439,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
             }
         }
 
-        break;
+        break; // end of 'default'
         }
 
         i++;
@@ -487,7 +492,12 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
     Node* n = TReadBody_Node(node);
 
     // Write the node contents
-    StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
+    //if (n->NodeType != NodeType::Whitespace) {
+    //StringAppend(outp, "[");
+    //StringAppendInt32(outp, indent);
+        StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
+    //    StringAppend(outp, "]");
+    //}
 
     // Recursively write child nodes
     bool leadingWhite = false;
@@ -502,16 +512,21 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
                 continue;
             }
             leadingWhite = false;
-            if (n->NodeType == NodeType::ScopeDelimiter) { StringAppendChar(outp, ' ', (indent - 1) * 4); }
-            else { StringAppendChar(outp, ' ', indent * 4); }
+            if (n->NodeType == NodeType::ScopeDelimiter) { 
+                StringAppendChar(outp, ' ', (indent - 1) * 4);
+            }
+            else {
+                StringAppendChar(outp, ' ', indent * 4);
+            }
         }
-        if (n->NodeType == NodeType::Newline) leadingWhite = true;
+        if (n->NodeType == NodeType::Newline) {
+            leadingWhite = true;
+        }
 
         // write node text
         Render_Rec(child, indent + 1, outp);
         child = TSibling(child);
     }
-
 }
 
 String* Render(Tree* ast) {
