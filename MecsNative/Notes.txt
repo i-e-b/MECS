@@ -22,12 +22,20 @@ Input handling:
 
 * [x] File system abstraction
 * [ ] improve filesystem to allow non-byte sized vectors
-* [ ] Convert parser & compiler.
+* [x] Convert parser
+* [ ] Convert compiler
+
+The machine:
+------------
+
+* [ ] Convert runtime
+* [ ] Syntax hiliting editor (caret in the parser and extended AST)
+
 
 Actor model stuff:
 ------------------
 
-* [ ] Arenas
+* [ ] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
 * [ ] Serialisation & hashing
 * [ ] Message queues
 * [ ] Scheduler
