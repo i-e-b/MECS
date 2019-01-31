@@ -63,6 +63,9 @@
     <ClCompile Include="SourceCodeTokeniser.cpp">
       <Filter>Source Files\Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="ArenaAllocator.cpp">
+      <Filter>Source Files\Containers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -94,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="SourceCodeTokeniser.h">
       <Filter>Source Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="ArenaAllocator.h">
+      <Filter>Source Files\Containers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

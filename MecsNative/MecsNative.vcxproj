@@ -166,6 +166,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ArenaAllocator.cpp" />
     <ClCompile Include="FileSys.cpp" />
     <ClCompile Include="Fix16.cpp" />
     <ClCompile Include="HashMap.cpp" />
@@ -178,6 +179,7 @@
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ArenaAllocator.h" />
     <ClInclude Include="FileSys.h" />
     <ClInclude Include="Fix16.h" />
     <ClInclude Include="HashMap.h" />

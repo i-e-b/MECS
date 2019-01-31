@@ -6,6 +6,7 @@
 #include "Tree.h"
 #include "String.h"
 #include "Heap.h"
+#include "ArenaAllocator.h"
 
 // Math:
 #include "Fix16.h"
@@ -16,13 +17,13 @@
 // System abstractions
 #include "FileSys.h"
 
+// The MECS compiler and runtime
 #include "SourceCodeTokeniser.h"
 
 
 typedef struct exampleElement {
     int a; int b;
 } exampleElement;
-
 
 bool IntKeyCompare(void* key_A, void* key_B) {
     auto A = *((int*)key_A);
@@ -599,6 +600,43 @@ int TestFileSystem() {
     return 0;
 }
 
+int TestArenaAllocator() {
+    std::cout << "***************** ARENA ALLOCATOR ******************\n";
+    size_t allocatedBytes;
+    size_t unallocatedBytes;
+    int occupiedZones;
+    int emptyZones;
+    int totalReferenceCount;
+    size_t largestContiguous;
+
+
+    auto arena1 = NewArena(10 MEGABYTES);
+
+    GetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
+    std::cout << "Empty 10MB Arena: alloc=" << allocatedBytes << "; free=" << unallocatedBytes << "; frgs used=" << occupiedZones << "; frgs empty=" << emptyZones << "; refs=" << totalReferenceCount << "; max chunk=" << largestContiguous << "\n";
+
+    // allocate some bits
+    for (int i = 0; i < 100; i++) {
+        auto ptr = Allocate(arena1, ARENA_ZONE_SIZE / 5);
+        if (ptr == NULL) {
+            std::cout << "Failed to allocate at " << i << "\n"; break;
+        }
+    }
+    // and happily ignore them all, as long as we keep the arena reference
+
+    GetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
+    std::cout << " Used 10MB Arena: alloc=" << allocatedBytes << "; free=" << unallocatedBytes << "; frgs used=" << occupiedZones << "; frgs empty=" << emptyZones << "; refs=" << totalReferenceCount << "; max chunk=" << largestContiguous << "\n";
+
+    DropArena(&arena1);
+    std::cout << "Arena was killed: " << (arena1 == NULL ? "yes" : "no") << "\n";
+    
+    // Test referencing and de-referencing
+    auto arena2 = NewArena(256 KILOBYTES);
+
+    DropArena(&arena2);
+
+    return 0;
+}
 
 int TestCompiler() {
     std::cout << "***************** COMPILER ******************\n";
@@ -690,6 +728,9 @@ int main() {
 
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
+
+    auto aares = TestArenaAllocator();
+    if (aares != 0) return aares;
 
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;

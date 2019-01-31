@@ -36,16 +36,26 @@ inline void * byteOffset(void *ptr, int byteOffset) {
     x += byteOffset;
     return (void*)x;
 }
-inline unsigned int readUint(void* ptr, int byteOffset) {
+inline unsigned unsigned short readUshort(void* ptr, int byteOffset) {
     char* x = (char*)ptr;
     x += byteOffset;
-    return *((unsigned int*)x);
+    return *((unsigned short*)x);
+}
+inline void writeUshort(void *ptr, int byteOffset, unsigned short data) {
+    char* x = (char*)ptr;
+    x += byteOffset;
+    *(unsigned short*)x = data;
 }
 inline void* readPtr(void* ptr, int byteOffset) {
     char* x = (char*)ptr;
     x += byteOffset;
     size_t v = *((size_t*)x);
     return (void*)v;
+}
+inline unsigned int readUint(void* ptr, int byteOffset) {
+    char* x = (char*)ptr;
+    x += byteOffset;
+    return *((unsigned int*)x);
 }
 inline void writeUint(void *ptr, int byteOffset, unsigned int data) {
     char* x = (char*)ptr;

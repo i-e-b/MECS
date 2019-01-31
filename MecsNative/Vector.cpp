@@ -37,7 +37,7 @@ typedef struct Vector {
 #define NULL 0
 #endif
 #ifndef uint
-#define uint unsigned int
+#define uint uint32_t
 #endif
 #ifndef var
 #define var auto
@@ -49,7 +49,7 @@ const int INDEX_SIZE = sizeof(unsigned int); // size of index data
 const int SKIP_ELEM_SIZE = INDEX_SIZE + PTR_SIZE; // size of skip list entries
 
 // Tuning parameters: have a play if you have performance or memory issues.
-const int ARENA_SIZE = 65535; // number of bytes for each chunk (limit)
+const int ARENA_SIZE = 65535; // number of bytes for each chunk (limit -- should match any restriction in the allocator)
 
 // Desired maximum elements per chunk. This will be reduced if element is large (to fit in Arena limit)
 // Larger values are significantly faster for big arrays, but more memory-wasteful on small arrays
@@ -587,7 +587,6 @@ void* iterativeMergeSort(void* arr1, void* arr2, int n, int elemSize, int(*compa
 
             // copy the lowest candidate across from A to B
             while (l < right && r < end) {
-                //int lower = (compareFunc(A[l], A[r]) < 0) ? (l++) : (r++);
                 int lower = (compareFunc(byteOffset(A, l * elemSize), byteOffset(A, r * elemSize)) < 0)
                           ? (l++) : (r++);
                 copyAnonArray(B, t++, A, lower, elemSize); // B[t++] = A[lower];

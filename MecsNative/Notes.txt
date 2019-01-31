@@ -36,6 +36,7 @@ Actor model stuff:
 ------------------
 
 * [ ] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
+* [ ] Fix arena/zone naming consistency in the allocator code
 * [ ] Serialisation & hashing
 * [ ] Message queues
 * [ ] Scheduler
