@@ -38,6 +38,9 @@ typedef struct Arena {
 // Call to push a new arena to the manager stack. Size is the maximum size for the whole
 // arena. Fragmentation may make the usable size smaller. Size should be a multiple of ARENA_ZONE_SIZE
 Arena* NewArena(size_t size) {
+    int expectedZoneCount = (int)(size / ARENA_ZONE_SIZE) + 1;
+    int overhead = sizeof(uint16_t) * expectedZoneCount * 2;
+
     auto realMemory = calloc(1, size);
     if (realMemory == NULL) return NULL;
 
@@ -50,17 +53,15 @@ Arena* NewArena(size_t size) {
     result->_start = realMemory;
     result->_limit = byteOffset(realMemory, size - 1);
 
-    auto sizeOfTables = sizeof(uint16_t) * result->_arenaCount;
-    auto availableBytes = ((size_t)(result->_limit) - (size_t)(result->_start)) - (2 * sizeOfTables);
-
     // with 64KB arenas (ushort) and 1GB of RAM, we get 16384 arenas.
     // recording only heads and refs would take 64KB of management space
     // recording heads, refs and back-step (an optimisation for very short-lived items) would use 96KB of management space.
     // This seems pretty reasonable.
-    result->_arenaCount = (int)(availableBytes / ARENA_ZONE_SIZE);
+    result->_arenaCount = expectedZoneCount;
     result->_currentArena = 0;
 
     // Allow space for arena tables, store adjusted base
+    auto sizeOfTables = sizeof(uint16_t) * result->_arenaCount;
     result->_headsPtr = (uint16_t*)result->_start;
     result->_refCountsPtr = (uint16_t*)byteOffset(result->_start, sizeOfTables);
 
@@ -216,6 +217,7 @@ bool Reference(Arena* a, void* ptr) {
 // Read statistics for this Arena. Pass `NULL` for anything you're not interested in.
 void GetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes,
     int* occupiedZones, int* emptyZones, int* totalReferenceCount, size_t* largestContiguous) {
+    if (a == NULL) return;
 
     size_t allocated = 0;
     size_t unallocated = 0;

@@ -633,7 +633,26 @@ int TestArenaAllocator() {
     // Test referencing and de-referencing
     auto arena2 = NewArena(256 KILOBYTES);
 
+    GetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
+    std::cout << "Empty Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
+    void* bits[20];
+    for (int i = 0; i < 20; i++) { bits[i] = Allocate(arena2, 256); }
+    GetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
+    std::cout << "Used Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
+
+    for (int i = 1; i < 20; i+=2) { Reference(arena2, bits[i]); }
+    for (int i = 0; i < 20; i+=2) { Dereference(arena2, bits[i]); }
+    for (int i = 0; i < 20; i++) { // this will double-dereference some bits, which should be ignored
+        Dereference(arena2, bits[i]);
+        Dereference(arena2, bits[i]);
+    }
+
+    GetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
+    std::cout << "Used and dereferenced Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
     DropArena(&arena2);
+
+
+    // TODO: expand this when String/Vector/Hashtable etc can use the arena allocator
 
     return 0;
 }
