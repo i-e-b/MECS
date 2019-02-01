@@ -177,6 +177,13 @@ int ZoneForPtr(Arena* a, void* ptr) {
     return (int)arena;
 }
 
+bool ArenaContainsPointer(Arena* a, void* ptr) {
+    if (a == NULL) return false;
+    if (ptr < a->_start || ptr > a->_limit) return false;
+
+    return true;
+}
+
 // Remove a reference to memory. When no references are left, the memory may be deallocated
 bool ArenaDereference(Arena* a, void* ptr) {
     if (a == NULL) return false;

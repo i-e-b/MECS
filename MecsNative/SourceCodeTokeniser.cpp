@@ -1,9 +1,5 @@
-
 #include "SourceCodeTokeniser.h"
-
-//remove after debug:
-#include <iostream>
-
+#include "MemoryManager.h"
 
 typedef SourceNode Node; // 'SourceNode'. Typedef just for brevity
 
@@ -303,7 +299,7 @@ void MaybeIncludeWhitespace(bool y, TreeNode** wsNode, TreeNode* target) {
     if (wsNode == NULL || *wsNode == NULL) return;
     if (y) {
         TAppendNode(target, TChild(*wsNode)); // include any childen, but not the top node
-        free(*wsNode); // specifically NOT dealloc the whole chain -- it's added to 'target' now
+        mfree(*wsNode); // specifically NOT dealloc the whole chain -- it's added to 'target' now
         *wsNode = NULL; // kill the whitespace node ref
     } else {
         TDeallocate(*wsNode); // Not using the whitespace. Clean it all up

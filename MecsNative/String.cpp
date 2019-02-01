@@ -1,8 +1,7 @@
 #include "String.h"
 #include "Vector.h"
 #include "Fix16.h"
-
-#include <stdlib.h>
+#include "MemoryManager.h"
 
 typedef struct String {
     Vector* chars; // vector of characters
@@ -16,7 +15,7 @@ String * StringEmpty() {
     auto vec = VAllocate_char();
     if (!VectorIsValid(vec)) return NULL;
 
-    auto str = (String*)calloc(1, sizeof(String));
+    auto str = (String*)mcalloc(1, sizeof(String));
     str->chars = vec;
     str->hashval = 0;
 
@@ -34,7 +33,7 @@ void StringClear(String *str) {
 void StringDeallocate(String *str) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == true) VectorDeallocate(str->chars);
-    free(str);
+    mfree(str);
 }
 
 String * StringNew(const char * str) {
@@ -219,7 +218,7 @@ String *StringChop(String* str, int startIdx, int length) {
 
 char *StringToCStr(String *str) {
     auto len = StringLength(str);
-    auto result = (char*)malloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
+    auto result = (char*)mmalloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
     for (unsigned int i = 0; i < len; i++) {
         result[i] = *VGet_char(str->chars, i);
     }
@@ -234,7 +233,7 @@ char *StringToCStr(String *str, int start) {
     }
     len -= start;
 
-    auto result = (char*)malloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
+    auto result = (char*)mmalloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
     for (unsigned int i = 0; i < len; i++) {
         result[i] = *VGet_char(str->chars, i + start);
     }
@@ -421,8 +420,8 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
             }
 
             // OK, this is a match
-            free(matchStr);
-            free(scanStr);
+            mfree(matchStr);
+            mfree(scanStr);
             return true;
         }
 
@@ -431,8 +430,8 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
     }
 
     // Clean up.
-    free(matchStr);
-    free(scanStr);
+    mfree(matchStr);
+    mfree(scanStr);
     return false;
 }
 

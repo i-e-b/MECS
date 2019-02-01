@@ -60,6 +60,8 @@ void* MakePermanent(void* data, size_t length);
 // Copy data from one arena to another. Use this for return values
 void* CopyToArena(void* srcData, size_t length, Arena* target);
 
+// Returns true if the given pointer is managed by this arena
+bool ArenaContainsPointer(Arena* a, void* ptr);
 
 // Allocate memory of the given size
 void* ArenaAllocate(Arena* a, size_t byteCount);

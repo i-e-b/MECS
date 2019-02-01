@@ -25,13 +25,14 @@ void StartManagedMemory() {
 void ShutdownManagedMemory() {
     if (LOCK != 0) return;
     if (MEMORY_STACK == NULL) return;
-    LOCK = 1;
 
     Vector* vec = (Vector*)MEMORY_STACK;
     ArenaPtr a = NULL;
     while (VecPop_ArenaPtr(vec, &a)) {
         DropArena(&a);
     }
+    VecDeallocate(vec);
+    MEMORY_STACK = NULL;
 
     LOCK = 0;
 }
@@ -109,21 +110,56 @@ Arena* MMCurrent() {
 
 // Allocate memory
 void* mmalloc(size_t size) {
-    auto a = MMCurrent();
+    ArenaPtr a = MMCurrent();
     if (a != NULL) return ArenaAllocate(a, size);
     else return malloc(size);
 }
 
 // Allocate memory array, cleared to zeros
 void* mcalloc(int count, size_t size) {
-    auto a = MMCurrent();
-    if (a != NULL) return ArenaAllocate(a, count*size);
-    else return calloc(count, size);
+    ArenaPtr a = MMCurrent();
+    if (a != NULL) {
+        size_t sz = count * size;
+        char* res = (char*)ArenaAllocate(a, sz);
+        for (size_t i = 0; i < sz; i++) {
+            res[i] = 0;
+        }
+        return (void*)res;
+    } else {
+        return calloc(count, size);
+    }
 }
 
 // Free memory
 void mfree(void* ptr) {
-    auto a = MMCurrent();
-    if (a != NULL) ArenaDereference(a, ptr);
-    else free(ptr);
+    // we might not be freeing from the current arena, so this can get complex
+    ArenaPtr a = MMCurrent();
+    if (a == NULL) { // no arenas. stdlib free
+        free(ptr);
+        return;
+    }
+    if (ArenaContainsPointer(a, ptr)) { // in the most recent arena
+        ArenaDereference(a, ptr);
+        return;
+    }
+
+    // otherwise, scan through all the arenas until we find it
+    // it might be simpler to leak the memory and let the arena get cleaned up whenever
+
+    while (LOCK != 0) {}
+    LOCK = 1;
+
+    Vector* vec = (Vector*)MEMORY_STACK;
+    int count = VecLength(vec);
+    for (int i = 0; i < count; i++) {
+        ArenaPtr a = *VecGet_ArenaPtr(vec, i);
+        if (a == NULL) continue;
+        if (ArenaContainsPointer(a, ptr)) {
+            ArenaDereference(a, ptr);
+            return;
+        }
+    }
+    // never found it. Either bad call or we've leaked some memory
+
+    LOCK = 0;
 }

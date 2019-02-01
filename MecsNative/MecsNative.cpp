@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdio.h>
 
 // Containers:
 #include "Vector.h"
@@ -58,7 +59,7 @@ RegisterHeapFor(char, H)
 void WriteStr(String *str) {
     auto cstr = StringToCStr(str);
     std::cout << cstr << "\n";
-    free(cstr);
+    mfree(cstr);
 }
 
 int TestHashMap() {
@@ -275,7 +276,7 @@ int TestString() {
 
     auto cstr = StringToCStr(str1);
     std::cout << cstr << "\n";
-    free(cstr);
+    mfree(cstr);
     std::cout << "First char = '" << StringCharAtIndex(str1, 0) << "'\n";
     std::cout << "Last char = '" << StringCharAtIndex(str1, -1) << "'\n";
 
@@ -671,7 +672,7 @@ int TestCompiler() {
         std::cout << "Failed to read file. Test inconclusive.\n";
         return -1;
     }
-
+    
     std::cout << "Reading a non-source code file: ";
     auto syntaxTree = Read(code, false);
     StringClear(code); // also clears the underlying vector
@@ -724,7 +725,7 @@ int TestCompiler() {
 int main() {
     StartManagedMemory();
 
-    MMPush(1 MEGABYTES);
+    MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
     MMPop();
@@ -734,32 +735,50 @@ int main() {
     if (qres != 0) return qres;
     MMPop();
 
-    MMPush(1 MEGABYTES);
+    MMPush(1 MEGABYTE);
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
     MMPop();
 
+    MMPush(1 MEGABYTE);
     auto tres = TestTree();
     if (tres != 0) return tres;
+    MMPop();
 
+    MMPush(1 MEGABYTE);
     auto sres = TestString();
     if (sres != 0) return sres;
+    MMPop();
 
+    MMPush(1 MEGABYTE);
     auto fpres = TestFixedPoint();
     if (fpres != 0) return fpres;
+    MMPop();
 
+    MMPush(1 MEGABYTE);
     auto hres = TestHeaps();
     if (hres != 0) return hres;
+    MMPop();
 
+    MMPush(1 MEGABYTE);
     auto tagres = TestTagData();
     if (tagres != 0) return tagres;
+    MMPop();
 
+    MMPush(1 MEGABYTE);
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
+    MMPop();
 
+    MMPush(1 MEGABYTE);
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
-
+    MMPop();
+    
+    MMPush(1 MEGABYTE);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
+    MMPop();
+
+    ShutdownManagedMemory();
 }

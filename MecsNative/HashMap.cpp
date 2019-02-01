@@ -1,7 +1,6 @@
 #include "HashMap.h"
 #include "Vector.h"
-#include <stdlib.h>
-
+#include "MemoryManager.h"
 
 // Fixed sizes -- these are structural to the code and must not changeo
 const unsigned int MAX_BUCKET_SIZE = 1<<30; // safety limit for scaling the buckets
@@ -210,7 +209,7 @@ bool ResizeNext(HashMap * h) {
 
 HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void *key_A, void *key_B), unsigned int(*getHashFunc)(void *key))
 {
-    auto result = (HashMap*)calloc(1, sizeof(HashMap)); // need to ensure values are zeroed
+    auto result = (HashMap*)mcalloc(1, sizeof(HashMap)); // need to ensure values are zeroed
     result->KeyByteSize = keyByteSize;
     result->ValueByteSize = valueByteSize;
     result->KeyComparer = keyComparerFunc;

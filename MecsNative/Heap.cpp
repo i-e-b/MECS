@@ -1,9 +1,9 @@
 #include "Heap.h"
 #include "Vector.h"
+#include "MemoryManager.h"
 
 #include "RawData.h"
 
-#include <stdlib.h>
 #include <stdint.h>
 
 
@@ -15,7 +15,7 @@ typedef struct Heap {
 Heap * HeapAllocate(int elementByteSize) {
     auto vec = VectorAllocate(elementByteSize + sizeof(int)); // int for priority, stored inline
     if (vec == NULL) return NULL;
-    Heap *h = (Heap*)malloc(sizeof(Heap));
+    Heap *h = (Heap*)mmalloc(sizeof(Heap));
     if (h == NULL) {
         VectorDeallocate(vec);
         return NULL;
@@ -31,7 +31,7 @@ Heap * HeapAllocate(int elementByteSize) {
 void HeapDeallocate(Heap * H) {
     if (H == NULL) return;
     VectorDeallocate(H->Elements);
-    free(H);
+    mfree(H);
 }
 
 void HeapClear(Heap * H) {
@@ -39,11 +39,11 @@ void HeapClear(Heap * H) {
     VectorClear(H->Elements);
 
     // place a super-minimum value at the start of the vector
-    auto temp = calloc(1, H->elementSize + sizeof(int));
+    auto temp = mcalloc(1, H->elementSize + sizeof(int));
     if (temp == NULL) { return; }
     writeInt(temp, INT32_MIN);
     VectorPush(H->Elements, temp);
-    free(temp);
+    mfree(temp);
 }
 
 inline int ElementPriority(Heap *H, int index) {
@@ -52,7 +52,7 @@ inline int ElementPriority(Heap *H, int index) {
 
 void HeapInsert(Heap * H, int priority, void * element) {
     if (H == NULL)  return;
-    auto temp = malloc(H->elementSize + sizeof(int));
+    auto temp = mmalloc(H->elementSize + sizeof(int));
     if (temp == NULL) return;
     
     writeIntPrefixValue(temp, priority, element, H->elementSize);
@@ -67,7 +67,7 @@ void HeapInsert(Heap * H, int priority, void * element) {
     }
 
     VectorSet(H->Elements, i, temp, NULL);
-    free(temp);
+    mfree(temp);
 }
 
 // Returns true if heap has no elements
@@ -83,14 +83,14 @@ bool HeapDeleteMin(Heap * H, void* element) {
 
     int i, Child;
 
-    auto MinElement = malloc(H->elementSize + sizeof(int));
+    auto MinElement = mmalloc(H->elementSize + sizeof(int));
     if (MinElement == NULL) return false;
-    auto LastElement = malloc(H->elementSize + sizeof(int));
-    if (LastElement == NULL) { free(MinElement); return false; }
+    auto LastElement = mmalloc(H->elementSize + sizeof(int));
+    if (LastElement == NULL) { mfree(MinElement); return false; }
 
     VectorCopy(H->Elements, 1, MinElement); // the first element is always minimum
     if (element != NULL) readIntPrefixValue(element, MinElement, H->elementSize); // so copy it out
-    free(MinElement);
+    mfree(MinElement);
 
     // Now re-enforce the heap property
     VectorPop(H->Elements, LastElement);

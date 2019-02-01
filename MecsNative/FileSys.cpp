@@ -1,6 +1,8 @@
 
 #include "FileSys.h"
-#include <stdlib.h>
+#include "MemoryManager.h"
+// Using MM restricts us to 64K path lengths. Should be OK for now.
+//#include <stdlib.h>
 
 #ifdef WIN32
 
@@ -17,7 +19,7 @@ bool fileWriteModeWindows(String* path, Vector* buffer, const char* mode) {
     auto file = fopen(cpath, mode);
 
     StringDeallocate(realPath);
-    free(cpath);
+    mfree(cpath);
 
     char c = 0;
     while (VectorDequeue(buffer, &c)) {
@@ -49,7 +51,7 @@ bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, u
     auto file = fopen(cpath, "rb");
 
     StringDeallocate(realPath);
-    free(cpath);
+    mfree(cpath);
 
     if (file == NULL) {
         return false;

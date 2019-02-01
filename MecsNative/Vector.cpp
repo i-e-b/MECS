@@ -3,7 +3,6 @@
 
 #include "RawData.h"
 
-//#include <stdlib.h>
 #include <stdint.h>
 
 typedef struct Vector {
@@ -475,7 +474,7 @@ bool VectorPop(Vector *v, void *target) {
     }
 
     // Clean up if we've emptied a chunk that isn't the initial one
-    if (entryIdx < 1 && v->_elementCount > 0) {
+    if (entryIdx < 1 && v->_elementCount > 1) {
         // need to dealloc end chunk
         bool found;
         void *prevChunkPtr = NULL;

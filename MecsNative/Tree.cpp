@@ -1,8 +1,8 @@
 #include "Tree.h"
+#include "MemoryManager.h"
 
 #include "RawData.h"
 
-#include <stdlib.h>
 
 // Header for each tree node. This covers the first bytes of a node
 typedef struct TreeNode {
@@ -30,7 +30,7 @@ const unsigned int NODE_HEAD_SIZE = sizeof(TreeNode);
 
 TreeNode* TreeAllocate(int elementSize) {
     // Make the root node
-    auto Root = (TreeNode*)calloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
+    auto Root = (TreeNode*)mcalloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
     if (Root == NULL) {
         return NULL;
     }
@@ -52,7 +52,7 @@ void TreeSetValue(TreeNode* node, void* element) {
 TreeNode* AllocateAndWriteNode(TreeNode* parent, int elementByteSize, void* element) {
     // Allocate new node and header
     auto nodeSize = NODE_HEAD_SIZE + elementByteSize;
-    auto newChildHead = (TreeNode*)calloc(1, nodeSize);
+    auto newChildHead = (TreeNode*)mcalloc(1, nodeSize);
     if (newChildHead == NULL) {
         return NULL;
     }
@@ -172,7 +172,7 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
 // Create a node not connected to a tree
 TreeNode* TreeBareNode(int elementSize) {
     // Make the root node
-    auto Root = (TreeNode*)calloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
+    auto Root = (TreeNode*)mcalloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
     if (Root == NULL) {
         return NULL;
     }
@@ -223,7 +223,7 @@ void RecursiveDelete(TreeNode* treeNodePtr) {
     while (current != NULL) {
         if (current->FirstChildPtr != NULL) RecursiveDelete(current->FirstChildPtr);
         var next = current->NextSiblingPtr;
-        free(current);
+        mfree(current);
         current = next;
     }
 }
@@ -232,7 +232,7 @@ void RecursiveDelete(TreeNode* treeNodePtr) {
 void DeleteNode(TreeNode* treeNodePtr) {
     if (treeNodePtr == NULL) return;
     RecursiveDelete(treeNodePtr->FirstChildPtr);
-    free(treeNodePtr);
+    mfree(treeNodePtr);
 }
 
 void TreeRemoveChild(TreeNode* parent, int targetIndex) {
