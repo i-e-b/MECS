@@ -115,7 +115,7 @@ void* CopyToArena(void* srcData, size_t length, Arena* target) {
     if (length < 1) return NULL;
     if (target == NULL) return NULL;
 
-    auto dstData = Allocate(target, length);
+    auto dstData = ArenaAllocate(target, length);
     if (dstData == NULL) return NULL;
 
     copyAnonArray(dstData, 0, srcData, 0, length);
@@ -138,7 +138,7 @@ void SetRefCount(Arena* a, int arenaIndex, uint16_t val) {
 }
 
 // Allocate memory of the given size
-void* Allocate(Arena* a, size_t byteCount) {
+void* ArenaAllocate(Arena* a, size_t byteCount) {
     if (byteCount > ARENA_ZONE_SIZE) return NULL; // Invalid allocation -- beyond max size.
     if (a == NULL) return NULL;
 
@@ -177,8 +177,8 @@ int ZoneForPtr(Arena* a, void* ptr) {
     return (int)arena;
 }
 
-// Remove a reference to memory. When no references are left, the memory is deallocated
-bool Dereference(Arena* a, void* ptr) {
+// Remove a reference to memory. When no references are left, the memory may be deallocated
+bool ArenaDereference(Arena* a, void* ptr) {
     if (a == NULL) return false;
     if (ptr == NULL) return false;
 
@@ -199,8 +199,8 @@ bool Dereference(Arena* a, void* ptr) {
     return true;
 }
 
-// Add a reference to memory, to delay deallocation. When no references are left, the memory is deallocated
-bool Reference(Arena* a, void* ptr) {
+// Add a reference to memory, to delay deallocation. When no references are left, the memory may be deallocated
+bool ArenaReference(Arena* a, void* ptr) {
     if (a == NULL) return false;
     if (ptr == NULL) return false;
 
@@ -215,7 +215,7 @@ bool Reference(Arena* a, void* ptr) {
 }
 
 // Read statistics for this Arena. Pass `NULL` for anything you're not interested in.
-void GetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes,
+void ArenaGetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes,
     int* occupiedZones, int* emptyZones, int* totalReferenceCount, size_t* largestContiguous) {
     if (a == NULL) return;
 

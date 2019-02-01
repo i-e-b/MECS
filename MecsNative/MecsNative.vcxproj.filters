@@ -66,6 +66,9 @@
     <ClCompile Include="ArenaAllocator.cpp">
       <Filter>Source Files\Containers</Filter>
     </ClCompile>
+    <ClCompile Include="MemoryManager.cpp">
+      <Filter>Source Files\Containers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -99,6 +102,9 @@
       <Filter>Source Files\Compiler</Filter>
     </ClInclude>
     <ClInclude Include="ArenaAllocator.h">
+      <Filter>Source Files\Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryManager.h">
       <Filter>Source Files\Containers</Filter>
     </ClInclude>
   </ItemGroup>

@@ -26,6 +26,8 @@ bool VectorCopy(Vector *v, unsigned int index, void* outValue);
 bool VectorDequeue(Vector *v, void* outValue);
 // Read and remove an element from the vector. A copy of the element is written into the parameter. If null, only the removal is done.
 bool VectorPop(Vector *v, void *target);
+// Read the end element from the vector without removing it. A copy of the element is written into the parameter
+bool VectorPeek(Vector *v, void* target);
 // Write a value at a given position. This must be an existing allocated position (with either push or prealloc).
 // If not 'prevValue' is not null, the old value is copied there
 bool VectorSet(Vector *v, unsigned int index, void* element, void* prevValue);
@@ -61,6 +63,7 @@ int VectorElementSize(Vector *v);
     inline typeName * nameSpace##Get_##typeName(Vector *v, unsigned int index){ return (typeName*)VectorGet(v, index); } \
     inline bool nameSpace##Copy_##typeName(Vector *v, unsigned int idx, typeName *target){ return VectorCopy(v, idx, (void*) target); } \
     inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } \
+    inline bool nameSpace##Peek_##typeName(Vector *v, typeName *target){ return VectorPeek(v, (void*) target); } \
     inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName* element, typeName* prevValue){ return VectorSet(v, index, (void*)element, (void*)prevValue); } \
     inline bool nameSpace##Dequeue_##typeName(Vector *v, typeName* outValue) { return VectorDequeue(v, (void*)outValue);}\
     inline void nameSpace##Sort_##typeName(Vector *v, int(*compareFunc)(typeName* A, typeName* B)) {VectorSort(v, (int(*)(void* A, void* B))compareFunc);}\

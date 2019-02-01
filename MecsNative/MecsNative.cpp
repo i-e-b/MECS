@@ -612,19 +612,19 @@ int TestArenaAllocator() {
 
     auto arena1 = NewArena(10 MEGABYTES);
 
-    GetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
+    ArenaGetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
     std::cout << "Empty 10MB Arena: alloc=" << allocatedBytes << "; free=" << unallocatedBytes << "; frgs used=" << occupiedZones << "; frgs empty=" << emptyZones << "; refs=" << totalReferenceCount << "; max chunk=" << largestContiguous << "\n";
 
     // allocate some bits
     for (int i = 0; i < 100; i++) {
-        auto ptr = Allocate(arena1, ARENA_ZONE_SIZE / 5);
+        auto ptr = ArenaAllocate(arena1, ARENA_ZONE_SIZE / 5);
         if (ptr == NULL) {
             std::cout << "Failed to allocate at " << i << "\n"; break;
         }
     }
     // and happily ignore them all, as long as we keep the arena reference
 
-    GetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
+    ArenaGetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
     std::cout << " Used 10MB Arena: alloc=" << allocatedBytes << "; free=" << unallocatedBytes << "; frgs used=" << occupiedZones << "; frgs empty=" << emptyZones << "; refs=" << totalReferenceCount << "; max chunk=" << largestContiguous << "\n";
 
     DropArena(&arena1);
@@ -633,21 +633,21 @@ int TestArenaAllocator() {
     // Test referencing and de-referencing
     auto arena2 = NewArena(256 KILOBYTES);
 
-    GetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
+    ArenaGetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
     std::cout << "Empty Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
     void* bits[20];
-    for (int i = 0; i < 20; i++) { bits[i] = Allocate(arena2, 256); }
-    GetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
+    for (int i = 0; i < 20; i++) { bits[i] = ArenaAllocate(arena2, 256); }
+    ArenaGetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
     std::cout << "Used Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
 
-    for (int i = 1; i < 20; i+=2) { Reference(arena2, bits[i]); }
-    for (int i = 0; i < 20; i+=2) { Dereference(arena2, bits[i]); }
+    for (int i = 1; i < 20; i+=2) { ArenaReference(arena2, bits[i]); }
+    for (int i = 0; i < 20; i+=2) { ArenaDereference(arena2, bits[i]); }
     for (int i = 0; i < 20; i++) { // this will double-dereference some bits, which should be ignored
-        Dereference(arena2, bits[i]);
-        Dereference(arena2, bits[i]);
+        ArenaDereference(arena2, bits[i]);
+        ArenaDereference(arena2, bits[i]);
     }
 
-    GetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
+    ArenaGetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
     std::cout << "Used and dereferenced Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
     DropArena(&arena2);
 

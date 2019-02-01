@@ -505,6 +505,21 @@ bool VectorPop(Vector *v, void *target) {
     return true;
 }
 
+bool VectorPeek(Vector *v, void* target) {
+    if (v->_elementCount == 0) return false;
+
+    var index = v->_elementCount - 1;
+    var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
+
+    // Get the value
+    var result = byteOffset(v->_endChunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+    if (result == NULL) return false;
+    if (target != NULL) {
+        writeValue(target, 0, result, v->ElementByteSize);
+    }
+    return true;
+}
+
 bool VectorSet(Vector *v, unsigned int index, void* element, void* prevValue) {
     // push in the value, returning previous value
     var ptr = PtrOfElem(v, index);

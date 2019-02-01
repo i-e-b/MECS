@@ -35,7 +35,7 @@ The machine:
 Actor model stuff:
 ------------------
 
-* [ ] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
+* [x] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
     * [ ] Remove stdlib malloc/free and replace 
     * [ ] Fix arena/zone naming consistency in the allocator code
 * [ ] Serialisation & hashing
