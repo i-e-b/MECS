@@ -1,8 +1,9 @@
 #include "Vector.h"
+#include "MemoryManager.h"
 
 #include "RawData.h"
 
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <stdint.h>
 
 typedef struct Vector {
@@ -89,7 +90,7 @@ void MaybeRebuildSkipTable(Vector *v); // defined later
 // add a new chunk at the end of the chain
 void *NewChunk(Vector *v)
 {
-    auto ptr = calloc(1, v->ChunkBytes); // avoid garbage data in the chunks (help when we pre-alloc)
+    auto ptr = mcalloc(1, v->ChunkBytes); // avoid garbage data in the chunks (help when we pre-alloc)
     if (ptr == NULL) return NULL;
 
     ((size_t*)ptr)[0] = 0; // set the continuation pointer of the new chunk to invalid
@@ -196,7 +197,7 @@ void RebuildSkipTable(Vector *v)
     v->_skipTableDirty = false;
     auto chunkTotal = v->_elementCount / v->ElemsPerChunk;
     if (chunkTotal < 4) { // not worth having a skip table
-        if (v->_skipTable != NULL) free(v->_skipTable);
+        if (v->_skipTable != NULL) mfree(v->_skipTable);
         v->_skipEntries = 0;
         v->_skipTable = NULL;
         v->_rebuilding = false;
@@ -209,7 +210,7 @@ void RebuildSkipTable(Vector *v)
     // General case: not every chunk will fit in the skip table
     // Find representative chunks using the existing table.
     // (finding will be a combination of search and scan)
-    auto newTablePtr = malloc(SKIP_ELEM_SIZE * entries);
+    auto newTablePtr = mmalloc(SKIP_ELEM_SIZE * entries);
     if (newTablePtr == NULL) { v->_rebuilding = false; return; } // live with the old one
 
     auto stride = v->_elementCount / entries;
@@ -225,7 +226,7 @@ void RebuildSkipTable(Vector *v)
         FindNearestChunk(v, target, &found, &chunkPtr, &chunkIndex);
 
         if (!found || chunkPtr == NULL) { // total fail
-            free(newTablePtr);
+            mfree(newTablePtr);
             v->_rebuilding = false;
             return;
         }
@@ -238,13 +239,13 @@ void RebuildSkipTable(Vector *v)
     }
 
     if (newSkipEntries < 1) {
-        free(newTablePtr); // failed to build
+        mfree(newTablePtr); // failed to build
         v->_rebuilding = false;
         return;
     }
 
     v->_skipEntries = newSkipEntries;
-    if (v->_skipTable != NULL) free(v->_skipTable);
+    if (v->_skipTable != NULL) mfree(v->_skipTable);
     v->_skipTable = newTablePtr;
     v->_rebuilding = false;
 }
@@ -270,7 +271,7 @@ void * PtrOfElem(Vector *v, uint index) {
 }
 
 Vector *VectorAllocate(int elementSize) {
-    auto result = (Vector*)calloc(1, sizeof(Vector));
+    auto result = (Vector*)mcalloc(1, sizeof(Vector));
 
     result->ElementByteSize = elementSize;
 
@@ -328,7 +329,7 @@ void VectorClear(Vector *v) {
 
     // empty out the skip table, if present
     if (v->_skipTable != NULL) {
-        free(v->_skipTable);
+        mfree(v->_skipTable);
         v->_skipTable = NULL;
     }
 
@@ -340,7 +341,7 @@ void VectorClear(Vector *v) {
     while (current != NULL) {
         var next = readPtr(current, 0);
         writePtr(current, 0, NULL); // just in case we have a loop
-        free(current);
+        mfree(current);
         current = next;
     }
 }
@@ -348,7 +349,7 @@ void VectorClear(Vector *v) {
 void VectorDeallocate(Vector *v) {
     if (v == NULL) return;
     v->IsValid = false;
-    if (v->_skipTable != NULL) free(v->_skipTable);
+    if (v->_skipTable != NULL) mfree(v->_skipTable);
     v->_skipTable = NULL;
     // Walk through the chunk chain, removing until we hit an invalid pointer
     var current = v->_baseChunkTable;
@@ -357,14 +358,14 @@ void VectorDeallocate(Vector *v) {
 
         var next = readPtr(current, 0);
         writePtr(current, 0, NULL); // just in case we have a loop
-        free(current);
+        mfree(current);
 
         if (current == v->_endChunkPtr) break; // sentinel
         current = next;
     }
     v->_baseChunkTable = NULL;
     v->_endChunkPtr = NULL;
-    free(v);
+    mfree(v);
 }
 
 int VectorLength(Vector *v) {
@@ -435,27 +436,27 @@ bool VectorDequeue(Vector * v, void * outValue) {
     // Advance the base and free the old
     auto oldChunk = v->_baseChunkTable;
     v->_baseChunkTable = nextChunk;
-    free(oldChunk);
+    mfree(oldChunk);
 
     if (v->_skipTable == NULL) return true; // don't need to fix the table
 
     // Make a truncated version of the skip table
     v->_skipEntries--;
     if (v->_skipEntries < 4) { // no point having a table
-        free(v->_skipTable);
+        mfree(v->_skipTable);
         v->_skipEntries = 0;
         v->_skipTable = NULL;
         return true;
     }
     // Copy of the skip table with first element gone
     uint length = SKIP_ELEM_SIZE * v->_skipEntries;
-    auto newTablePtr = (char*)malloc(length);
+    auto newTablePtr = (char*)mmalloc(length);
     auto oldTablePtr = (char*)v->_skipTable;
     for (uint i = 0; i < length; i++) {
         newTablePtr[i] = oldTablePtr[i + SKIP_ELEM_SIZE];
     }
     v->_skipTable = newTablePtr;
-    free(oldTablePtr);
+    mfree(oldTablePtr);
 
     return true;
 }
@@ -485,7 +486,7 @@ bool VectorPop(Vector *v, void *target) {
             v->IsValid = false;
             return false;
         }
-        free(v->_endChunkPtr);
+        mfree(v->_endChunkPtr);
         v->_endChunkPtr = prevChunkPtr;
         writePtr(prevChunkPtr, 0, NULL); // remove the 'next' pointer from the new end chunk
 
@@ -566,14 +567,14 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2) {
     if (A == NULL || B == NULL) return false;
 
     var bytes = v->ElementByteSize;
-    var tmp = malloc(bytes);
+    var tmp = mmalloc(bytes);
     if (tmp == NULL) return false;
 
     writeValue(tmp, 0, A, bytes); // tmp = A
     writeValue(A, 0, B, bytes); // A = B
     writeValue(B, 0, tmp, bytes); // B = tmp
 
-    free(tmp);
+    mfree(tmp);
 
     return true;
 }
@@ -657,10 +658,10 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     // Allocate the temporary structures
     uint32_t n = VectorLength(v);
     auto size = v->ElementByteSize;
-    void* arr1 = malloc((n+1) * size); // extra space for swapping
+    void* arr1 = mmalloc((n+1) * size); // extra space for swapping
     if (arr1 == NULL) return;
-    void* arr2 = malloc(n * size);
-    if (arr2 == NULL) { free(arr1); return; }
+    void* arr2 = mmalloc(n * size);
+    if (arr2 == NULL) { mfree(arr1); return; }
 
     // write into array in pairs, doing the scale=1 merge
     uint32_t i = 0;
@@ -688,8 +689,8 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     }
 
     // clean up
-    free(arr1);
-    free(arr2);
+    mfree(arr1);
+    mfree(arr2);
 }
 
 int VectorElementSize(Vector * v) {

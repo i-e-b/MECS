@@ -26,6 +26,7 @@ bool MMPush(size_t arenaMemory);
 void MMPop();
 
 // Deallocate the most recent arena, copying a data item to the next one down (or permanent memory if at the bottom of the stack)
+// NOTE: THIS IS A SHALLOW COPY!
 void* MMPopReturn(void* ptr, size_t size);
 
 // Return the current arena, or NULL if none pushed

@@ -24,7 +24,7 @@ void StartManagedMemory() {
 // Close all arenas and return to stdlib memory
 void ShutdownManagedMemory() {
     if (LOCK != 0) return;
-    if (MEMORY_STACK != NULL) return;
+    if (MEMORY_STACK == NULL) return;
     LOCK = 1;
 
     Vector* vec = (Vector*)MEMORY_STACK;
@@ -38,6 +38,7 @@ void ShutdownManagedMemory() {
 
 // Start a new arena, keeping memory and state of any existing ones
 bool MMPush(size_t arenaMemory) {
+    if (MEMORY_STACK == NULL) return false;
     while (LOCK != 0) {}
     LOCK = 1;
 
@@ -55,6 +56,7 @@ bool MMPush(size_t arenaMemory) {
 
 // Deallocate the most recent arena, restoring the previous
 void MMPop() {
+    if (MEMORY_STACK == NULL) return;
     while (LOCK != 0) {}
     LOCK = 1;
 
@@ -69,6 +71,7 @@ void MMPop() {
 
 // Deallocate the most recent arena, copying a data item to the next one down (or permanent memory if at the bottom of the stack)
 void* MMPopReturn(void* ptr, size_t size) {
+    if (MEMORY_STACK == NULL) return NULL;
     while (LOCK != 0) {}
     LOCK = 1;
 
@@ -82,8 +85,8 @@ void* MMPopReturn(void* ptr, size_t size) {
             result = MakePermanent(ptr, size);
         }
         DropArena(&a);
-    } else { // nothing to pop. Hopefully this is real memory?
-        result = ptr;
+    } else { // nothing to pop. Raise null to signal stack underflow
+        result = NULL;
     }
 
     LOCK = 0;
@@ -92,6 +95,7 @@ void* MMPopReturn(void* ptr, size_t size) {
 
 // Return the current arena, or NULL if none pushed
 Arena* MMCurrent() {
+    if (MEMORY_STACK == NULL) return NULL;
     while (LOCK != 0) {}
     LOCK = 1;
 

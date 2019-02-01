@@ -5,9 +5,14 @@
 
 #define ARENA_ZONE_SIZE 65535
 
+#define sizehelpers
 #define KILOBYTES * 1024UL
 #define MEGABYTES * 1048576
 #define GIGABYTES * 1073741824UL
+
+#define KILOBYTE * 1024UL
+#define MEGABYTE * 1048576
+#define GIGABYTE * 1073741824UL
 
 /*
 

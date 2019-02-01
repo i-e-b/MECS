@@ -7,6 +7,7 @@
 #include "String.h"
 #include "Heap.h"
 #include "ArenaAllocator.h"
+#include "MemoryManager.h"
 
 // Math:
 #include "Fix16.h"
@@ -721,14 +722,22 @@ int TestCompiler() {
 }
 
 int main() {
-    auto hmres = TestHashMap();
-    if (hmres != 0) return hmres;
-    
+    StartManagedMemory();
+
+    MMPush(1 MEGABYTES);
     auto vres = TestVector();
     if (vres != 0) return vres;
+    MMPop();
 
+    MMPush(1 MEGABYTE);
     auto qres = TestQueue();
     if (qres != 0) return qres;
+    MMPop();
+
+    MMPush(1 MEGABYTES);
+    auto hmres = TestHashMap();
+    if (hmres != 0) return hmres;
+    MMPop();
 
     auto tres = TestTree();
     if (tres != 0) return tres;

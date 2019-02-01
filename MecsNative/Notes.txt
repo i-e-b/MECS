@@ -38,6 +38,6 @@ Actor model stuff:
 * [x] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
     * [ ] Remove stdlib malloc/free and replace 
     * [ ] Fix arena/zone naming consistency in the allocator code
-* [ ] Serialisation & hashing
+* [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
 * [ ] Scheduler
