@@ -15,13 +15,13 @@ Components to do:
 * [x] Fixed point real? (imported)
 * [x] Bring heap in from scan-line experiments (and generalise)
 * [x] Tagged data format reader for 32-bit cpu
-* [x] string-to-num parsing
+* [x] String-to-num parsing
 
 Input handling:
 ---------------
 
 * [x] File system abstraction
-* [ ] improve filesystem to allow non-byte sized vectors
+* [ ] Improve filesystem to allow non-byte sized vectors?
 * [x] Convert parser
 * [ ] Convert compiler
 
@@ -37,7 +37,7 @@ Actor model stuff:
 
 * [x] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
     * [x] Remove stdlib malloc/free and replace 
-    * [ ] Fix arena/zone naming consistency in the allocator code
+    * [x] Fix arena/zone naming consistency in the allocator code
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
 * [ ] Scheduler

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-
+// maximum number of references in a zone before we give up.
 #define ZONE_MAX_REFS 65000
 
 typedef struct Arena {
@@ -16,8 +16,8 @@ typedef struct Arena {
     // Top of memory
     void* _limit;
 
-    // Pointer to array of ushort, length is equal to _arenaCount.
-    // Each element is offset of next pointer to allocate. Zero indicates an empty arena.
+    // Pointer to array of ushort, length is equal to _zoneCount.
+    // Each element is offset of next pointer to allocate. Zero indicates an empty zone.
     // This is also the base of allocated memory
     uint16_t* _headsPtr;
 
@@ -26,13 +26,10 @@ typedef struct Arena {
     uint16_t* _refCountsPtr;
 
     // The most recent arena that had a successful alloc or clear
-    int _currentArena;
+    int _currentZone;
 
     // Count of available arenas. This is the limit of memory
-    int _arenaCount;
-
-    // Index in the memory manager of this arena
-    int _mgrIndex;
+    int _zoneCount;
 } Arena;
 
 // Call to push a new arena to the manager stack. Size is the maximum size for the whole
@@ -57,11 +54,11 @@ Arena* NewArena(size_t size) {
     // recording only heads and refs would take 64KB of management space
     // recording heads, refs and back-step (an optimisation for very short-lived items) would use 96KB of management space.
     // This seems pretty reasonable.
-    result->_arenaCount = expectedZoneCount;
-    result->_currentArena = 0;
+    result->_zoneCount = expectedZoneCount;
+    result->_currentZone = 0;
 
     // Allow space for arena tables, store adjusted base
-    auto sizeOfTables = sizeof(uint16_t) * result->_arenaCount;
+    auto sizeOfTables = sizeof(uint16_t) * result->_zoneCount;
     result->_headsPtr = (uint16_t*)result->_start;
     result->_refCountsPtr = (uint16_t*)byteOffset(result->_start, sizeOfTables);
 
@@ -124,17 +121,17 @@ void* CopyToArena(void* srcData, size_t length, Arena* target) {
 }
 
 
-uint16_t GetHead(Arena* a, int arenaIndex) {
-    return readUshort(a->_headsPtr, arenaIndex * sizeof(uint16_t));
+uint16_t GetHead(Arena* a, int zoneIndex) {
+    return readUshort(a->_headsPtr, zoneIndex * sizeof(uint16_t));
 }
-uint16_t GetRefCount(Arena* a, int arenaIndex) {
-    return readUshort(a->_refCountsPtr, arenaIndex * sizeof(uint16_t));
+uint16_t GetRefCount(Arena* a, int zoneIndex) {
+    return readUshort(a->_refCountsPtr, zoneIndex * sizeof(uint16_t));
 }
-void SetHead(Arena* a, int arenaIndex, uint16_t val) {
-    writeUshort(a->_headsPtr, arenaIndex * sizeof(uint16_t), val);
+void SetHead(Arena* a, int zoneIndex, uint16_t val) {
+    writeUshort(a->_headsPtr, zoneIndex * sizeof(uint16_t), val);
 }
-void SetRefCount(Arena* a, int arenaIndex, uint16_t val) {
-    writeUshort(a->_refCountsPtr, arenaIndex * sizeof(uint16_t), val);
+void SetRefCount(Arena* a, int zoneIndex, uint16_t val) {
+    writeUshort(a->_refCountsPtr, zoneIndex * sizeof(uint16_t), val);
 }
 
 // Allocate memory of the given size
@@ -143,17 +140,17 @@ void* ArenaAllocate(Arena* a, size_t byteCount) {
     if (a == NULL) return NULL;
 
     auto maxOff = ARENA_ZONE_SIZE - byteCount;
-    auto arenaCount = a->_arenaCount;
+    auto zoneCount = a->_zoneCount;
 
     // scan for first arena where there is enough room
     // we can either start from scratch each time, start from last success, or last emptied
-    for (int seq = 0; seq < arenaCount; seq++) {
-        auto i = (seq + a->_currentArena) % arenaCount; // simple scan from last active, looping back if needed
+    for (int seq = 0; seq < zoneCount; seq++) {
+        auto i = (seq + a->_currentZone) % zoneCount; // simple scan from last active, looping back if needed
 
         if (GetHead(a, i) > maxOff) continue; // no room in this slot
 
         // found a slot where it will fit
-        a->_currentArena = i;
+        a->_currentZone = i;
         uint16_t result = GetHead(a, i); // new pointer
         SetHead(a, i, result + byteCount); // advance pointer to end of allocated data
 
@@ -172,9 +169,9 @@ int ZoneForPtr(Arena* a, void* ptr) {
     if (ptr < a->_start || ptr > a->_limit) return -1;
 
     ptrdiff_t rawOffset = (ptrdiff_t)ptr - (ptrdiff_t)a->_start;
-    ptrdiff_t arena = rawOffset / ARENA_ZONE_SIZE;
-    if (arena < 0 || arena >= a->_arenaCount) return -1;
-    return (int)arena;
+    ptrdiff_t zone = rawOffset / ARENA_ZONE_SIZE;
+    if (zone < 0 || zone >= a->_zoneCount) return -1;
+    return (int)zone;
 }
 
 bool ArenaContainsPointer(Arena* a, void* ptr) {
@@ -201,7 +198,7 @@ bool ArenaDereference(Arena* a, void* ptr) {
     // If no more references, free the block
     if (refCount == 0) {
         SetHead(a, zone, 0);
-        if (zone < a->_currentArena) a->_currentArena = zone; // keep allocations packed in low memory. Is this worth it?
+        if (zone < a->_currentZone) a->_currentZone = zone; // keep allocations packed in low memory. Is this worth it?
     }
     return true;
 }
@@ -233,18 +230,18 @@ void ArenaGetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes,
     int totalReferences = 0;
     size_t largestFree = 0;
 
-    auto zoneCount = a->_arenaCount;
+    auto zoneCount = a->_zoneCount;
 
     for (int i = 0; i < zoneCount; i++) {
-        auto arenaRefCount = GetRefCount(a, i);
-        auto arenaHead = GetHead(a, i);
-        totalReferences += arenaRefCount;
+        auto zoneRefCount = GetRefCount(a, i);
+        auto zoneHead = GetHead(a, i);
+        totalReferences += zoneRefCount;
 
-        if (arenaHead > 0) occupied++;
+        if (zoneHead > 0) occupied++;
         else empty++;
 
-        auto free = ARENA_ZONE_SIZE - arenaHead;
-        allocated += arenaHead;
+        auto free = ARENA_ZONE_SIZE - zoneHead;
+        allocated += zoneHead;
         unallocated += free;
         if (free > largestFree) largestFree = free;
     }
