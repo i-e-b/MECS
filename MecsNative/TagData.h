@@ -17,7 +17,7 @@
 #define NUMERIC_TYPE 0x40
 
 // Every variable or opcode in the interpreter must be one of these:
-enum DataType {
+enum class DataType {
     Invalid      = 0, // Tag is not initialised, or is a sentinel value
 
     // ##### Core bytecode types ###########

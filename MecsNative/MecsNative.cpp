@@ -511,7 +511,7 @@ int TestHeaps() {
 int TestTagData() {
     std::cout << "***************** TAG DATA ******************\n";
 
-    auto tag = DataTag { DataType::VectorPtr, ALLOCATED_TYPE + 2, 0x82 }; // these should be the same
+    auto tag = DataTag { (int)DataType::VectorPtr, ALLOCATED_TYPE + 2, 0x82 }; // these should be the same
 
     auto str = StringEmpty();
     StringAppend(str, "Tag: ");

@@ -5,22 +5,22 @@ bool IsAllocated(DataTag token) {
 };
 
 DataTag VoidReturn() {
-    return DataTag{ DataType::Void, 0, 0 };
+    return DataTag{ (int)DataType::Void, 0, 0 };
 };
 DataTag UnitReturn() {
-    return DataTag{ DataType::Unit, 0, 0 };
+    return DataTag{ (int)DataType::Unit, 0, 0 };
 };
 DataTag NonResult() {
-    return DataTag{ DataType::Not_a_Result, 0, 0 };
+    return DataTag{ (int)DataType::Not_a_Result, 0, 0 };
 };
 DataTag RuntimeError(uint32_t bytecodeLocation) {
-    return DataTag{ DataType::Exception, 0, bytecodeLocation };
+    return DataTag{ (int)DataType::Exception, 0, bytecodeLocation };
 };
 
 // Encode an op-code with up to 2x16 bit params
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2) {
     return DataTag{
-        DataType::Opcode,
+        (int)DataType::Opcode,
         ((uint32_t)codeClass << 8) | (codeAction),
         ((uint32_t)p1 << 16) | ((uint32_t)p2)
     };
@@ -28,7 +28,7 @@ DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2) 
 // Encode an op-code with 1x32 bit param
 DataTag EncodeLongOpcode(char codeClass, char codeAction, uint32_t p1) {
     return DataTag{
-        DataType::Opcode,
+        (int)DataType::Opcode,
         ((uint32_t)codeClass << 8) | (codeAction),
         p1
     };
@@ -65,17 +65,17 @@ void DecodeLongOpcode(DataTag encoded, char* codeClass, char* codeAction, uint32
 // Crush and encode a name (such as a function or variable name) as a variable ref
 DataTag EncodeVariableRef(String* fullName, uint32_t* outCrushedName) {
     if (fullName == NULL) {
-        return DataTag{ DataType::Invalid, 0, 0 };
+        return DataTag{ (int)DataType::Invalid, 0, 0 };
     }
 
     auto hash = StringHash(fullName);
     if (outCrushedName != NULL) *outCrushedName = hash;
-    return DataTag{ DataType::VariableRef, 0, hash };
+    return DataTag{ (int)DataType::VariableRef, 0, hash };
 }
 
 // Encode an already crushed name as a variable ref
 DataTag EncodeVariableRef(uint32_t crushedName) {
-    return DataTag{ DataType::VariableRef, 0, crushedName };
+    return DataTag{ (int)DataType::VariableRef, 0, crushedName };
 }
 // Extract an encoded reference name from a tag
 uint32_t DecodeVariableRef(DataTag encoded) {
@@ -95,21 +95,21 @@ DataTag EncodePointer(uint32_t ptrTarget, DataType type) {
 }
 
 DataTag EncodeInt32(int32_t original) {
-    return DataTag{ DataType::Integer, 0, (uint32_t)original };
+    return DataTag{ (int)DataType::Integer, 0, (uint32_t)original };
 }
 int32_t DecodeInt32(DataTag encoded) {
     return encoded.data;
 }
 
 DataTag EncodeBool(bool b) {
-    return DataTag{ DataType::Integer, 0, (b) ? 0xffffffffu : 0u };
+    return DataTag{ (int)DataType::Integer, 0, (b) ? 0xffffffffu : 0u };
 }
 bool DecodeBool(DataTag encoded) {
     return encoded.data == 0;
 }
 
 DataTag EncodeShortStr(String* str) {
-    DataTag result = { DataType::SmallString, 0, 0 };
+    DataTag result = { (int)DataType::SmallString, 0, 0 };
 
     for (int i = 0; i < 3; i++) {
         result.params |= StringDequeue(str) << (16 - (i*8));
@@ -137,7 +137,7 @@ void DecodeShortStr(DataTag token, String* target) {
 
 void Describe(DataTag token, String* target) {
     char c1, c2;
-    switch (token.type) {
+    switch ((DataType)(token.type)) {
     case DataType::Invalid:  StringAppend(target, "Invalid token"); return;
     case DataType::Not_a_Result:  StringAppend(target, "Non value (NAR)"); return;
     case DataType::Void:  StringAppend(target, "Non value (Void)"); return;
