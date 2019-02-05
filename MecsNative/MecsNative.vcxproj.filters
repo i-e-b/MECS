@@ -116,6 +116,9 @@
     <ClInclude Include="TagCodeTypes.h">
       <Filter>Source Files\Encoding</Filter>
     </ClInclude>
+    <ClInclude Include="CompilerCore.h">
+      <Filter>Source Files\Compiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes.txt" />

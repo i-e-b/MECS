@@ -24,6 +24,9 @@ Input handling:
 * [ ] Improve filesystem to allow non-byte sized vectors?
 * [x] Convert parser
 * [ ] Convert compiler
+  * [x] tag code write
+  * [ ] scope (vector of hashmaps)
+  * [x] context
 
 The machine:
 ------------
