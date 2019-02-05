@@ -28,6 +28,7 @@ Input handling:
 The machine:
 ------------
 
+* [ ] Try introducing C++ namespacing?
 * [ ] Convert runtime
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 

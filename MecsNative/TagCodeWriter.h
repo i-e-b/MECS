@@ -24,6 +24,11 @@ typedef struct TagCodeCache TagCodeCache;
 TagCodeCache* TCW_Allocate();
 void TCW_Deallocate(TagCodeCache* tcc);
 
+// True if any errors were recorded
+bool TCW_HasErrors(TagCodeCache* tcc);
+// Errors during writing, or NULL if successful
+Vector* TCW_ErrorList(TagCodeCache* tcc);
+
 // Returns true if we expect this code fragment to return a value
 bool TCW_ReturnsValues(TagCodeCache* tcc);
 // Set if this code fragment is expected to return a value
@@ -44,10 +49,10 @@ void TCW_Merge(TagCodeCache* dest, TagCodeCache* srcFragment);
 Vector* TCW_WriteToStream(TagCodeCache* tcc);
 
 // Add a symbol set to the known symbols table
-void TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym);
+bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym);
 
 // Return the original names of variable references we've hashed. Keys are the Variable Ref byte codes
-HashMap* GetSymbols(TagCodeCache* tcc);
+HashMap* TCW_GetSymbols(TagCodeCache* tcc);
 
 
 // Generation methods:
@@ -65,7 +70,7 @@ void TCW_FunctionCall(TagCodeCache* tcc, String* functionName, int parameterCoun
 // Add a define-and-skip set of opcodes *before* merging in the compiled function opcodes.
 void TCW_FunctionDefine(TagCodeCache* tcc, String* functionName, int argCount, int tokenCount);
 // Add a single symbol reference
-void TCW_AddSymbol(TagCodeCache* tcc, uint32_t crushed, String* name);
+bool TCW_AddSymbol(TagCodeCache* tcc, uint32_t crushed, String* name);
 // Mark a function return that should not happen
 void TCW_InvalidReturn(TagCodeCache* tcc);
 // Return from a function, with a certain number of values
