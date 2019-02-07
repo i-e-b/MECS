@@ -17,6 +17,16 @@ DataTag RuntimeError(uint32_t bytecodeLocation) {
     return DataTag{ (int)DataType::Exception, 0, bytecodeLocation };
 };
 
+// return a tag that is never valid (denotes an error)
+DataTag InvalidTag() {
+    return DataTag{ (int)DataType::Invalid, 0, 0 };
+}
+// returns false if the tag is of `Invalid` type, true otherwise
+bool IsTagValid(DataTag t) {
+    return t.type != (int)DataType::Invalid;
+}
+
+
 // Encode an op-code with up to 2x16 bit params
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2) {
     return DataTag{

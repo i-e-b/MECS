@@ -20,16 +20,6 @@ namespace MecsCore.Runtime
         private readonly HashLookup<double>[] _scopes;
         private int _currentScopeIdx;
 
-        private static readonly uint[] posParamHash;
-
-        static Scope() {
-            posParamHash = new uint[128]; // this limits the number of parameters, so is quite high
-            for (int i = 0; i < 128; i++)
-            {
-                posParamHash[i] = NanTags.GetCrushedName("__p" + i);
-            }
-        }
-
         /// <summary>
         /// Create a new empty value scope
         /// </summary>
@@ -94,7 +84,7 @@ namespace MecsCore.Runtime
                 {
                     foreach (var parameter in parameters)
                     {
-                        sd.Add(posParamHash[i], parameter);
+                        sd.Add(NameFor(i), parameter);
                         i++;
                     }
                 }
@@ -208,7 +198,7 @@ namespace MecsCore.Runtime
         /// </summary>
         public static uint NameFor(int i)
         {
-            return posParamHash[i];
+            return (uint) (i | (i << 16) | 0x80000001);
         }
 
         /// <summary>

@@ -59,6 +59,11 @@ typedef struct DataTag {
 // Returns true if this token is a pointer to allocated data, false if this token contains its own value
 bool IsAllocated(DataTag token);// { return token.type & ALLOCATED_TYPE > 0; };
 
+// return a tag that is never valid (denotes an error)
+DataTag InvalidTag();
+// returns false if the tag is of `Invalid` type, true otherwise
+bool IsTagValid(DataTag t);
+
 // Value tagged as an non return type
 DataTag VoidReturn();
 DataTag UnitReturn();

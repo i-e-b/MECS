@@ -31,8 +31,6 @@ typedef struct Scope {
     HashMap* PotentialGarbage;
     // Vector of (Hashmap of Name->DataTag)
     Vector* _scopes;
-    // The current head of the `_scopes` vector
-    int _currentScopeIdx;
 } Scope;
 
 
@@ -45,7 +43,6 @@ Scope* ScopeAllocate() {
 
     result->PotentialGarbage = MapAllocate_Name_DataTag(1024);
     result->_scopes = VecAllocate_MapPtr();
-    result->_currentScopeIdx = 0;
 
     if (result->PotentialGarbage == NULL || result->_scopes == NULL) {
         ScopeDeallocate(result);
@@ -95,7 +92,8 @@ Vector* ScopeAllVisible(Scope* s) {
 
     auto seen = MapAllocate_Name_bool(1024);// to record shadowing
     auto result = VecAllocate_ScopeReference();
-    for (int i = s->_currentScopeIdx; i >= 0; i--) {
+    int currentScopeIdx = VecLength(s->_scopes) - 1;
+    for (int i = currentScopeIdx; i >= 0; i--) {
         auto scope = VecGet_MapPtr(s->_scopes, i); //var scope = _scopes[i];
         auto values = MapAllEntries(*VecGet_MapPtr(s->_scopes, i));
 
@@ -122,7 +120,6 @@ void ScopePush(Scope* s, Vector* parameters) {
     if (newLevel == NULL) return;
 
     VecPush_MapPtr(s->_scopes, newLevel);
-    s->_currentScopeIdx++;
 
     if (parameters == NULL) return;
 
@@ -141,7 +138,6 @@ void ScopeDrop(Scope* s) {
 
     MapPtr last = NULL;
     VecPop_MapPtr(s->_scopes, &last);
-    s->_currentScopeIdx--;
     if (last == NULL) return;
 
     // add lost references to the potential garbage
@@ -156,13 +152,32 @@ void ScopeDrop(Scope* s) {
     VecDeallocate(refs);
 }
 
+DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
+    if (s == NULL) return InvalidTag();
+
+    int currentScopeIdx = VecLength(s->_scopes) - 1;
+
+    DataTag* found = NULL;
+    for (int i = currentScopeIdx; i >= 0; i--) {
+        auto scopeMap = VecGet_MapPtr(s->_scopes, i);
+        if (MapGet_Name_DataTag(*scopeMap, crushedName, &found)) {
+            DataTag localCopy = *found;
+            return localCopy;
+        }
+    }
+
+    // fell out of the loop without finding anything
+    return InvalidTag();
+}
 
 
+void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
+    // TODO
+}
 
 
 uint32_t ScopeNameForPosition(int i) {
     // For simplicity, we use a completely artificial hash value here. Hopefully the low odds of collision won't bite us!
-    // The C# version made a name like `"__p" + i` and hashed that.
     uint32_t h = i;
     h = (h << 16) + i;
     h |= 0x80000001;

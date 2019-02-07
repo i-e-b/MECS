@@ -45,7 +45,7 @@ void ScopePush(Scope* s, Vector* parameters);
 
 // Remove innermost scope, and drop back to the previous one
 void ScopeDrop(Scope* s);
-// Read a value by name. Returns 'invalid' if not found
+// Read a value by name. Returns 'invalid' if not found (remember to check!)
 DataTag ScopeResolve(Scope* s, uint32_t crushedName);
 // Set a value by name. If no scope has it, then it will be defined in the innermost scope
 void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue);
