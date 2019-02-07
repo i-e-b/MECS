@@ -16,6 +16,7 @@ Components to do:
 * [x] Bring heap in from scan-line experiments (and generalise)
 * [x] Tagged data format reader for 32-bit cpu
 * [x] String-to-num parsing
+* [ ] Extend numeric types (add rationals?)
 
 Input handling:
 ---------------

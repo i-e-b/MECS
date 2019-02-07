@@ -80,7 +80,6 @@ Scope* ScopeClone(Scope* source) {
     return result;
 }
 
-
 HashMap* ScopePotentialGarbage(Scope *s) {
     if (s == NULL) return NULL;
     return s->PotentialGarbage;
@@ -170,7 +169,6 @@ DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
     return InvalidTag();
 }
 
-
 void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
     if (s == NULL) return;
 
@@ -206,6 +204,29 @@ void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
     MapPut_Name_DataTag(innerScope, crushedName, newValue, true);
 }
 
+bool ScopeCanResolve(Scope* s, uint32_t crushedName) {
+    auto tag = ScopeResolve(s, crushedName);
+    return IsTagValid(tag);
+}
+
+void ScopeRemove(Scope* s, uint32_t crushedName) {
+    if (s == NULL) return;
+    if (VecLength(s->_scopes) < 1) return;
+
+    // Only works in inner-most or global scope -- global first
+    MapPtr scope = *VecGet_MapPtr(s->_scopes, 0);
+    if (MapRemove_Name_DataTag(scope, crushedName)) return;
+    VecPeek_MapPtr(s->_scopes, &scope);
+    MapRemove_Name_DataTag(scope, crushedName);
+}
+
+bool InScope(Scope* s, uint32_t crushedName) {
+    if (s == NULL) return false;
+
+    MapPtr scope = NULL;
+    VecPeek_MapPtr(s->_scopes, &scope);
+    return MapContains_Name_DataTag(scope, crushedName);
+}
 
 uint32_t ScopeNameForPosition(int i) {
     // For simplicity, we use a completely artificial hash value here. Hopefully the low odds of collision won't bite us!
@@ -213,5 +234,26 @@ uint32_t ScopeNameForPosition(int i) {
     h = (h << 16) + i;
     h |= 0x80000001;
     return h;
+}
+
+void ScopeMutateNumber(Scope* s, uint32_t crushedName, int8_t increment) {
+    if (s == NULL) return;
+
+    int currentScopeIdx = VecLength(s->_scopes) - 1;
+
+    DataTag* found = NULL;
+    for (int i = currentScopeIdx; i >= 0; i--) {
+        auto scopeMap = VecGet_MapPtr(s->_scopes, i);
+        if (MapGet_Name_DataTag(*scopeMap, crushedName, &found)) {
+
+            // we have a pointer direct to the stored value, so can change it in place...
+            // NOTE: we are currently assuming the data is an int32_t. In the future, we need to handle number conversion.
+            found->data = (int32_t)found->data + increment;
+            return;
+        }
+    }
+
+    // fell out of the loop without finding anything
+    return;
 }
 

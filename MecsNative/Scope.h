@@ -49,8 +49,6 @@ void ScopeDrop(Scope* s);
 DataTag ScopeResolve(Scope* s, uint32_t crushedName);
 // Set a value by name. If no scope has it, then it will be defined in the innermost scope
 void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue);
-// Clear all scopes and restore empty globals
-void ScopeClear(Scope* s);
 // Does this name exist in any scopes?
 bool ScopeCanResolve(Scope* s, uint32_t crushedName);
 // Remove this variable. NOTE: this will only work in the local or global scopes, but not any intermediaries.
@@ -59,7 +57,7 @@ void ScopeRemove(Scope* s, uint32_t crushedName);
 
 // Get the crushed name for a positional argument
 uint32_t ScopeNameForPosition(int i);
-// Does this name exist in the top level scope?  Will ignore other scopes, including global.
+// Does this name exist in the inner-most scope?  Will ignore other scopes, including global.
 bool InScope(Scope* s, uint32_t crushedName);
 // Add an increment to a stored number
 void ScopeMutateNumber(Scope* s, uint32_t crushedName, int8_t increment);
