@@ -173,6 +173,7 @@
     <ClCompile Include="Heap.cpp" />
     <ClCompile Include="MecsNative.cpp" />
     <ClCompile Include="MemoryManager.cpp" />
+    <ClCompile Include="Scope.cpp" />
     <ClCompile Include="SourceCodeTokeniser.cpp" />
     <ClCompile Include="String.cpp" />
     <ClCompile Include="TagCodeWriter.cpp" />
@@ -189,6 +190,7 @@
     <ClInclude Include="Heap.h" />
     <ClInclude Include="MemoryManager.h" />
     <ClInclude Include="RawData.h" />
+    <ClInclude Include="Scope.h" />
     <ClInclude Include="SourceCodeTokeniser.h" />
     <ClInclude Include="String.h" />
     <ClInclude Include="TagCodeTypes.h" />

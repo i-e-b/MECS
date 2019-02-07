@@ -72,6 +72,9 @@
     <ClCompile Include="TagCodeWriter.cpp">
       <Filter>Source Files\InputOutput</Filter>
     </ClCompile>
+    <ClCompile Include="Scope.cpp">
+      <Filter>Source Files\InputOutput</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -118,6 +121,9 @@
     </ClInclude>
     <ClInclude Include="CompilerCore.h">
       <Filter>Source Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Scope.h">
+      <Filter>Source Files\InputOutput</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

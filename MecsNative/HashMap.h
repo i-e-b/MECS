@@ -46,7 +46,7 @@ void HashMapPurge(HashMap *h);
 // These are invariant on type, but can be namespaced
 #define RegisterHashMapStatics(nameSpace) \
     inline void nameSpace##Deallocate(HashMap *h){ HashMapDeallocate(h); }\
-    inline Vector* nameSpace##AllEntries(HashMap *h){ return HashMapAllEntries(h); }\
+    inline Vector* nameSpace##AllEntries(HashMap *h)/*<! returns a Vector<HashMap_KVP> */{ return HashMapAllEntries(h); }\
     inline void nameSpace##Clear(HashMap *h){ HashMapClear(h); }\
     inline unsigned int nameSpace##Count(HashMap *h){ return HashMapCount(h); }\
 
@@ -58,6 +58,7 @@ void HashMapPurge(HashMap *h);
     inline bool nameSpace##Put##_##keyType##_##valueType(HashMap *h, keyType key, valueType value, bool replace){return HashMapPut(h, &key, &value, replace); }\
     inline bool nameSpace##Contains##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapContains(h, &key); }\
     inline bool nameSpace##Remove##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapRemove(h, &key); }\
+    typedef struct nameSpace##_KVP_##keyType##_##valueType { keyType* Key; valueType* Value; } nameSpace##_KVP_##keyType##_##valueType ; \
 
 
 #endif
