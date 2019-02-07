@@ -45,3 +45,11 @@ Actor model stuff:
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
 * [ ] Scheduler
+
+Garbage collector:
+------------------
+
+* [ ] periodically look for 'potential garbage' names in the running scope. If not found, deallocate
+* [ ] extend 'potential garbage' to hold a list instead of single refs
+* [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
+

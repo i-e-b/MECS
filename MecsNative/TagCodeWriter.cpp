@@ -91,8 +91,6 @@ Vector* TCW_ErrorList(TagCodeCache* tcc) {
     return tcc->_errors;
 }
 
-DataTag InvalidTag() { return DataTag{0,0,0}; }
-
 DataTag TCW_OpCodeAtIndex(TagCodeCache* tcc, int index) {
     if (tcc == NULL) return InvalidTag();
     if (VecLength(tcc->_opcodes) >= index) return InvalidTag();

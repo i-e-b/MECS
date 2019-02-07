@@ -26,6 +26,12 @@ bool IsTagValid(DataTag t) {
     return t.type != (int)DataType::Invalid;
 }
 
+bool TagsAreEqual(DataTag a, DataTag b) {
+    if (a.data != b.data) return false;
+    if (a.type != b.type) return false;
+    if (a.params != b.params) return false;
+    return true;
+}
 
 // Encode an op-code with up to 2x16 bit params
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2) {

@@ -63,6 +63,8 @@ bool IsAllocated(DataTag token);// { return token.type & ALLOCATED_TYPE > 0; };
 DataTag InvalidTag();
 // returns false if the tag is of `Invalid` type, true otherwise
 bool IsTagValid(DataTag t);
+// returns true if the tags are both the same type, params and data. False otherwise.
+bool TagsAreEqual(DataTag a, DataTag b);
 
 // Value tagged as an non return type
 DataTag VoidReturn();

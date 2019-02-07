@@ -146,7 +146,7 @@ void ScopeDrop(Scope* s) {
     Map_KVP_Name_DataTag lostReference;
     while (VecPop_Map_KVP_Name_DataTag(refs, &lostReference)) {
         if (IsAllocated(*lostReference.Value)) {
-            MapPut_Name_DataTag(s->PotentialGarbage, *lostReference.Key, *lostReference.Value, false);
+            MapPut_Name_DataTag(s->PotentialGarbage, *lostReference.Key, *lostReference.Value, false); // NOTE: we could leak here. The potential garbage really needs to be Map< name, Vec<tag> >
         }
     }
     VecDeallocate(refs);
@@ -172,7 +172,38 @@ DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
 
 
 void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
-    // TODO
+    if (s == NULL) return;
+
+    // try to find an existing value and change it
+    // otherwise, insert a new value
+
+    int currentScopeIdx = VecLength(s->_scopes) - 1;
+
+    DataTag* found = NULL;
+    for (int i = currentScopeIdx; i >= 0; i--) {
+        auto scopeMap = *VecGet_MapPtr(s->_scopes, i);
+        if ( ! MapGet_Name_DataTag(scopeMap, crushedName, &found)) {
+            continue; // not in this scope
+        }
+
+        DataTag localCopy = *found;
+        if (TagsAreEqual(newValue, localCopy)) return; // nothing needs doing
+
+        // we now need to replace an old value. If the OLD one is a reference type, add it to garbage
+        if (IsAllocated(localCopy)) {
+            MapPut_Name_DataTag(s->PotentialGarbage, crushedName, localCopy, true); // NOTE: we could leak here. The potential garbage really needs to be Map< name, Vec<tag> >
+        }
+
+        // save the new value in scope and exit
+        MapPut_Name_DataTag(scopeMap, crushedName, newValue, true);
+        return;
+    }
+
+    // Dropped out of the loop without finding an existing value.
+    // We now save a new value in the inner-most scope
+    MapPtr innerScope = NULL;
+    VecPeek_MapPtr(s->_scopes, &innerScope);
+    MapPut_Name_DataTag(innerScope, crushedName, newValue, true);
 }
 
 
