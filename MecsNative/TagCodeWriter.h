@@ -28,6 +28,8 @@ void TCW_Deallocate(TagCodeCache* tcc);
 bool TCW_HasErrors(TagCodeCache* tcc);
 // Errors during writing, or NULL if successful
 Vector* TCW_ErrorList(TagCodeCache* tcc);
+// Add an error to the writer
+void TCW_AddError(TagCodeCache* tcc, String* ErrorMessage);
 
 // Returns true if we expect this code fragment to return a value
 bool TCW_ReturnsValues(TagCodeCache* tcc);
@@ -61,8 +63,10 @@ HashMap* TCW_GetSymbols(TagCodeCache* tcc);
 void TCW_Comment(TagCodeCache* tcc, String* s);
 // Reference a value name
 void TCW_VariableReference(TagCodeCache* tcc, String* valueName);
-// Make a memory command
+// Make a memory command with a string name
 void TCW_Memory(TagCodeCache* tcc, char action, String* targetName, int paramCount);
+// Make a memory command with a crushed name
+void TCW_Memory(TagCodeCache* tcc, char action, uint32_t crushed);
 // Direct numeric manipulation
 void TCW_Increment(TagCodeCache* tcc, int8_t incr, String* targetName);
 // Function call
@@ -82,7 +86,7 @@ void TCW_CompareJump(TagCodeCache* tcc, int opCodeCount);
 // Jump relative up, always
 void TCW_UnconditionalJump(TagCodeCache* tcc, int opCodeCount);
 // Encode a numeric value
-void TCW_LiteralNumber(TagCodeCache* tcc, double d);
+void TCW_LiteralNumber(TagCodeCache* tcc, int32_t d);
 // Write a static string. Static strings aren't seen by the GC and exist in memory outside of the normal allocation space
 void TCW_LiteralString(TagCodeCache* tcc, String* s);
 // Add a pre-encode string

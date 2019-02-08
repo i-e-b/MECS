@@ -1,5 +1,6 @@
 #include "CompilerCore.h"
 #include "SourceCodeTokeniser.h"
+#include "CompilerOptimisations.h"
 
 #include "TimingSys.h"
 
@@ -106,55 +107,83 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
         substitute = true;
         leafValue = ScopeResolve(parameterNames, nameHash);
     }
-    /*
+
     // An unwrapped variable name?
     if (IsUnwrappedIdentifier(valueName, rootNode, compileContext)) {
         if (debug) {
-            wr.Comment("// treating '" + valueName + "' as an implicit get()");
+            TCW_Comment(wr, StringNewFormat("// treating '\x01' as an implicit get()", valueName));
         }
-        if (substitute) wr.Memory('g', leafValue);
-        else wr.Memory('g', valueName, 0);
+        if (substitute) {
+            TCW_Memory(wr, 'g', leafValue.data);
+        } else {
+            TCW_Memory(wr, 'g', valueName, 0);
+        }
 
         return;
     }
 
     if (debug) {
-        wr.Comment("// Value : \"" + root + "\"\r\n");
-        if (substitute)
-        {
-            wr.Comment("// Parameter reference redefined as '" + valueName + "'\r\n");
+        TCW_Comment(wr, StringNewFormat("// Value : '\x01'\r\n", DescribeSourceNode(root)));
+        if (substitute) {
+            TCW_Comment(wr, StringNewFormat("// Parameter reference redefined as '\x01'\r\n", valueName));
         }
     }
 
     switch (root->NodeType) {
     case NodeType::Numeric:
-        wr.LiteralNumber(double.Parse(valueName.Replace("_", "")));
+        // TODO: extend from integers
+        int32_t numVal;
+        if (!StringTryParse_int32(valueName, &numVal)) {
+            TCW_AddError(wr, StringNewFormat("Failed to decode '\x01' as a number [#\03]", valueName, root->SourceLocation));
+            return;
+        }
+        TCW_LiteralNumber(wr, numVal);
         break;
 
     case NodeType::StringLiteral:
-        wr.LiteralString(valueName);
+        TCW_LiteralString(wr, valueName);
         break;
 
     case NodeType::Atom:
-        if (valueName == "true") wr.LiteralInt32(-1);
-        else if (valueName == "false") wr.LiteralInt32(0);
-        else if (substitute) wr.RawToken(leafValue);
-        else wr.VariableReference(valueName);
+        if (StringAreEqual(valueName, "true")) TCW_LiteralNumber(wr,-1);
+        else if (StringAreEqual(valueName, "false")) TCW_LiteralNumber(wr, 0);
+        else if (substitute) TCW_RawToken(wr, leafValue);
+        else TCW_VariableReference(wr, valueName);
         break;
 
     default:
-        throw new Exception("Unexpected compiler state");
+        TCW_AddError(wr, StringNewFormat("Unexpected compiler state [#\03]", root->SourceLocation));
+        break;
     }
-    */
 }
 
-void CompileMemoryFunction(int level, bool debug, TreeNode* node, TreeNode* container, TagCodeCache* wr, Scope* parameterNames) {
+void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
+    auto nodeData = TreeReadBody_SourceNode(node);
+    // Check for special increment mode
+    int8_t incr;
+    String* target = NULL;
+    if (StringAreEqual(nodeData->Text, "set") && CO_IsSmallIncrement(node, &incr, &target)) {
+        TCW_Increment(wr, incr, target);
+        return;
+    }
 
+    // build a sub-tree to compile in memory-access context
+    // we slightly mutate the tree, so can't just take the child directly
+    auto child = TreePivot(node);
+    int paramCount = TreeCountChildren(child);
+    auto childData = TreeReadBody_SourceNode(child);
+
+    TCW_Merge(wr, Compile(child, level + 1, debug, parameterNames, NULL, Context::MemoryAccess));
+
+    if (debug) { TCW_Comment(wr, StringNewFormat("// Memory function : '\x01'", nodeData->Text)); }
+
+    char act = StringCharAtIndex(nodeData->Text, 0);
+    TCW_Memory(wr, act, childData->Text, paramCount);
 }
 void CompileExternalFile(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames, HashMap* includedFiles) {
 
 }
-bool CompileConditionOrLoop(int level, bool debug, TreeNode* container, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
+bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
     // return true if we output a value
     return false;
 }
@@ -190,13 +219,12 @@ TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNa
             continue;
         }
 
-        auto container = node;
         if (IsMemoryFunction(node)) {
-            CompileMemoryFunction(indent, debug, node, container, wr, parameterNames);
+            CompileMemoryFunction(indent, debug, node, wr, parameterNames);
         } else if (IsInclude(node)) {
             CompileExternalFile(indent, debug, node, wr, parameterNames, includedFiles);
         } else if (IsFlowControl(node)) {
-            if (CompileConditionOrLoop(indent, debug, container, node, wr, parameterNames)) TCW_SetReturnsValues(wr);
+            if (CompileConditionOrLoop(indent, debug, node, wr, parameterNames)) TCW_SetReturnsValues(wr);
         } else if (IsFunctionDefinition(node)) {
             CompileFunctionDefinition(indent, debug, node, wr, parameterNames);
         } else {

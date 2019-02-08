@@ -168,6 +168,7 @@
   <ItemGroup>
     <ClCompile Include="ArenaAllocator.cpp" />
     <ClCompile Include="CompilerCore.cpp" />
+    <ClCompile Include="CompilerOptimisations.cpp" />
     <ClCompile Include="FileSys.cpp" />
     <ClCompile Include="Fix16.cpp" />
     <ClCompile Include="HashMap.cpp" />
@@ -187,6 +188,7 @@
   <ItemGroup>
     <ClInclude Include="ArenaAllocator.h" />
     <ClInclude Include="CompilerCore.h" />
+    <ClInclude Include="CompilerOptimisations.h" />
     <ClInclude Include="FileSys.h" />
     <ClInclude Include="Fix16.h" />
     <ClInclude Include="HashMap.h" />

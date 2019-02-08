@@ -53,10 +53,9 @@ namespace MecsCore.Compiler
                 {
 				    if (!node.IsLeaf)
                     {
-					    var container = node;
 					    if (IsMemoryFunction(node) )
 					    {
-					        CompileMemoryFunction(indent, debug, node, container, wr, parameterNames);
+					        CompileMemoryFunction(indent, debug, node, wr, parameterNames);
 					    }
                         else if (IsInclude(node))
                         {
@@ -64,7 +63,7 @@ namespace MecsCore.Compiler
                         }
                         else if (IsFlowControl(node))
 					    {
-					        wr.ReturnsValues |= CompileConditionOrLoop(indent, debug, container, node, wr, parameterNames);
+					        wr.ReturnsValues |= CompileConditionOrLoop(indent, debug, node, wr, parameterNames);
 					    }
                         else if (IsFunctionDefinition(node))
                         {
@@ -209,7 +208,7 @@ namespace MecsCore.Compiler
             }
         }
 
-        private static void CompileMemoryFunction(int level, bool debug, Node node, Node container, NanCodeWriter wr, Scope parameterNames)
+        private static void CompileMemoryFunction(int level, bool debug, Node node, NanCodeWriter wr, Scope parameterNames)
         {
             // Check for special increment mode
             if (node.Text == "set" && Optimisations.IsSmallIncrement(node, out var incr, out var target))
@@ -218,9 +217,9 @@ namespace MecsCore.Compiler
                 return;
             }
 
-            var child = new Node(false, -2) {Text = container.Children.First.Value.Text};
-            var paramCount = container.Children.Count - 1;
-            for (int i = paramCount; i > 0; i--) { child.AddLast(container.Children.ElementAt(i)); }
+            var child = new Node(false, node.SourceLocation) {Text = node.Children.First.Value.Text};
+            var paramCount = node.Children.Count - 1;
+            for (int i = paramCount; i > 0; i--) { child.AddLast(node.Children.ElementAt(i)); }
 
             wr.Merge(Compile(child, level + 1, debug, parameterNames, null, Context.MemoryAccess));
 
@@ -272,10 +271,10 @@ namespace MecsCore.Compiler
             }
         }
 
-        private static bool CompileConditionOrLoop(int level, bool debug, Node container, Node node, NanCodeWriter wr, Scope parameterNames)
+        private static bool CompileConditionOrLoop(int level, bool debug, Node node, NanCodeWriter wr, Scope parameterNames)
         {
             bool returns = false;
-            if (container.Children.Count < 1)
+            if (node.Children.Count < 1)
             {
                 throw new ArgumentException(node.Text + " required parameter(s)");
             }
@@ -283,7 +282,7 @@ namespace MecsCore.Compiler
             bool isLoop = node.Text == "while";
             var context = isLoop ? Context.Loop : Context.Condition;
             var condition = new Node(false, -2);
-            condition.AddLast(container.Children.ElementAt(0));
+            condition.AddLast(node.Children.ElementAt(0));
             condition.Text = "()";
 
             var topOfBlock = wr.Position() - 1;
@@ -291,9 +290,9 @@ namespace MecsCore.Compiler
 
             var body = new Node(false, -2);
 
-            for (int i = 1; i < container.Children.Count; i++)
+            for (int i = 1; i < node.Children.Count; i++)
             {
-                body.AddLast(container.Children.ElementAt(i));
+                body.AddLast(node.Children.ElementAt(i));
             }
 
             body.Text = "()";

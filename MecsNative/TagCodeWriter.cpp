@@ -91,6 +91,17 @@ Vector* TCW_ErrorList(TagCodeCache* tcc) {
     return tcc->_errors;
 }
 
+// Add an error to the writer
+void TCW_AddError(TagCodeCache* tcc, String* ErrorMessage) {
+    if (tcc == NULL || ErrorMessage == NULL) return;
+
+    if (tcc->_errors == NULL) {
+        tcc->_errors = VecAllocate_StringPtr();
+    }
+
+    VecPush_StringPtr(tcc->_errors, ErrorMessage);
+}
+
 DataTag TCW_OpCodeAtIndex(TagCodeCache* tcc, int index) {
     if (tcc == NULL) return InvalidTag();
     if (VecLength(tcc->_opcodes) >= index) return InvalidTag();
@@ -313,6 +324,12 @@ void TCW_Memory(TagCodeCache* tcc, char action, String* targetName, int paramCou
     }
 }
 
+void TCW_Memory(TagCodeCache* tcc, char action, uint32_t crushed) {
+    if (tcc == NULL) return;
+
+    VecPush_DataTag(tcc->_opcodes, EncodeLongOpcode('m', action, crushed));
+}
+
 void TCW_Increment(TagCodeCache* tcc, int8_t incr, String* targetName) {
     if (tcc == NULL) return;
 
@@ -393,7 +410,7 @@ void TCW_UnconditionalJump(TagCodeCache* tcc, int opCodeCount) {
     VecPush_DataTag(tcc->_opcodes, EncodeLongOpcode('c', 'j', opCodeCount));
 }
 
-void TCW_LiteralNumber(TagCodeCache* tcc, double d) {
+void TCW_LiteralNumber(TagCodeCache* tcc, int32_t d) {
     if (tcc == NULL) return;
     // TODO: better number support, using the 42 bits rather than 32.
     VecPush_DataTag(tcc->_opcodes, EncodeInt32(d));

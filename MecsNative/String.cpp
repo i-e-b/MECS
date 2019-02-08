@@ -526,7 +526,7 @@ bool StringTryParse_int32(String *str, int32_t *dest) {
 
     for (; i < len; i++) {
         char c = StringCharAtIndex(str, i);
-        if (c == '_') continue;
+        if (c == '_') continue; // allow (and ignore) underscores. Like 1_000_000
 
         int d = c - '0';
         if (d > 9 || d < 0) return false;

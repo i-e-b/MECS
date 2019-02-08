@@ -47,6 +47,7 @@ enum class DataType {
 
 };
 
+// Fixed-size 64-bit operand for the runtime
 typedef struct DataTag {
     uint32_t type : 8;
     uint32_t params : 24;

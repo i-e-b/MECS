@@ -488,6 +488,11 @@ void DeallocateAST(TreeNode* ast) {
     TreeDeallocate(ast);
 }
 
+
+String* DescribeSourceNode(SourceNode *n) {
+    return (n->Unescaped == NULL) ? n->Text : n->Unescaped;
+}
+
 // Recursively descend into the nodes.
 // TODO: handle highlighting, cursor position
 void Render_Rec(TreeNode* node, int indent, String* outp) {

@@ -23,6 +23,10 @@ TreeNode* TreeAddChild(TreeNode* parent, void* element);
 TreeNode* TreeAddSibling(TreeNode* treeNodePtr, void* element);
 // Returns a pointer to the node data (in place, no copying)
 void* TreeReadBody(TreeNode* treeNodePtr);
+
+// Counts the number of children of a node
+int TreeCountChildren(TreeNode* node);
+
 // Returns the first child of a node, or null
 TreeNode *TreeChild(TreeNode* parentPtr);
 // Returns the next sibling of a node, or null
@@ -36,6 +40,9 @@ void TreeRemoveChild(TreeNode* parent, int targetIndex);
 // Provide a vector of pointers to all node data. Order is depth-first. The vector must be deallocated by the caller
 Vector* TreeAllData(TreeNode *tree);
 
+// Create a 'pivot' of a node. The first child is brought up, and it's siblings become children.
+// IN: node->[first, second, ...]; OUT: (parent:node)<-first->[second, ...]
+TreeNode* TreePivot(TreeNode *node);
 // Create a node not connected to a tree
 TreeNode* TreeBareNode(int elementSize);
 // Add a bare node into a tree
@@ -55,6 +62,8 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child);
     inline void nameSpace##AppendNode(TreeNode *parent, TreeNode *child){ return TreeAppendNode(parent, child); }\
     inline Vector* nameSpace##AllData(TreeNode *t){ return TreeAllData(t);}\
     inline bool nameSpace##IsLeaf(TreeNode* node){return TreeIsLeaf(node);}\
+    inline TreeNode* nameSpace##Pivot(TreeNode *node){return TreePivot(node);}\
+    inline int nameSpace##CountChildren(TreeNode* node){return TreeCountChildren(node);}\
 
 
 // These must be registered for each distinct pair, as they are type variant

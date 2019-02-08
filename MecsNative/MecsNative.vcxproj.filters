@@ -84,6 +84,9 @@
     <ClCompile Include="TagCodeTypes.cpp">
       <Filter>Source Files\Encoding</Filter>
     </ClCompile>
+    <ClCompile Include="CompilerOptimisations.cpp">
+      <Filter>Source Files\Compiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -122,9 +125,6 @@
     <ClInclude Include="MemoryManager.h">
       <Filter>Source Files\Containers</Filter>
     </ClInclude>
-    <ClInclude Include="TagCodeWriter.h">
-      <Filter>Source Files\InputOutput</Filter>
-    </ClInclude>
     <ClInclude Include="TagCodeTypes.h">
       <Filter>Source Files\Encoding</Filter>
     </ClInclude>
@@ -136,6 +136,12 @@
     </ClInclude>
     <ClInclude Include="TimingSys.h">
       <Filter>Source Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="TagCodeWriter.h">
+      <Filter>Source Files\InputOutput</Filter>
+    </ClInclude>
+    <ClInclude Include="CompilerOptimisations.h">
+      <Filter>Source Files\Compiler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

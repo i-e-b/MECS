@@ -5,6 +5,7 @@
 
 
 // Header for each tree node. This covers the first bytes of a node
+// The actual node pointer is oversized to hold the element data
 typedef struct TreeNode {
     TreeNode* ParentPtr;      // Pointer to parent. null means root
     TreeNode* FirstChildPtr;  // Pointer to child linked list. null means leaf node
@@ -174,6 +175,19 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
     return newNode;
 }
 
+
+int TreeCountChildren(TreeNode* node) {
+    if (node == NULL || node->FirstChildPtr == NULL) return 0;
+
+    int count = 0;
+    auto n = node->FirstChildPtr;
+    while (n != NULL) {
+        count++;
+        n = n->NextSiblingPtr;
+    }
+    return count;
+}
+
 // Create a node not connected to a tree
 TreeNode* TreeBareNode(int elementSize) {
     // Make the root node
@@ -221,6 +235,18 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child) {
     return;
 }
 
+// Create a 'pivot' of a node. The first child is brought up, and it's siblings become children.
+// IN: node->[first, second, ...]; OUT: (parent:node)<-first->[second, ...]
+TreeNode* TreePivot(TreeNode *node) {
+    if (node == NULL || node->FirstChildPtr == NULL) return NULL;
+
+    void* firstNodeData = TreeReadBody(node->FirstChildPtr);
+    auto newRoot = AllocateAndWriteNode(node, node->ElementByteSize, firstNodeData);
+
+    newRoot->FirstChildPtr = TreeSibling(node->FirstChildPtr);
+
+    return newRoot;
+}
 
 // Deallocate node and all its children AND siblings, recursively
 void RecursiveDelete(TreeNode* treeNodePtr) {

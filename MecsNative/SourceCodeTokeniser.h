@@ -71,6 +71,9 @@ TreeNode* Read(String* source, bool preserveMetadata);
 // Write the abstract syntax tree out as a source code string. This does auto-formatting
 String* Render(TreeNode* ast);
 
+// Create a human-readable description of a SourceNode
+String* DescribeSourceNode(SourceNode *n);
+
 // Clean up tree, deallocating anything stored during the `Read` process
 void DeallocateAST(TreeNode* ast);
 
