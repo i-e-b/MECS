@@ -75,6 +75,15 @@
     <ClCompile Include="Scope.cpp">
       <Filter>Source Files\InputOutput</Filter>
     </ClCompile>
+    <ClCompile Include="CompilerCore.cpp">
+      <Filter>Source Files\Compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="TimingSys.cpp">
+      <Filter>Source Files\System</Filter>
+    </ClCompile>
+    <ClCompile Include="TagCodeTypes.cpp">
+      <Filter>Source Files\Encoding</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -124,6 +133,9 @@
     </ClInclude>
     <ClInclude Include="Scope.h">
       <Filter>Source Files\InputOutput</Filter>
+    </ClInclude>
+    <ClInclude Include="TimingSys.h">
+      <Filter>Source Files\System</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

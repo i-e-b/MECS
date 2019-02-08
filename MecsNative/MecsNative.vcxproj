@@ -167,6 +167,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ArenaAllocator.cpp" />
+    <ClCompile Include="CompilerCore.cpp" />
     <ClCompile Include="FileSys.cpp" />
     <ClCompile Include="Fix16.cpp" />
     <ClCompile Include="HashMap.cpp" />
@@ -176,8 +177,10 @@
     <ClCompile Include="Scope.cpp" />
     <ClCompile Include="SourceCodeTokeniser.cpp" />
     <ClCompile Include="String.cpp" />
+    <ClCompile Include="TagCodeTypes.cpp" />
     <ClCompile Include="TagCodeWriter.cpp" />
     <ClCompile Include="TagData.cpp" />
+    <ClCompile Include="TimingSys.cpp" />
     <ClCompile Include="Tree.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
@@ -196,6 +199,7 @@
     <ClInclude Include="TagCodeTypes.h" />
     <ClInclude Include="TagCodeWriter.h" />
     <ClInclude Include="TagData.h" />
+    <ClInclude Include="TimingSys.h" />
     <ClInclude Include="Tree.h" />
     <ClInclude Include="Vector.h" />
   </ItemGroup>

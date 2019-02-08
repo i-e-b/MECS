@@ -15,6 +15,8 @@ String *StringEmpty();
 String *StringNew(const char *str);
 // Create a mutable string from a single character
 String *StringNew(char c);
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+String * StringNewFormat(const char* fmt, ...);
 // Clear the contents of a string, but leave it allocated
 void StringClear(String *str);
 
@@ -26,13 +28,19 @@ unsigned int StringLength(String* str);
 // Get char at index. Returns 0 if invalid. Negative indexes are from end
 char StringCharAtIndex(String *str, int idx);
 
-// Add one string to another. `first` is modified.
-void StringAppend(String *first, String *second);
-void StringAppend(String *first, const char *second);
-void StringAppendChar(String *str, char c);
-void StringAppendChar(String *str, char c, int count);
 // Add a newline character
 void StringNL(String *str);
+// Add one string to another. `first` is modified.
+void StringAppend(String *first, String *second);
+// Add one string to another. `first` is modified.
+void StringAppend(String *first, const char *second);
+// Add a character to the end of a string
+void StringAppendChar(String *str, char c);
+// Add a character to the end of a string, that character repeated a number of times
+void StringAppendChar(String *str, char c, int count);
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+void StringAppendFormat(String *str, const char* fmt, ...);
+
 
 // Create a new string from a range in an existing string. The existing string is not modified
 String *StringSlice(String* str, int startIdx, int length);
@@ -76,6 +84,8 @@ bool StringAreEqual(String* a, const char* b);
 void StringAppendInt32(String *str, int32_t value);
 // Append an integer as a fixed length hex string
 void StringAppendInt32Hex(String *str, uint32_t value);
+// Append an long integer as a fixed length hex string
+void StringAppendInt64Hex(String *str, uint64_t value);
 // Append a fixed-point number as a decimal string (F16.16, passed as int32)
 void StringAppendF16(String *str, int32_t value); // TODO...
 

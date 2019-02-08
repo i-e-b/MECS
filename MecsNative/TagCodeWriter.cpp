@@ -75,9 +75,9 @@ bool TCW_ReturnsValues(TagCodeCache* tcc) {
     return tcc->_returnsValues;
 }
 
-void TCW_ReturnsValues(TagCodeCache* tcc, bool v) {
+void TCW_SetReturnsValues(TagCodeCache* tcc) {
     if (tcc == NULL) return;
-    tcc->_returnsValues = v;
+    tcc->_returnsValues |= true;
 }
 
 bool TCW_HasErrors(TagCodeCache* tcc) {

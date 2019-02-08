@@ -12,6 +12,9 @@ TreeNode* TreeAllocate(int elementSize);
 // Deallocate all nodes, and the data held
 void TreeDeallocate(TreeNode* tree);
 
+// return false if this node has children, true otherwise
+bool TreeIsLeaf(TreeNode* node);
+
 // Write an element value to the given node. If `node` is null, the root element is set
 void TreeSetValue(TreeNode* node, void* element);
 // Add a child to the end of the parent's child chain
@@ -51,6 +54,7 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child);
     inline void nameSpace##RemoveChild(TreeNode *t, int idx){ return TreeRemoveChild(t, idx); }\
     inline void nameSpace##AppendNode(TreeNode *parent, TreeNode *child){ return TreeAppendNode(parent, child); }\
     inline Vector* nameSpace##AllData(TreeNode *t){ return TreeAllData(t);}\
+    inline bool nameSpace##IsLeaf(TreeNode* node){return TreeIsLeaf(node);}\
 
 
 // These must be registered for each distinct pair, as they are type variant

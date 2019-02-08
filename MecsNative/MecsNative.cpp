@@ -406,8 +406,20 @@ int TestString() {
     StringAppendF16(str1, fix);
     WriteStr(str1);
 
+    // String formatting
+    StringClear(str1);
+    StringClear(str2);
+    StringAppend(str2, "'This is from a (String*)'");
+    // Simple append
+    StringAppendFormat(str1, "Formatted string, with literal (this), included mutable strings: \x01, decimal: \x02, and hex: \x03.", str2, 1234, 1234);
+    WriteStr(str1);
+    // Create from format
     StringDeallocate(str2);
+    str2 = StringNewFormat("String inception: \"\x01\"", str1);
+    WriteStr(str2);
+
     StringDeallocate(str1);
+    StringDeallocate(str2);
     return 0;
 }
 

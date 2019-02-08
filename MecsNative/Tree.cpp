@@ -44,6 +44,11 @@ TreeNode* TreeAllocate(int elementSize) {
     return Root;
 }
 
+bool TreeIsLeaf(TreeNode* node) {
+    if (node == NULL) return false;
+    return node->FirstChildPtr == NULL;
+}
+
 // Write an element value to the given node. If `node` is null, the root element is set
 void TreeSetValue(TreeNode* node, void* element) {
     writeValue((void*)node, NODE_HEAD_SIZE, element, node->ElementByteSize);

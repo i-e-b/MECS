@@ -26,8 +26,9 @@ Input handling:
 * [x] Convert parser
 * [ ] Convert compiler
   * [x] tag code write
-  * [ ] scope (vector of hashmaps)
+  * [x] scope (vector of hashmaps)
   * [x] context
+  * [ ] optimisations
 
 The machine:
 ------------

@@ -3,6 +3,8 @@
 #include "Fix16.h"
 #include "MemoryManager.h"
 
+#include <stdarg.h>
+
 typedef struct String {
     Vector* chars; // vector of characters
     uint32_t hashval; // cached hash value. Any time we change the string, this should be set to 0.
@@ -101,6 +103,12 @@ void StringAppendInt32Hex(String *str, uint32_t value) {
     }
 }
 
+void StringAppendInt64Hex(String *str, uint64_t value) {
+    uint64_t upper = value >> 32;
+    StringAppendInt32Hex(str, upper & 0xFFFFFFFF);
+    StringAppendInt32Hex(str, value & 0xFFFFFFFF);
+}
+
 void StringAppendF16(String *str, int32_t value) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == false) return;
@@ -164,6 +172,44 @@ void StringAppendChar(String *str, char c, int count) {
     str->hashval = 0;
     for (int i = 0; i < count; i++)VPush_char(str->chars, c);
 }
+
+// internal var-arg appender. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+void vStringAppendFormat(String *str, const char* fmt, va_list args) {
+    while (*fmt != '\0') {
+        if (*fmt == '\x01') {
+            String* s = va_arg(args, String*);
+            StringAppend(str, s);
+        } else if (*fmt == '\x02') {
+            int i = va_arg(args, int);
+            StringAppendInt32(str, i);
+        } else if (*fmt == '\x03') {
+            int i = va_arg(args, int);
+            StringAppendInt32Hex(str, i);
+        } else {
+            StringAppendChar(str, *fmt);
+        }
+        ++fmt;
+    }
+}
+
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+void StringAppendFormat(String *str, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vStringAppendFormat(str, fmt, args);
+    va_end(args);
+}
+
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+String * StringNewFormat(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    auto str = StringEmpty();
+    vStringAppendFormat(str, fmt, args);
+    va_end(args);
+    return str;
+}
+
 
 void StringNL(String *str) {
     VPush_char(str->chars, '\n');

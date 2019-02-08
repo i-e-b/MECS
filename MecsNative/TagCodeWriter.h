@@ -31,8 +31,8 @@ Vector* TCW_ErrorList(TagCodeCache* tcc);
 
 // Returns true if we expect this code fragment to return a value
 bool TCW_ReturnsValues(TagCodeCache* tcc);
-// Set if this code fragment is expected to return a value
-void TCW_ReturnsValues(TagCodeCache* tcc, bool v);
+// Set if this code fragment is expected to return a value. 
+void TCW_SetReturnsValues(TagCodeCache* tcc);
 
 // Read the data tag in the cache at a zero-based index
 DataTag TCW_OpCodeAtIndex(TagCodeCache* tcc, int index);
