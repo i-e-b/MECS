@@ -1,8 +1,9 @@
 #include "CompilerCore.h"
 #include "SourceCodeTokeniser.h"
 #include "CompilerOptimisations.h"
-#include "Vector.h"
+#include "Desugar.h"
 
+#include "Vector.h"
 #include "FileSys.h"
 #include "TimingSys.h"
 
@@ -27,6 +28,7 @@ RegisterHashMapFor(StringPtr, bool, CC_StringKeyHash, CC_StringKeyCompare, Map)
 RegisterTreeFor(SourceNode, Tree)
 
 RegisterVectorFor(char, Vec)
+RegisterVectorFor(StringPtr, Vec)
 
 // Compile source code from a syntax tree into a tag code cache
 TagCodeCache* CompileRoot(TreeNode* root, bool debug) {
@@ -102,6 +104,32 @@ bool IsFunctionDefinition(TreeNode* node) {
     return false;
 }
 
+// Map parameter names to positional names. This must match the expectations of the interpreter
+void ParameterPositions(Scope* parameterNames, TreeNode* paramDef, TagCodeCache* wr) {
+    ScopePush(parameterNames, NULL);
+    int i = 0;
+
+    auto chain = TreeChild(paramDef);
+    while (chain != NULL) {
+        auto data = TreeReadBody_SourceNode(chain);
+        if (InScope(parameterNames, GetCrushedName(data->Text))) {
+            TCW_AddError(wr, StringNewFormat("Duplicate parameter '\x01'.\r\nAll parameter names must be unique in a single function definition", data->Text));
+            return;
+        }
+
+        auto originalReference = GetCrushedName(data->Text);
+        auto parameterReference = ScopeNameForPosition(i);
+        auto parameterByteCode = EncodeVariableRef(parameterReference);
+
+        ScopeSetValue(parameterNames, originalReference, parameterByteCode);
+
+        TCW_AddSymbol(wr, originalReference, data->Text);
+        TCW_AddSymbol(wr, parameterReference, StringNewFormat("param[\x02]", i));
+
+        chain = TreeSibling(chain);
+        i++;
+    }
+}
 
 void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context compileContext, TagCodeCache* wr) {
     auto root = TreeReadBody_SourceNode(rootNode);
@@ -303,12 +331,94 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
     return returns;
 }
 
-void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
-
+bool AllChildrenAreLeaves(TreeNode* node) {
+    auto chain = TreeChild(node);
+    while (chain != NULL) {
+        if (TreeCountChildren(chain) > 0) return false;
+        chain = TreeSibling(chain);
+    }
+    return true;
 }
+
+void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
+    // 1) Compile the func to a temporary string
+    // 2) Inject a new 'def' op-code, that names the function and does an unconditional jump over it.
+    // 3) Inject the compiled func
+    // 4) Inject a new 'return' op-code
+
+    auto nodeData = TreeReadBody_SourceNode(node);
+    int nodeChildCount = TreeCountChildren(node);
+
+
+    if (nodeChildCount != 2) {
+        TCW_AddError(wr, StringNew("Function definition must have 3 parts: the name, the parameter list, and the definition.\r\nCall like `def (   myFunc ( param1 param2 ) ( ... statements ... )   )`"));
+    }
+
+    auto definitionNode = TreeChild(node); // parameters in parens
+    auto bodyNode = TreeSibling(definitionNode); //expressions defining the function
+    auto bodyData = TreeReadBody_SourceNode(bodyNode);
+
+    if (!AllChildrenAreLeaves(definitionNode)) {
+        auto str = StringNew("Function parameters must be simple names.\r\n");
+        StringAppend(str, "`def ( myFunc (  param1  ) ( ... ) )` is OK,\r\n");
+        StringAppend(str, "`def ( myFunc ( (param1) ) ( ... ) )` is not OK");
+        TCW_AddError(wr, str);
+        return;
+    }
+    if (!StringAreEqual(bodyData->Text, "()")) {
+        TCW_AddError(wr, StringNew("Bare functions not supported. Wrap your function body in (parenthesis)"));
+        return;
+    }
+
+    auto definitionData = TreeReadBody_SourceNode(definitionNode);
+    auto functionName = definitionData->Text;
+    auto argCount = TreeCountChildren(definitionNode);
+
+    ParameterPositions(parameterNames, definitionNode, wr);
+
+    auto subroutine = Compile(bodyNode, level, debug, parameterNames, NULL, Context::Default);
+    int tokenCount = TCW_OpCodeCount(subroutine);
+
+    if (debug) {
+        TCW_Comment(wr, StringNewFormat("// Function definition : '\x01' with \x02 parameter(s)", functionName, argCount));
+    }
+
+    TCW_FunctionDefine(wr, functionName, argCount, tokenCount);
+    TCW_Merge(wr, subroutine);
+
+    if (TCW_ReturnsValues(subroutine)) {
+        // Add an invalid return opcode. This will show an error message.
+        TCW_InvalidReturn(wr);
+    } else {
+        // Add the 'return' call
+        TCW_Return(wr, 0);
+    }
+
+    // Then the runner will need to interpret both the new op-codes
+    // This would include a return-stack-push for calling functions,
+    //   a jump-to-absolute-position by name
+    //   a jump-to-absolute-position by return stack & pop
+}
+
 bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, TreeNode* node, Scope* parameterNames) {
-    // TODO
-    return false;
+    auto nodeData = TreeReadBody_SourceNode(node);
+    auto funcName = nodeData->Text;
+
+    if (NeedsDesugaring(funcName)) {
+        node = DesugarProcessNode(funcName, parameterNames, node);
+        auto frag = Compile(node, level + 1, debug, parameterNames, NULL, Context::Default);
+        TCW_Merge(wr, frag);
+        return  TCW_ReturnsValues(frag);
+    }
+
+    TCW_Merge(wr, Compile(node, level + 1, debug, parameterNames, NULL, Context::Default));
+
+    int nodeChildCount = TreeCountChildren(node);
+    if (debug) { TCW_Comment(wr, StringNewFormat("// Function : '\x01' with \x02 parameter(s)", funcName, nodeChildCount)); }
+
+    if (StringAreEqual(funcName, "return")) { TCW_Return(wr, nodeChildCount); } else { TCW_FunctionCall(wr, funcName, nodeChildCount); }
+
+    return (StringAreEqual(funcName, "return")) && (nodeChildCount > 0); // is there a value return?
 }
 
 // Function/Program compiler. This is called recursively when subroutines are found
@@ -318,8 +428,7 @@ TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNa
     auto wr = TCW_Allocate();
 
     // end of syntax line
-    if (TreeIsLeaf(root))
-    {
+    if (TreeIsLeaf(root)) {
         EmitLeafNode(root, debug, parameterNames, compileContext, wr);
         return wr;
     }
@@ -328,6 +437,8 @@ TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNa
     auto rootContainer = root;
     auto chain = TreeChild(root);
     while (chain != NULL) {
+        if (TCW_HasErrors(wr)) return wr;
+
         auto node = chain;
         chain = TreeSibling(chain);
         if (TreeIsLeaf(node)) {

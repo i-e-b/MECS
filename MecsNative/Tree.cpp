@@ -175,6 +175,18 @@ TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element) {
     return newNode;
 }
 
+TreeNode *TreeNthChild(TreeNode* parent, int childIdx) {
+    if (parent == NULL || parent->FirstChildPtr == NULL) return NULL;
+
+    int count = 0;
+    auto n = parent->FirstChildPtr;
+    while (n != NULL) {
+        if (count == childIdx) return n;
+        count++;
+        n = n->NextSiblingPtr;
+    }
+    return NULL;
+}
 
 int TreeCountChildren(TreeNode* node) {
     if (node == NULL || node->FirstChildPtr == NULL) return 0;

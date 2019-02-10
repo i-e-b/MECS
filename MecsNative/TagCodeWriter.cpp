@@ -129,6 +129,14 @@ void TCW_Merge(TagCodeCache* dest, TagCodeCache* fragment) {
     int srcLength = VecLength(codes);
     auto strings = fragment->_stringTable;
 
+    if (fragment->_errors != NULL) {
+        if (dest->_errors == NULL) dest->_errors = VecAllocate_StringPtr();
+        StringPtr err = NULL;
+        while (VecDequeue_StringPtr(fragment->_errors, &err)) {
+            VecPush_StringPtr(dest->_errors, err);
+        }
+    }
+
     TCW_AddSymbols(dest, fragment->_symbols);
 
     for (int i = 0; i < srcLength; i++) {

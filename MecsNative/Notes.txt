@@ -28,6 +28,7 @@ Input handling:
   * [x] tag code write
   * [x] scope (vector of hashmaps)
   * [x] context
+  * [ ] desugar
   * [ ] optimisations
 
 The machine:

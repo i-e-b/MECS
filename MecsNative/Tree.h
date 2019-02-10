@@ -33,6 +33,10 @@ TreeNode *TreeChild(TreeNode* parentPtr);
 TreeNode *TreeSibling(TreeNode* olderSiblingPtr);
 // Returns the parent node of a child, or null if this is the root
 TreeNode *TreeParent(TreeNode* childPtr);
+// Return the nth child (zero indexed). Returns NULL if out of range
+TreeNode *TreeNthChild(TreeNode* parent, int childIdx);
+
+
 // Add a child node into the given index in the child chain
 TreeNode *TreeInsertChild(TreeNode* parent, int targetIndex, void* element);
 // Remove a child by index and stitch the chain back together

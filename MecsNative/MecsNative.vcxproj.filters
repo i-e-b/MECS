@@ -143,6 +143,9 @@
     <ClInclude Include="CompilerOptimisations.h">
       <Filter>Source Files\Compiler</Filter>
     </ClInclude>
+    <ClInclude Include="Desugar.h">
+      <Filter>Source Files\Compiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes.txt" />
