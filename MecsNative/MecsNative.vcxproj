@@ -169,6 +169,7 @@
     <ClCompile Include="ArenaAllocator.cpp" />
     <ClCompile Include="CompilerCore.cpp" />
     <ClCompile Include="CompilerOptimisations.cpp" />
+    <ClCompile Include="Desugar.cpp" />
     <ClCompile Include="FileSys.cpp" />
     <ClCompile Include="Fix16.cpp" />
     <ClCompile Include="HashMap.cpp" />

@@ -21,6 +21,7 @@
 
 // The MECS compiler and runtime
 #include "SourceCodeTokeniser.h"
+#include "CompilerCore.h"
 
 
 typedef struct exampleElement {
@@ -727,6 +728,9 @@ int TestCompiler() {
     }
     WriteStr(nstr);
 
+    std::cout << "Attempting to compile:\n";
+    auto tagCode = CompileRoot(syntaxTree, false);
+
     StringDeallocate(nstr);
     StringDeallocate(pathOfValid);
     DeallocateAST(syntaxTree);
@@ -787,7 +791,7 @@ int main() {
     if (aares != 0) return aares;
     MMPop();
     
-    MMPush(1 MEGABYTE);
+    MMPush(100 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
     MMPop();

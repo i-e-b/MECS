@@ -405,7 +405,7 @@ bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, TreeNode* node
     auto funcName = nodeData->Text;
 
     if (NeedsDesugaring(funcName)) {
-        node = DesugarProcessNode(funcName, parameterNames, node);
+        node = DesugarProcessNode(funcName, parameterNames, node, wr);
         auto frag = Compile(node, level + 1, debug, parameterNames, NULL, Context::Default);
         TCW_Merge(wr, frag);
         return  TCW_ReturnsValues(frag);

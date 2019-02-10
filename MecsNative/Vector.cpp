@@ -368,6 +368,7 @@ void VectorDeallocate(Vector *v) {
 }
 
 int VectorLength(Vector *v) {
+    if (v == NULL) return 0;
     return v->_elementCount;
 }
 
