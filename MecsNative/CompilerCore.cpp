@@ -1,8 +1,13 @@
 #include "CompilerCore.h"
 #include "SourceCodeTokeniser.h"
 #include "CompilerOptimisations.h"
+#include "Vector.h"
 
+#include "FileSys.h"
 #include "TimingSys.h"
+
+// Up this if you have files over 1MB. Or write better code.
+#define MAX_IMPORT_SIZE 0xFFFFF
 
 
 typedef String* StringPtr;
@@ -21,6 +26,7 @@ RegisterHashMapFor(StringPtr, bool, CC_StringKeyHash, CC_StringKeyCompare, Map)
 
 RegisterTreeFor(SourceNode, Tree)
 
+RegisterVectorFor(char, Vec)
 
 // Compile source code from a syntax tree into a tag code cache
 TagCodeCache* CompileRoot(TreeNode* root, bool debug) {
@@ -180,13 +186,123 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
     char act = StringCharAtIndex(nodeData->Text, 0);
     TCW_Memory(wr, act, childData->Text, paramCount);
 }
-void CompileExternalFile(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames, HashMap* includedFiles) {
 
+void CompileExternalFile(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames, HashMap* includedFiles) {
+    //     1) Check against import list. If already done, warn and skip.
+    //     2) Read file. Fail = terminate with error
+    //     3) Compile to opcodes
+    //     4) Inject opcodes in `wr`
+    auto root = TreeReadBody_SourceNode(node);
+
+    if (includedFiles == NULL) {
+        TCW_AddError(wr, StringNewFormat("Files can only be included at the root level [#\03]", root->SourceLocation));
+        return;
+    }
+
+    // check against import list
+    auto firstChild = TreeChild(node);
+    auto firstChildData = TreeReadBody_SourceNode(firstChild);
+    auto targetFile = firstChildData->Text;
+
+    if (MapGet_StringPtr_bool(includedFiles, targetFile, NULL)) {
+        TCW_Comment(wr, StringNewFormat("// Ignored import: '\x01'", targetFile));
+        return;
+    }
+
+    // read into buffer
+    auto inclCode = StringEmpty();
+    auto buffer = StringGetByteVector(inclCode);
+    uint64_t read = 0;
+    bool ok = FileLoadChunk(targetFile, buffer, 0, MAX_IMPORT_SIZE, &read);
+    if (!ok || read >= MAX_IMPORT_SIZE) {
+        TCW_AddError(wr, StringNewFormat("Import failed. Can't read file '\x01'", targetFile));
+        return;
+    }
+
+    // Prevent double include
+    MapPut_StringPtr_bool(includedFiles, targetFile, true, true);
+
+    // Parse and compile
+    TreeNode* parsed = ParseSourceCode(inclCode, false);
+    auto programFragment = Compile(parsed, level, debug, parameterNames, includedFiles, Context::External);
+
+    if (debug) { TCW_Comment(wr, StringNewFormat("// File import: '\x01'", targetFile)); }
+
+    TCW_Merge(wr, programFragment);
+
+    if (debug) { TCW_Comment(wr, StringNewFormat("// <-- End of file import: '\x01'", targetFile)); }
 }
+
 bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
     // return true if we output a value
-    return false;
+    bool returns = false;
+
+    auto nodeData = TreeReadBody_SourceNode(node);
+    int nodeChildCount = TreeCountChildren(node);
+
+    if (nodeChildCount < 1) {
+        TCW_AddError(wr, StringNewFormat("\x01 requires parameter(s)", nodeData->Text));
+        return false;
+    }
+
+    bool isLoop = StringAreEqual(nodeData->Text, "while");
+    auto context = isLoop ? Context::Loop : Context::Condition;
+
+    // Split the condition and action
+
+    // build a tree for the if/while condition
+    auto condition = TreeAllocate_SourceNode();
+    auto condData = TreeReadBody_SourceNode(condition);
+    condData->Text = StringNew("()");
+    condData->SourceLocation = nodeData->SourceLocation;
+    TreeAppendNode(condition, TreeChild(node));
+
+    // build a tree for the if/while body
+    int topOfBlock = TCW_Position(wr) - 1;
+    auto body = TreeAllocate_SourceNode();
+    auto bodyData = TreeReadBody_SourceNode(body);
+    bodyData->Text = StringNew("()");
+    bodyData->SourceLocation = nodeData->SourceLocation;
+
+    auto chain = TreeSibling(TreeChild(node));
+    TreeAppendNode(body, chain);
+
+    auto compiledBody = Compile(body, level + 1, debug, parameterNames, NULL, context);
+    returns |= TCW_ReturnsValues(compiledBody);
+    int opCodeCount = TCW_OpCodeCount(compiledBody); // how far to jump over the body
+    if (isLoop) opCodeCount++; // also skip the end unconditional jump
+
+    if (debug) {
+        TCW_Comment(wr, StringNewFormat( "// Compare condition for : '\x01', If false, skip \x02 element(s)", nodeData->Text, opCodeCount ));
+    }
+
+    if (CO_IsSimpleComparion(condition, opCodeCount)) {
+        // output just the arguments
+        CmpOp cmpOp;
+        uint16_t argCount;
+        auto argNodes = CO_ReadSimpleComparison(condition, &cmpOp, &argCount);
+        auto conditionArgs = Compile(argNodes, level + 1, debug, parameterNames, NULL, context);
+        TCW_Merge(wr, conditionArgs);
+        TCW_CompoundCompareJump(wr, cmpOp, argCount, opCodeCount);
+    } else {
+        auto conditionCode = Compile(condition, level + 1, debug, parameterNames, NULL, context);
+
+        if (debug) { TCW_Comment(wr, StringNewFormat("// Condition for : '\x01'", nodeData->Text)); }
+
+        TCW_Merge(wr, conditionCode);
+        TCW_CompareJump(wr, opCodeCount);
+    }
+
+    TCW_Merge(wr, compiledBody);
+
+    if (debug) { TCW_Comment(wr, StringNewFormat("// End : \x01", nodeData->Text)); }
+    if (isLoop) {
+        int distance = TCW_Position(wr) - topOfBlock;
+        TCW_UnconditionalJump(wr, distance);
+    }
+    return returns;
 }
+
 void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
 
 }
@@ -231,5 +347,5 @@ TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNa
             if (CompileFunctionCall(indent, debug, wr, node, parameterNames)) TCW_SetReturnsValues(wr);
         }
     }
-
+    return wr;
 }

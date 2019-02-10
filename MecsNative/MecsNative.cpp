@@ -686,7 +686,7 @@ int TestCompiler() {
     }
     
     std::cout << "Reading a non-source code file: ";
-    auto syntaxTree = Read(code, false);
+    auto syntaxTree = ParseSourceCode(code, false);
     StringClear(code); // also clears the underlying vector
     if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -2; }
 
@@ -708,7 +708,7 @@ int TestCompiler() {
         std::cout << "Failed to read file. Test inconclusive.\n";
         return -4;
     }
-    syntaxTree = Read(code, true);
+    syntaxTree = ParseSourceCode(code, true);
     StringDeallocate(code);
     if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -5; }
 
@@ -720,7 +720,7 @@ int TestCompiler() {
         std::cout << "The source file was parsed correctly:\n\n";
     }
 
-    auto nstr = Render(syntaxTree); // render it even if bad -- as it contains error details
+    auto nstr = RenderAstToSource(syntaxTree); // render it even if bad -- as it contains error details
     if (nstr == NULL) {
         std::cout << "Failed to render AST\n";
         return -8;

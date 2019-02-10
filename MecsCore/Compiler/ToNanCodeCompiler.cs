@@ -217,6 +217,7 @@ namespace MecsCore.Compiler
                 return;
             }
 
+            // Pivot the node's children into 1st child, with the rest as 1st child's children
             var child = new Node(false, node.SourceLocation) {Text = node.Children.First.Value.Text};
             var paramCount = node.Children.Count - 1;
             for (int i = paramCount; i > 0; i--) { child.AddLast(node.Children.ElementAt(i)); }

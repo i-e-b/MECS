@@ -450,7 +450,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
     return true;
 }
 
-TreeNode* Read(String* source, bool preserveMetadata) {
+TreeNode* ParseSourceCode(String* source, bool preserveMetadata) {
     auto root = Node();
     root.NodeType = NodeType::Root;
     root.SourceLocation = 0;
@@ -532,7 +532,7 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
     }
 }
 
-String* Render(TreeNode* ast) {
+String* RenderAstToSource(TreeNode* ast) {
     if (ast == NULL) return NULL;
 
     auto outp = StringEmpty();
