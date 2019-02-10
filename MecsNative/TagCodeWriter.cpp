@@ -272,7 +272,7 @@ bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym) {
 
     bool ok = true;
     HashMap_KVP entry;
-    while (VecPeek_HashMap_KVP(content, &entry)) {
+    while (VecPop_HashMap_KVP(content, &entry)) {
         ok = ok && TCW_AddSymbol(tcc, *(int32_t*)entry.Key, *(StringPtr*)entry.Value);
     }
     VecDeallocate(content);

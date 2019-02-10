@@ -118,6 +118,7 @@ void ScopePush(Scope* s, Vector* parameters) {
     auto newLevel = MapAllocate_Name_DataTag(64);
     if (newLevel == NULL) return;
 
+    if (s->_scopes == NULL) s->_scopes = VecAllocate_MapPtr();
     VecPush_MapPtr(s->_scopes, newLevel);
 
     if (parameters == NULL) return;

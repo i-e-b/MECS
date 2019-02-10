@@ -41,11 +41,14 @@ int CompareExampleElement(exampleElement *left, exampleElement *right) {
     return left->a - right->a;
 }
 
+typedef String* StringPtr;
+
 // Register type specifics
 RegisterVectorStatics(Vec)
 RegisterVectorFor(exampleElement, Vec)
 RegisterVectorFor(HashMap_KVP, Vec)
 RegisterVectorFor(char, Vec)
+RegisterVectorFor(StringPtr, Vec)
 
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(int, int, IntKeyHash, IntKeyCompare, Map)
@@ -709,6 +712,7 @@ int TestCompiler() {
         std::cout << "Failed to read file. Test inconclusive.\n";
         return -4;
     }
+    auto compilableSyntaxTree = ParseSourceCode(code, false); // Compiler doesn't like metadata!
     syntaxTree = ParseSourceCode(code, true);
     StringDeallocate(code);
     if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -5; }
@@ -729,7 +733,18 @@ int TestCompiler() {
     WriteStr(nstr);
 
     std::cout << "Attempting to compile:\n";
-    auto tagCode = CompileRoot(syntaxTree, false);
+    auto tagCode = CompileRoot(compilableSyntaxTree, false);
+
+    if (TCW_HasErrors(tagCode)) {
+        std::cout << "COMPILE FAILED!\n";
+        auto errs = TCW_ErrorList(tagCode);
+        String* msg = NULL;
+        while (VecPop_StringPtr(errs, &msg)) {
+            WriteStr(msg);
+        }
+    } else {
+        std::cout << "Compile OK\n";
+    }
 
     StringDeallocate(nstr);
     StringDeallocate(pathOfValid);
