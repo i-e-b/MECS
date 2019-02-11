@@ -489,8 +489,28 @@ void DeallocateAST(TreeNode* ast) {
 }
 
 
+String* DescribeNodeType(NodeType nt) {
+    switch (nt) {
+    case NodeType::Atom: return StringNew("Atom");
+    case NodeType::Comment: return StringNew("[comment]");
+    case NodeType::Default: return StringNew("Default");
+    case NodeType::Delimiter: return StringNew("Delimiter");
+    case NodeType::InvalidNode: return StringNew("<INVALID>");
+    case NodeType::Newline: return StringNew("[newline]");
+    case NodeType::Numeric: return StringNew("Numeric");
+    case NodeType::Root: return StringNew("<AST ROOT>");
+    case NodeType::ScopeDelimiter: return StringNew("[scope delimiter]");
+    case NodeType::StringLiteral: return StringNew("String");
+    case NodeType::Whitespace: return StringNew("[whitespace]");
+    default: return StringNew("<UNKNOWN>");
+    }
+}
+
 String* DescribeSourceNode(SourceNode *n) {
-    return (n->Unescaped == NULL) ? n->Text : n->Unescaped;
+    auto str = DescribeNodeType(n->NodeType);
+    StringAppendChar(str, ' ');
+    StringAppend(str, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
+    return str;
 }
 
 // Recursively descend into the nodes.

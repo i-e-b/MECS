@@ -74,6 +74,9 @@ String* RenderAstToSource(TreeNode* ast);
 // Create a human-readable description of a SourceNode
 String* DescribeSourceNode(SourceNode *n);
 
+// Create a human-readable description of a node type
+String* DescribeNodeType(NodeType nt);
+
 // Clean up tree, deallocating anything stored during the `Read` process
 void DeallocateAST(TreeNode* ast);
 

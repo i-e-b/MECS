@@ -50,16 +50,22 @@ Scope* ScopeAllocate() {
     }
 
     VecPush_MapPtr(result->_scopes, firstMap);
+    return result;
 }
 
 void ScopeDeallocate(Scope* s) {
     if (s == NULL) return;
-    if (s->PotentialGarbage != NULL) MapDeallocate(s->PotentialGarbage);
+    if (s->PotentialGarbage != NULL) {
+        MapDeallocate(s->PotentialGarbage);
+        s->PotentialGarbage = NULL;
+    }
     if (s->_scopes != NULL) {
         MapPtr map;
         while (VecPop_MapPtr(s->_scopes, &map)) {
             MapDeallocate(map);
         }
+        VecDeallocate(s->_scopes);
+        s->_scopes = NULL;
     }
     mfree(s);
 }
@@ -118,7 +124,9 @@ void ScopePush(Scope* s, Vector* parameters) {
     auto newLevel = MapAllocate_Name_DataTag(64);
     if (newLevel == NULL) return;
 
-    if (s->_scopes == NULL) s->_scopes = VecAllocate_MapPtr();
+    if (s->_scopes == NULL) {
+        s->_scopes = VecAllocate_MapPtr(); // THIS SHOULD NOT HAPPEN!
+    }
     VecPush_MapPtr(s->_scopes, newLevel);
 
     if (parameters == NULL) return;
@@ -134,7 +142,9 @@ void ScopeDrop(Scope* s) {
     if (s == NULL) return;
 
     int length = VecLength(s->_scopes);
-    if (length < 2) return; // refuse to drop the global scope
+    if (length < 2) {
+        return; // refuse to drop the global scope
+    }
 
     MapPtr last = NULL;
     VecPop_MapPtr(s->_scopes, &last);

@@ -185,9 +185,19 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
         else TCW_VariableReference(wr, valueName);
         break;
 
-    default:
-        TCW_AddError(wr, StringNewFormat("Unexpected compiler state [#\03]", root->SourceLocation));
+    case NodeType::ScopeDelimiter:
+    {
+        TCW_VariableReference(wr, valueName); // this is `()`, the unit definition
+        auto desc = DescribeSourceNode(root);
+        TCW_AddError(wr, StringNewFormat("Unexpected compiler state [#\02] near '\x01'", root->SourceLocation, desc));
         break;
+    }
+    default:
+    {
+        auto desc = DescribeSourceNode(root);
+        TCW_AddError(wr, StringNewFormat("Unexpected compiler state [#\02] near '\x01'", root->SourceLocation, desc));
+        break;
+    }
     }
 }
 
