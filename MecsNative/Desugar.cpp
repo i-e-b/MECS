@@ -22,7 +22,7 @@ TreeNode* MakeReturnNode() {
 
     auto paren = SourceNode{};
     paren.Text = StringNew("()");
-    paren.NodeType = NodeType::ScopeDelimiter;
+    paren.NodeType = NodeType::Atom;
 
     TreeAddChild_SourceNode(node, &paren);
 
