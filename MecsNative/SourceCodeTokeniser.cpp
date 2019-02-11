@@ -507,6 +507,7 @@ String* DescribeNodeType(NodeType nt) {
 }
 
 String* DescribeSourceNode(SourceNode *n) {
+    if (n == NULL) return NULL;
     auto str = DescribeNodeType(n->NodeType);
     StringAppendChar(str, ' ');
     StringAppend(str, (n->Unescaped == NULL) ? n->Text : n->Unescaped);

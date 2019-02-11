@@ -146,7 +146,7 @@ void StringAppendF16(String *str, int32_t value) {
 }
 
 void StringAppend(String *first, String *second) {
-    if (second == NULL) return;
+    if (first == NULL || second == NULL) return;
     unsigned int len = VLength(second->chars);
     for (unsigned int i = 0; i < len; i++) {
         VPush_char(first->chars, *VGet_char(second->chars, i));
@@ -155,7 +155,7 @@ void StringAppend(String *first, String *second) {
 }
 
 void StringAppend(String *first, const char *second) {
-    if (second == NULL) return;
+    if (first == NULL || second == NULL) return;
     while (*second != 0) {
         VPush_char(first->chars, *second);
         second++;

@@ -1,6 +1,8 @@
 #include "Desugar.h"
 #include "SourceCodeTokeniser.h"
 
+#include <cassert>
+
 RegisterTreeFor(SourceNode, Tree)
 
 String* SugarName(String* original, int position) {
@@ -39,7 +41,6 @@ TreeNode* ConvertToPickList(String* funcName, TreeNode* sourceNode, TagCodeCache
     // Any immediate child that is not an `if` is an error
 
     auto sourceData = TreeReadBody_SourceNode(sourceNode);
-    StringClear(sourceData->Text); StringAppend(sourceData->Text, "()"); // make the contents into an anonymous block
 
     auto chain = TreeChild(sourceNode);
     while (chain != NULL) {
@@ -59,15 +60,23 @@ TreeNode* ConvertToPickList(String* funcName, TreeNode* sourceNode, TagCodeCache
     // The entire lot then gets wrapped in a function def and immediately called
     auto newFuncName = SugarName(funcName, sourceData->SourceLocation);
 
+    StringClear(sourceData->Text); StringAppend(sourceData->Text, "()"); // make the contents into an anonymous block
+
     auto defData = SourceNode{}; defData.Text = StringNew("def");
     auto nameData = SourceNode{}; nameData.Text = newFuncName;
     auto callData = SourceNode{}; callData.Text = newFuncName;
-    auto parenData = SourceNode{}; parenData.Text = StringNew("()");
+    auto parenData = SourceNode{}; parenData.Text = StringNew("()"); parenData.NodeType = NodeType::Atom;
 
     auto wrapper = TreeAllocate_SourceNode();
     auto defineBlock = TreeAddChild_SourceNode(wrapper, &defData); // function def
     auto funcNameBlock = TreeAddChild_SourceNode(defineBlock, &nameData); // name, empty param list
-    TreeAppendNode(defineBlock, sourceNode); // modified pick block
+
+    // TODO: I'm really not sure about this bit.
+    // CAREFULLY double check the tag-code output
+    int count = TreeCountChildren(sourceNode);
+
+    auto inter = TreeAddChild_SourceNode(defineBlock, &parenData); // function def
+    TreeAppendNode(inter, TreeChild(sourceNode)); // modified pick block
 
     auto callBlock = TreeAddChild_SourceNode(wrapper, &callData); // call the function
     TreeAddChild_SourceNode(callBlock, &parenData);

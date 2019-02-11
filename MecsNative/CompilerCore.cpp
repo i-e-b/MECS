@@ -191,8 +191,8 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
         // That's not happening in the C# side -- so probably something different in the parser
         // and/or the desugar transforms
         TCW_VariableReference(wr, valueName); // this is `()`, the unit definition
-        auto desc = DescribeSourceNode(root);
-        TCW_AddError(wr, StringNewFormat("Unexpected compiler state [#\02] near '\x01'", root->SourceLocation, desc));
+        /*auto desc = DescribeSourceNode(root);
+        TCW_AddError(wr, StringNewFormat("Unexpected compiler state [#\02] near '\x01'", root->SourceLocation, desc));*/
         break;
     }
     default:
@@ -364,7 +364,27 @@ void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCac
 
 
     if (nodeChildCount != 2) {
-        TCW_AddError(wr, StringNew("Function definition must have 3 parts: the name, the parameter list, and the definition.\r\nCall like `def (   myFunc ( param1 param2 ) ( ... statements ... )   )`"));
+
+        auto definitionNode = TreeChild(node); // parameters in parens
+
+        auto msg = StringNewFormat("Function definition must have 3 parts (found \x02): the name, the parameter list, and the definition.\r\n", nodeChildCount);
+        StringAppend(msg, "Call like `def (   myFunc ( param1 param2 ) ( ... statements ... )   )`\r\n");
+        StringAppendFormat(msg, "Found at \x02, near '\x01'\r\n", nodeData->SourceLocation, DescribeSourceNode(nodeData));
+        StringAppendFormat(msg, "Def node? \x01\r\n", DescribeSourceNode(TreeReadBody_SourceNode(definitionNode)));
+
+        if (nodeChildCount > 2) {
+            auto bodyNode = TreeSibling(definitionNode); //expressions defining the function
+            auto bodyData = TreeReadBody_SourceNode(bodyNode);
+
+            auto nNode = TreeSibling(bodyNode); //expressions defining the function
+            auto nData = TreeReadBody_SourceNode(nNode);
+
+            StringAppendFormat(msg, "Body node? \x01\r\n", DescribeSourceNode(bodyData));
+            StringAppendFormat(msg, "Extra node? \x01\r\n", DescribeSourceNode(nData));
+        }
+
+        TCW_AddError(wr, msg);
+        return;
     }
 
     auto definitionNode = TreeChild(node); // parameters in parens
