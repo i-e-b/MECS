@@ -191,8 +191,6 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
         // That's not happening in the C# side -- so probably something different in the parser
         // and/or the desugar transforms
         TCW_VariableReference(wr, valueName); // this is `()`, the unit definition
-        /*auto desc = DescribeSourceNode(root);
-        TCW_AddError(wr, StringNewFormat("Unexpected compiler state [#\02] near '\x01'", root->SourceLocation, desc));*/
         break;
     }
     default:

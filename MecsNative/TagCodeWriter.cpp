@@ -15,6 +15,8 @@ unsigned int TCW_IntKeyHash(void* key) {
     return A;
 }
 
+const char* FATAL_MESSAGE = "### THE COMPILER OR OUTPUT STAGE FAILED ###";
+
 typedef String* StringPtr;
 
 RegisterHashMapStatics(Map)
@@ -104,7 +106,7 @@ void TCW_AddError(TagCodeCache* tcc, String* ErrorMessage) {
 
 DataTag TCW_OpCodeAtIndex(TagCodeCache* tcc, int index) {
     if (tcc == NULL) return InvalidTag();
-    if (VecLength(tcc->_opcodes) >= index) return InvalidTag();
+    if (VecLength(tcc->_opcodes) <= index) return InvalidTag();
 
     DataTag result;
     VecCopy_DataTag(tcc->_opcodes, index, &result);
@@ -176,23 +178,36 @@ int SumOfPaddedSize(Vector* v) {
 }
 
 void WriteCode(Vector* output, DataTag tag) {
-    auto ptr = (char*)(&tag);
+    // The data in the tag will be in local byte-order, and unknown struct layout.
+    // We have to do a bit of extra work to ensure it's
+    // always in network order. This *MUST* be matched
+    // on the read side.
 
-    for (int i = 0; i < 8; i++) {
-        VecPush_char(output, *ptr);
-        ptr++;
+    if (tag.type == 0 && tag.params == 0 && tag.data == 0) {
+        // something went very wrong in an earlier stage!
+        char *c = (char*)FATAL_MESSAGE;
+        while (c != 0) {
+            VecPush_char(output, *c);
+            c++;
+        }
+        return;
     }
-}
-void WriteData(Vector* output, void* data, int length) {
-    auto ptr = (char*)(data);
 
-    for (int i = 0; i < length; i++) {
-        VecPush_char(output, *ptr);
-        ptr++;
-    }
+    VecPush_char(output, tag.type & 0xFF);
+
+    VecPush_char(output, (tag.params >> 16) & 0xFF);
+    VecPush_char(output, (tag.params >> 8) & 0xFF);
+    VecPush_char(output, (tag.params >> 0) & 0xFF);
+
+    VecPush_char(output, (tag.data >> 24) & 0xFF);
+    VecPush_char(output, (tag.data >> 16) & 0xFF);
+    VecPush_char(output, (tag.data >> 8 ) & 0xFF);
+    VecPush_char(output, (tag.data >> 0 ) & 0xFF);
 }
+
 // Append a string data to the output vector, consuming the string
 void WriteString(Vector* output, String* staticStr) {
+    // While we use a 1-byte encoding, then this is byte-order safe
     char c = StringDequeue(staticStr);
 
     while (c != '\0') {
@@ -239,7 +254,7 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
 
     // 4) Write the op-codes
     int opCodeCount = VecLength(tcc->_opcodes);
-    for (int index = 0; index < stringTableCount; index++) {
+    for (int index = 0; index < opCodeCount; index++) { // TODO: change from `for` to dequeue?
         DataTag code = {};
         VecDequeue_DataTag(tcc->_opcodes, &code);
 
@@ -251,9 +266,18 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
             // Re-write to new location
             auto original = code.data;
             int* final = NULL;
-            MapGet_int_int(mapping, original, &final);
-            WriteCode(output, EncodePointer(*final, DataType::StaticStringPtr));
+            if (MapGet_int_int(mapping, original, &final)) { // need to map from old offset
+                WriteCode(output, EncodePointer(*final, DataType::StaticStringPtr));
+            } else { // original is OK
+                WriteCode(output, EncodePointer(original, DataType::StaticStringPtr));
+            }
             break;
+        }
+
+        case DataType::Invalid:
+        {
+            // Total failure!
+            return NULL;
         }
 
         default:
@@ -430,7 +454,7 @@ void TCW_LiteralString(TagCodeCache* tcc, String* s) {
     // duplication check (only need 1 copy of any given static literal)
     int len = VecLength(tcc->_stringTable);
     for (int i = 0; i < len; i++) {
-        auto match = StringAreEqual(s, *VecGet_StringPtr(tcc->_stringTable, i));
+        if (!StringAreEqual(s, *VecGet_StringPtr(tcc->_stringTable, i))) continue;
         // found duplicate. Reference and leave
         VecPush_DataTag(tcc->_opcodes, EncodePointer(i, DataType::StaticStringPtr));
         return;

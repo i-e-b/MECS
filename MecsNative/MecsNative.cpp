@@ -559,11 +559,11 @@ int TestTagData() {
 
 
     StringClear(str);
-    Describe(EncodeOpcode('j', 'F', 1, 1), str);
+    DescribeTag(EncodeOpcode('j', 'F', 1, 1), str);
     StringNL(str);
-    Describe(RuntimeError(0xDEAD), str);
+    DescribeTag(RuntimeError(0xDEAD), str);
     StringNL(str);
-    Describe(EncodeVariableRef(str, NULL), str);
+    DescribeTag(EncodeVariableRef(str, NULL), str);
     StringNL(str);
     WriteStr(str);
 
@@ -744,11 +744,43 @@ int TestCompiler() {
         }
     } else {
         std::cout << "Compile OK\n";
+        std::cout << "Listing tag-code (excluding strings)\n\n";
+        
+        int opCount = TCW_OpCodeCount(tagCode);
+        auto tagStr = StringEmpty();
+        for (int i = 0; i < opCount; i++) {
+            DataTag opcode = TCW_OpCodeAtIndex(tagCode, i);
+            DescribeTag(opcode, tagStr);
+            StringAppendChar(tagStr, '\n');
+        }
+        WriteStr(tagStr);
+        StringDeallocate(tagStr);
+        
+        std::cout << "\n\nWriting to file...";
+        auto buf = TCW_WriteToStream(tagCode);
+        std::cout << VecLength(buf) << " bytes...";
+        FileWriteAll(StringNew("tagcode.dat"), buf);
+        std::cout << "Done\n";
     }
 
     StringDeallocate(nstr);
     StringDeallocate(pathOfValid);
     DeallocateAST(syntaxTree);
+
+    auto arena = MMCurrent();
+    size_t alloc;
+    int objects;
+    ArenaGetState(arena, &alloc, NULL, NULL, NULL, &objects, NULL);
+
+    // The compiler currently leaks like a sieve, and relies heavily on arenas to clean up.
+    std::cout << "Compiling leaked " << alloc << " bytes across " << objects << " objects\n";
+
+    return 0;
+}
+
+int TestRuntimeExec() {
+    // This relies on the 'tagcode.dat' file created in the test compiler step
+    std::cout << "***************** RUNTIME ******************\n";
 
     return 0;
 }
@@ -806,9 +838,14 @@ int main() {
     if (aares != 0) return aares;
     MMPop();
     
-    MMPush(100 MEGABYTES);
+    MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
+    MMPop();
+
+    MMPush(10 MEGABYTES);
+    auto runit = TestRuntimeExec();
+    if (runit != 0) return runit;
     MMPop();
 
     ShutdownManagedMemory();

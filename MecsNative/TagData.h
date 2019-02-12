@@ -106,6 +106,6 @@ void DecodeShortStr(DataTag token, String* target);
 DataTag EncodeShortStr(String* str);
 
 // append a human-readable summary of the token to a mutable string
-void Describe(DataTag token, String* target);
+void DescribeTag(DataTag token, String* target);
 
 #endif

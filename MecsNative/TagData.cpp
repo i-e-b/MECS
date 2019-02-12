@@ -151,7 +151,7 @@ void DecodeShortStr(DataTag token, String* target) {
 }
 
 
-void Describe(DataTag token, String* target) {
+void DescribeTag(DataTag token, String* target) {
     char c1, c2;
     switch ((DataType)(token.type)) {
     case DataType::Invalid:  StringAppend(target, "Invalid token"); return;
