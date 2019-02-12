@@ -559,11 +559,11 @@ int TestTagData() {
 
 
     StringClear(str);
-    DescribeTag(EncodeOpcode('j', 'F', 1, 1), str);
+    DescribeTag(EncodeOpcode('j', 'F', 1, 1), str, NULL);
     StringNL(str);
-    DescribeTag(RuntimeError(0xDEAD), str);
+    DescribeTag(RuntimeError(0xDEAD), str, NULL);
     StringNL(str);
-    DescribeTag(EncodeVariableRef(str, NULL), str);
+    DescribeTag(EncodeVariableRef(str, NULL), str, NULL);
     StringNL(str);
     WriteStr(str);
 
@@ -750,7 +750,7 @@ int TestCompiler() {
         auto tagStr = StringEmpty();
         for (int i = 0; i < opCount; i++) {
             DataTag opcode = TCW_OpCodeAtIndex(tagCode, i);
-            DescribeTag(opcode, tagStr);
+            DescribeTag(opcode, tagStr, TCW_GetSymbols(tagCode));
             StringAppendChar(tagStr, '\n');
         }
         WriteStr(tagStr);

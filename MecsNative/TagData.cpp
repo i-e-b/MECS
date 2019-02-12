@@ -1,5 +1,24 @@
 #include "TagData.h"
 
+// TODO: Move the key/hash functions out to common?
+
+
+bool TD_IntKeyCompare(void* key_A, void* key_B) {
+    auto A = *((uint32_t*)key_A);
+    auto B = *((uint32_t*)key_B);
+    return A == B;
+}
+unsigned int TD_IntKeyHash(void* key) {
+    auto A = *((uint32_t*)key);
+    return A;
+}
+
+typedef String* StringPtr;
+RegisterHashMapStatics(Map)
+RegisterHashMapFor(int, StringPtr, TD_IntKeyHash, TD_IntKeyCompare, Map)
+
+
+
 bool IsAllocated(DataTag token) {
     return (token.type & ALLOCATED_TYPE) > 0;
 };
@@ -151,8 +170,10 @@ void DecodeShortStr(DataTag token, String* target) {
 }
 
 
-void DescribeTag(DataTag token, String* target) {
+void DescribeTag(DataTag token, String* target, HashMap* symbols) {
+    StringPtr *str = NULL;
     char c1, c2;
+
     switch ((DataType)(token.type)) {
     case DataType::Invalid:  StringAppend(target, "Invalid token"); return;
     case DataType::Not_a_Result:  StringAppend(target, "Non value (NAR)"); return;
@@ -160,17 +181,22 @@ void DescribeTag(DataTag token, String* target) {
     case DataType::Unit:  StringAppend(target, "Non value (Unit)"); return;
 
     case DataType::Opcode:
-        StringAppend(target, "Opcode [");
+        StringAppend(target, "Opcode ");
         DecodeLongOpcode(token, &c1, &c2, NULL);
         StringAppendChar(target, c1);
         StringAppendChar(target, c2);
-        StringAppendChar(target, ']');
+        if (symbols != NULL && MapGet_int_StringPtr(symbols, token.data, &str)) {
+            StringAppendFormat(target, " '\x01' ", *str);
+        }
+        StringAppendFormat(target, "[\x03]", token.data);
         return;
 
     case DataType::VariableRef:
-        StringAppend(target, "VariableNameRef [");
-        StringAppendInt32Hex(target, DecodeVariableRef(token));
-        StringAppendChar(target, ']');
+        StringAppend(target, "VariableNameRef");
+        if (symbols != NULL && MapGet_int_StringPtr(symbols, token.data, &str)) {
+            StringAppendFormat(target, " '\x01' ", *str);
+        }
+        StringAppendFormat(target, "[\x03]", DecodeVariableRef(token));
         return;
 
     case DataType::Exception:

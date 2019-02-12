@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "String.h"
+#include "HashMap.h"
 
 // Bit flag on DataType that indicates the value is a pointer to GC memory
 #define ALLOCATED_TYPE 0x80
@@ -105,7 +106,7 @@ void DecodeShortStr(DataTag token, String* target);
 // Encode the first 7 characters of a string into a tag. The chars are removed from the original string.
 DataTag EncodeShortStr(String* str);
 
-// append a human-readable summary of the token to a mutable string
-void DescribeTag(DataTag token, String* target);
+// append a human-readable summary of the token to a mutable string. Symbol table is optional
+void DescribeTag(DataTag token, String* target, HashMap* symbols);
 
 #endif
