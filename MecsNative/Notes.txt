@@ -30,6 +30,7 @@ Input handling:
   * [x] context
   * [x] desugar
   * [ ] optimisations
+  * [ ] fix string pointers from index to byte position
 
 The machine:
 ------------
