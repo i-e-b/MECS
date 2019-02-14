@@ -42,7 +42,7 @@ bool FileAppendAll(String* path, Vector* buffer) {
 
 bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, uint64_t* actual) {
     if (path == NULL || buffer == NULL) return false;
-    if (VectorElementSize(buffer) != 1) return false; // not a byte-size vector
+    if (VectorElementSize(buffer) < 1 || !VectorIsValid(buffer)) return false; // not valid destination
 
     auto realPath = StringNew("C:\\Temp\\MECS\\"); // jail for testing on Windows
     StringAppend(realPath, path);
@@ -63,18 +63,29 @@ bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, u
         return false;
     }
 
+    int elemSize = VectorElementSize(buffer);
+    char* elemBuffer = (char*)mmalloc(elemSize);
+    int idx = 0;
+
     auto len = end - start;
     uint64_t readBytes = 0;
     while (len --> 0) {
         int r = fgetc(file);
         if (r < 0) break;
-        char c = r;
+        //char c = r;
+        elemBuffer[idx] = r;
         readBytes++;
-        VectorPush(buffer, &c);
+
+        idx++;
+        if (idx == elemSize) {
+            idx = 0;
+            VectorPush(buffer, elemBuffer);
+        }
     }
 
     if (actual != NULL) *actual = readBytes;
 
+    mfree(elemBuffer);
     return true;
 }
 

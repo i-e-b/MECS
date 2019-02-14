@@ -10,20 +10,8 @@
 // Up this if you have files over 1MB. Or write better code.
 #define MAX_IMPORT_SIZE 0xFFFFF
 
-
-typedef String* StringPtr;
-bool CC_StringKeyCompare(void* key_A, void* key_B) {
-    auto A = *((StringPtr*)key_A);
-    auto B = *((StringPtr*)key_B);
-    return StringAreEqual(A, B);
-}
-unsigned int CC_StringKeyHash(void* key) {
-    auto A = *((StringPtr*)key);
-    return StringHash(A);
-}
-
 RegisterHashMapStatics(Map)
-RegisterHashMapFor(StringPtr, bool, CC_StringKeyHash, CC_StringKeyCompare, Map)
+RegisterHashMapFor(StringPtr, bool, HashMapStringKeyHash, HashMapStringKeyCompare, Map)
 
 RegisterTreeFor(SourceNode, Tree)
 

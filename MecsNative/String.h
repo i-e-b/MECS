@@ -8,6 +8,7 @@
 
 // A mutable variable length string structure
 typedef struct String String;
+typedef String* StringPtr;
 
 // Create an empty string
 String *StringEmpty();

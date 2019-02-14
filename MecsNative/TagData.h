@@ -46,6 +46,7 @@ enum class DataType {
     StaticStringPtr = 22,                          // Data is a pointer to a static string. Ignored by GC. Params not used.
     StringPtr = ALLOCATED_TYPE + StaticStringPtr,  // Data is pointer to dynamic string. Params not used. Can be collected by GC
 
+    Flag = 0xFF // A marker for internal testing
 };
 
 // Fixed-size 64-bit operand for the runtime
@@ -105,6 +106,9 @@ bool DecodeBool(DataTag encoded);
 void DecodeShortStr(DataTag token, String* target);
 // Encode the first 7 characters of a string into a tag. The chars are removed from the original string.
 DataTag EncodeShortStr(String* str);
+
+// Encode a marker tag for development use
+DataTag EncodeVisualMarker();
 
 // append a human-readable summary of the token to a mutable string. Symbol table is optional
 void DescribeTag(DataTag token, String* target, HashMap* symbols);

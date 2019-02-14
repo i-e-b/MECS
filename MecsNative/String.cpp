@@ -394,8 +394,8 @@ bool StringEndsWith(String* haystack, const char* needle) {
 }
 
 bool StringAreEqual(String* a, String* b) {
-    if (a == NULL) return false;
-    if (b == NULL) return false;
+    if (a == NULL || a->chars == NULL || !VectorIsValid(a->chars)) return false;
+    if (b == NULL || b->chars == NULL || !VectorIsValid(b->chars)) return false;
     uint32_t len = StringLength(a);
     if (len != StringLength(b)) return false;
     for (uint32_t i = 0; i < len; i++) {

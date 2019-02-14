@@ -40,6 +40,12 @@ unsigned int HashMapCount(HashMap *h);
 void HashMapPurge(HashMap *h);
 
 
+// Some common compare and hash functions.
+bool         HashMapStringKeyCompare(void* key_A, void* key_B);
+unsigned int HashMapStringKeyHash(void* key);
+bool         HashMapIntKeyCompare(void* key_A, void* key_B);
+unsigned int HashMapIntKeyHash(void* key);
+
 // Macros to create type-specific versions of the methods above.
 // If you want to use the typed versions, make sure you call `RegisterHashMapFor(typeName, namespace,...)` for EACH type
 

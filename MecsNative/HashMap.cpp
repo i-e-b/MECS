@@ -1,5 +1,6 @@
 #include "HashMap.h"
 #include "Vector.h"
+#include "String.h"
 #include "MemoryManager.h"
 
 // Fixed sizes -- these are structural to the code and must not changeo
@@ -352,4 +353,23 @@ void HashMapClear(HashMap * h) {
 
 unsigned int HashMapCount(HashMap * h) {
     return h->countUsed;
+}
+
+bool HashMapStringKeyCompare(void* key_A, void* key_B) {
+    auto A = *((StringPtr*)key_A);
+    auto B = *((StringPtr*)key_B);
+    return StringAreEqual(A, B);
+}
+unsigned int HashMapStringKeyHash(void* key) {
+    auto A = *((StringPtr*)key);
+    return StringHash(A);
+}
+bool HashMapIntKeyCompare(void* key_A, void* key_B) {
+    auto A = *((int*)key_A);
+    auto B = *((int*)key_B);
+    return A == B;
+}
+unsigned int HashMapIntKeyHash(void* key) {
+    auto A = *((unsigned int*)key);
+    return A | 0xA0000000;
 }

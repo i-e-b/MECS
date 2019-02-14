@@ -16,8 +16,8 @@ typedef HashMap* MapPtr;
 typedef uint32_t Name;
 
 RegisterHashMapStatics(Map)
-RegisterHashMapFor(Name, DataTag, Scope_IntKeyHash, Scope_IntKeyCompare, Map)
-RegisterHashMapFor(Name, bool, Scope_IntKeyHash, Scope_IntKeyCompare, Map)
+RegisterHashMapFor(Name, DataTag, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
+RegisterHashMapFor(Name, bool, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 RegisterVectorStatics(Vec)
 RegisterVectorFor(MapPtr, Vec)

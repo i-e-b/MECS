@@ -22,7 +22,7 @@ Input handling:
 ---------------
 
 * [x] File system abstraction
-* [ ] Improve filesystem to allow non-byte sized vectors?
+* [x] Improve filesystem to allow non-byte sized vectors?
 * [x] Convert parser
 * [ ] Convert compiler
   * [x] tag code write
@@ -30,15 +30,15 @@ Input handling:
   * [x] context
   * [x] desugar
   * [ ] optimisations
-  * [ ] fix string pointers from index to byte position
 
 The machine:
 ------------
 
 * [ ] Try introducing C++ namespacing?
-* [ ] TagCode reader
+* [ ] TagCode reader (fix byte order)
 * [ ] Convert runtime
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
+* [ ] Debug symbols file and reader
 
 
 Actor model stuff:

@@ -45,6 +45,7 @@ int TCW_Position(TagCodeCache* tcc);
 int TCW_OpCodeCount(TagCodeCache* tcc);
 
 // Inject a compiled sub-unit into this writer. References to string constants will be recalculated
+// NOTE: The `srcFragment` parameter will be deallocted!
 void TCW_Merge(TagCodeCache* dest, TagCodeCache* srcFragment);
 
 // Write opcodes and data section to a byte vector. References to string constants will be recalculated
@@ -87,8 +88,8 @@ void TCW_CompareJump(TagCodeCache* tcc, int opCodeCount);
 void TCW_UnconditionalJump(TagCodeCache* tcc, int opCodeCount);
 // Encode a numeric value
 void TCW_LiteralNumber(TagCodeCache* tcc, int32_t d);
-// Write a static string. Static strings aren't seen by the GC and exist in memory outside of the normal allocation space
-void TCW_LiteralString(TagCodeCache* tcc, String* s);
+// Write a static string. Static strings aren't seen by the GC and exist in memory outside of the normal allocation space. Returns `true` iff the string is already present
+bool TCW_LiteralString(TagCodeCache* tcc, String* s);
 // Add a pre-encode string
 void TCW_RawToken(TagCodeCache* tcc, DataTag value);
 

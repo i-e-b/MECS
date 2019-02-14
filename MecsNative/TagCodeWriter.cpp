@@ -3,25 +3,11 @@
 
 #include "MemoryManager.h"
 
-
-
-bool TCW_IntKeyCompare(void* key_A, void* key_B) {
-    auto A = *((uint32_t*)key_A);
-    auto B = *((uint32_t*)key_B);
-    return A == B;
-}
-unsigned int TCW_IntKeyHash(void* key) {
-    auto A = *((uint32_t*)key);
-    return A;
-}
-
 const char* FATAL_MESSAGE = "### THE COMPILER OR OUTPUT STAGE FAILED ###";
 
-typedef String* StringPtr;
-
 RegisterHashMapStatics(Map)
-RegisterHashMapFor(int, StringPtr, TCW_IntKeyHash, TCW_IntKeyCompare, Map)
-RegisterHashMapFor(int, int, TCW_IntKeyHash, TCW_IntKeyCompare, Map)
+RegisterHashMapFor(int, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
+RegisterHashMapFor(int, int, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 RegisterVectorStatics(Vec)
 RegisterVectorFor(StringPtr, Vec)
@@ -53,6 +39,8 @@ TagCodeCache * TCW_Allocate() {
     result->_opcodes = VecAllocate_DataTag();
     result->_stringTable = VecAllocate_StringPtr();
     result->_symbols = MapAllocate_int_StringPtr(1024);
+    result->_errors = NULL;
+    result->_returnsValues = false;
 
     if (result->_opcodes == NULL || result->_stringTable == NULL || result->_symbols == NULL) {
         TCW_Deallocate(result);
@@ -65,9 +53,16 @@ TagCodeCache * TCW_Allocate() {
 void TCW_Deallocate(TagCodeCache* tcc) {
     if (tcc == NULL) return;
 
-    if (tcc->_opcodes != NULL) mfree(tcc->_opcodes);
-    if (tcc->_stringTable != NULL) mfree(tcc->_stringTable);
-    if (tcc->_symbols != NULL) mfree(tcc->_symbols);
+    // This *WILL* leak strings. Make sure to run inside an arena
+    if (tcc->_opcodes != NULL) VectorDeallocate(tcc->_opcodes);
+    if (tcc->_stringTable != NULL) VectorDeallocate(tcc->_stringTable);
+    if (tcc->_symbols != NULL) HashMapDeallocate(tcc->_symbols);
+    if (tcc->_errors != NULL) VectorDeallocate(tcc->_errors);
+
+    tcc->_opcodes = NULL;
+    tcc->_stringTable = NULL;
+    tcc->_symbols = NULL;
+    tcc->_errors = NULL;
 
     mfree(tcc);
 }
@@ -144,21 +139,26 @@ void TCW_Merge(TagCodeCache* dest, TagCodeCache* fragment) {
     for (int i = 0; i < srcLength; i++) {
         auto code = VecGet_DataTag(codes, i);
         switch ((DataType)(code->type)) {
-        case DataType::Invalid:
-            VecPush_DataTag(dest->_opcodes, *code);
-            break;
 
         case DataType::DebugStringPtr:
         case DataType::StaticStringPtr:
         case DataType::StringPtr:
-            TCW_LiteralString(dest, *VecGet_StringPtr(strings, code->data));
+        {
+            auto strPtr = *VecGet_StringPtr(strings, code->data);
+            if (TCW_LiteralString(dest, strPtr)) {
+                // string is a duplicate. We can clean up:
+                StringDeallocate(strPtr);
+            }
             break;
+        }
 
         default:
             VecPush_DataTag(dest->_opcodes, *code);
             break;
         }
     }
+
+    if (dest != fragment) TCW_Deallocate(fragment);
 }
 
 // Number of 8-byte chunks required to store this string
@@ -236,7 +236,7 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
         VecDequeue_StringPtr(tcc->_stringTable, &staticStr);
 
         auto bytes = StringLength(staticStr);
-        auto chunks = bytes / 8 + (bytes % 8 != 0);
+        auto chunks = (bytes / 8) + (bytes % 8 != 0);
         auto padSize = (chunks * 8) - bytes;
 
         MapPut_int_int(mapping, index, location, true);
@@ -260,7 +260,6 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
 
         switch ((DataType)(code.type)) {
         case DataType::DebugStringPtr:
-        case DataType::StringPtr:
         case DataType::StaticStringPtr:
         {
             // Re-write to new location
@@ -268,12 +267,14 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
             int* final = NULL;
             if (MapGet_int_int(mapping, original, &final)) { // need to map from old offset
                 WriteCode(output, EncodePointer(*final, DataType::StaticStringPtr));
-            } else { // original is OK
-                WriteCode(output, EncodePointer(original, DataType::StaticStringPtr));
+            } else {
+                // String mapping went totally wrong
+                return NULL;
             }
             break;
         }
 
+        case DataType::StringPtr:
         case DataType::Invalid:
         {
             // Total failure!
@@ -408,11 +409,8 @@ bool TCW_AddSymbol(TagCodeCache* tcc, uint32_t crushed, String* name) {
 
     // If we het to here, the compiler name crushing has failed.
     // We try to let the programmer know how to work around our limitations
-    auto errMsg = StringNew("Hash collision between symbols!  This is a compiler limitation, sorry. Try renaming '");
-    StringAppend(errMsg, *str);
-    StringAppend(errMsg, "' or '");
-    StringAppend(errMsg, name);
-    StringAppend(errMsg, "'");
+    auto errMsg = StringNew("Hash collision between symbols!  This is a compiler limitation, sorry.\r\n");
+    StringAppendFormat(errMsg, "Try renaming '\x01' or '\x01'", *str, name);
     TCW_Exception(tcc, errMsg);
     return false;
 }
@@ -448,8 +446,8 @@ void TCW_LiteralNumber(TagCodeCache* tcc, int32_t d) {
     VecPush_DataTag(tcc->_opcodes, EncodeInt32(d));
 }
 
-void TCW_LiteralString(TagCodeCache* tcc, String* s) {
-    if (tcc == NULL || s == NULL) return;
+bool TCW_LiteralString(TagCodeCache* tcc, String* s) {
+    if (tcc == NULL || s == NULL) return false;
 
     // duplication check (only need 1 copy of any given static literal)
     int len = VecLength(tcc->_stringTable);
@@ -457,12 +455,13 @@ void TCW_LiteralString(TagCodeCache* tcc, String* s) {
         if (!StringAreEqual(s, *VecGet_StringPtr(tcc->_stringTable, i))) continue;
         // found duplicate. Reference and leave
         VecPush_DataTag(tcc->_opcodes, EncodePointer(i, DataType::StaticStringPtr));
-        return;
+        return true;
     }
 
     // no existing matches
     VecPush_StringPtr(tcc->_stringTable, s);
     VecPush_DataTag(tcc->_opcodes, EncodePointer(len, DataType::StaticStringPtr));
+    return false;
 }
 
 void TCW_RawToken(TagCodeCache* tcc, DataTag value) {

@@ -7,6 +7,9 @@
 #include "Vector.h"
 #include <stdint.h>
 
+// Largest file supported (not full 64-bits)
+#define FILE_LOAD_ALL 0xFFFFFFFF
+
 // Read from the file system. Appends a fragment of a file to a preallocated vector of bytes.
 bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, uint64_t* actual);
 

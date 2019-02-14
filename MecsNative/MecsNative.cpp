@@ -28,20 +28,10 @@ typedef struct exampleElement {
     int a; int b;
 } exampleElement;
 
-bool IntKeyCompare(void* key_A, void* key_B) {
-    auto A = *((int*)key_A);
-    auto B = *((int*)key_B);
-    return A == B;
-}
-unsigned int IntKeyHash(void* key) {
-    auto A = *((unsigned int*)key);
-    return A;
-}
+
 int CompareExampleElement(exampleElement *left, exampleElement *right) {
     return left->a - right->a;
 }
-
-typedef String* StringPtr;
 
 // Register type specifics
 RegisterVectorStatics(Vec)
@@ -49,10 +39,11 @@ RegisterVectorFor(exampleElement, Vec)
 RegisterVectorFor(HashMap_KVP, Vec)
 RegisterVectorFor(char, Vec)
 RegisterVectorFor(StringPtr, Vec)
+RegisterVectorFor(DataTag, Vec)
 
 RegisterHashMapStatics(Map)
-RegisterHashMapFor(int, int, IntKeyHash, IntKeyCompare, Map)
-RegisterHashMapFor(int, float, IntKeyHash, IntKeyCompare, Map)
+RegisterHashMapFor(int, int, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
+RegisterHashMapFor(int, float, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 RegisterTreeStatics(T)
 RegisterTreeFor(exampleElement, T)
@@ -766,14 +757,16 @@ int TestCompiler() {
     StringDeallocate(nstr);
     StringDeallocate(pathOfValid);
     DeallocateAST(syntaxTree);
+    DeallocateAST(compilableSyntaxTree);
 
     auto arena = MMCurrent();
     size_t alloc;
+    size_t unalloc;
     int objects;
-    ArenaGetState(arena, &alloc, NULL, NULL, NULL, &objects, NULL);
+    ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
 
     // The compiler currently leaks like a sieve, and relies heavily on arenas to clean up.
-    std::cout << "Compiling leaked " << alloc << " bytes across " << objects << " objects\n";
+    std::cout << "Compiling leaked " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
 
     return 0;
 }
@@ -781,6 +774,31 @@ int TestCompiler() {
 int TestRuntimeExec() {
     // This relies on the 'tagcode.dat' file created in the test compiler step
     std::cout << "***************** RUNTIME ******************\n";
+    
+    auto tagCode = VecAllocate_DataTag();
+    auto path = StringNew("tagcode.dat");
+    uint64_t actual;
+    bool ok = FileLoadChunk(path, tagCode, 0, FILE_LOAD_ALL, &actual); // TODO
+
+    if (!ok || actual < 100) {
+        std::cout << "Failed to read tagcode file\n";
+        return -1;
+    }
+
+    std::cout << "Read file OK. Loaded " << VecLength(tagCode) << " elements\n";
+
+    // output the result. Should match from compiler
+
+    int opCount = VecLength(tagCode);
+    auto tagStr = StringEmpty();
+    for (int i = 0; i < opCount; i++) {
+        DataTag opcode = *VecGet_DataTag(tagCode, i);
+        DescribeTag(opcode, tagStr, NULL); // TODO: symbols to a debug DB file
+        StringAppendChar(tagStr, '\n');
+    }
+    WriteStr(tagStr);
+    StringDeallocate(tagStr);
+
 
     return 0;
 }

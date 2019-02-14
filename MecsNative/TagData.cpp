@@ -1,23 +1,7 @@
 #include "TagData.h"
 
-// TODO: Move the key/hash functions out to common?
-
-
-bool TD_IntKeyCompare(void* key_A, void* key_B) {
-    auto A = *((uint32_t*)key_A);
-    auto B = *((uint32_t*)key_B);
-    return A == B;
-}
-unsigned int TD_IntKeyHash(void* key) {
-    auto A = *((uint32_t*)key);
-    return A;
-}
-
-typedef String* StringPtr;
 RegisterHashMapStatics(Map)
-RegisterHashMapFor(int, StringPtr, TD_IntKeyHash, TD_IntKeyCompare, Map)
-
-
+RegisterHashMapFor(int, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 bool IsAllocated(DataTag token) {
     return (token.type & ALLOCATED_TYPE) > 0;
@@ -155,6 +139,10 @@ DataTag EncodeShortStr(String* str) {
     return result;
 }
 
+DataTag EncodeVisualMarker() {
+    return DataTag{ 0xff, 0xffffff, 0xffffffff };
+}
+
 void DecodeShortStr(DataTag token, String* target) {
     if (target == NULL) return;
     for (int i = 0; i < 3; i++) {
@@ -168,7 +156,6 @@ void DecodeShortStr(DataTag token, String* target) {
         StringAppendChar(target, c);
     }
 }
-
 
 void DescribeTag(DataTag token, String* target, HashMap* symbols) {
     StringPtr *str = NULL;

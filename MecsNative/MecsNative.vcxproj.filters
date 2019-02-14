@@ -82,6 +82,9 @@
     <ClCompile Include="Desugar.cpp">
       <Filter>Source Files\Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="TagCodeReader.cpp">
+      <Filter>Source Files\InputOutput</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -140,6 +143,9 @@
     </ClInclude>
     <ClInclude Include="Desugar.h">
       <Filter>Source Files\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="TagCodeReader.h">
+      <Filter>Source Files\InputOutput</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
