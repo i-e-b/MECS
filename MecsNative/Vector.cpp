@@ -364,6 +364,9 @@ void VectorDeallocate(Vector *v) {
     }
     v->_baseChunkTable = NULL;
     v->_endChunkPtr = NULL;
+    v->_elementCount = 0;
+    v->ElementByteSize = 0;
+    v->ElemsPerChunk = 0;
     mfree(v);
 }
 

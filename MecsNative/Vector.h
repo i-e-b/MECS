@@ -64,7 +64,7 @@ int VectorElementSize(Vector *v);
     inline bool nameSpace##Copy_##typeName(Vector *v, unsigned int idx, typeName *target){ return VectorCopy(v, idx, (void*) target); } \
     inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } \
     inline bool nameSpace##Peek_##typeName(Vector *v, typeName *target){ return VectorPeek(v, (void*) target); } \
-    inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName* element, typeName* prevValue){ return VectorSet(v, index, (void*)element, (void*)prevValue); } \
+    inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName element, typeName* prevValue){ return VectorSet(v, index, &element, (void*)prevValue); } \
     inline bool nameSpace##Dequeue_##typeName(Vector *v, typeName* outValue) { return VectorDequeue(v, (void*)outValue);}\
     inline void nameSpace##Sort_##typeName(Vector *v, int(*compareFunc)(typeName* A, typeName* B)) {VectorSort(v, (int(*)(void* A, void* B))compareFunc);}\
 

@@ -147,7 +147,7 @@ void TCW_Merge(TagCodeCache* dest, TagCodeCache* fragment) {
             auto strPtr = *VecGet_StringPtr(strings, code->data);
             if (TCW_LiteralString(dest, strPtr)) {
                 // string is a duplicate. We can clean up:
-                StringDeallocate(strPtr);
+                //StringDeallocate(strPtr);
             }
             break;
         }
@@ -158,7 +158,7 @@ void TCW_Merge(TagCodeCache* dest, TagCodeCache* fragment) {
         }
     }
 
-    if (dest != fragment) TCW_Deallocate(fragment);
+    //if (dest != fragment) TCW_Deallocate(fragment);
 }
 
 // Number of 8-byte chunks required to store this string
@@ -205,8 +205,26 @@ void WriteCode(Vector* output, DataTag tag) {
     VecPush_char(output, (tag.data >> 0 ) & 0xFF);
 }
 
+void WriteCodeIndex(Vector* output, DataTag tag, int index) {
+    VecSet_char(output, index++, tag.type & 0xFF, NULL);
+
+    VecSet_char(output, index++, (tag.params >> 16) & 0xFF, NULL);
+    VecSet_char(output, index++, (tag.params >> 8) & 0xFF, NULL);
+    VecSet_char(output, index++, (tag.params >> 0) & 0xFF, NULL);
+
+    VecSet_char(output, index++, (tag.data >> 24) & 0xFF, NULL);
+    VecSet_char(output, index++, (tag.data >> 16) & 0xFF, NULL);
+    VecSet_char(output, index++, (tag.data >> 8) & 0xFF, NULL);
+    VecSet_char(output, index++, (tag.data >> 0) & 0xFF, NULL);
+}
+
 // Append a string data to the output vector, consuming the string
-void WriteString(Vector* output, String* staticStr) {
+void WriteString(Vector* output, String* staticStr, int expectedLength) {
+
+    auto cstr = StringToCStr(staticStr); // for debug
+
+    int l = StringLength(staticStr);
+
     // While we use a 1-byte encoding, then this is byte-order safe
     char c = StringDequeue(staticStr);
 
@@ -220,14 +238,11 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
     auto output = VecAllocate_char();
     // a string is [Integer Tag: byte length] [string bytes, padded to 8 byte chunks]
 
-    // 1) Calculate the string table size
-    int dataLength = SumOfPaddedSize(tcc->_stringTable) + VecLength(tcc->_stringTable);
-
-    // 2) Write a jump command to skip the table
-    auto jumpCode = EncodeLongOpcode('c', 's', dataLength);
+    // 1) Write a jump command to skip the table (we will update this later)
+    auto jumpCode = EncodeLongOpcode('c', 's', 0);
     WriteCode(output, jumpCode);
 
-    // 3) Write the strings, with a mapping dictionary
+    // 2) Write the strings, with a mapping dictionary
     long location = 1; // counting initial jump as 0
     int stringTableCount = VecLength(tcc->_stringTable);
     auto mapping = MapAllocate_int_int(1024);
@@ -235,22 +250,37 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
         String* staticStr = NULL;
         VecDequeue_StringPtr(tcc->_stringTable, &staticStr);
 
-        auto bytes = StringLength(staticStr);
-        auto chunks = (bytes / 8) + (bytes % 8 != 0);
-        auto padSize = (chunks * 8) - bytes;
+        if (!StringIsValid(staticStr)) {
+            return NULL; // something went very wrong
+        }
 
-        MapPut_int_int(mapping, index, location, true);
+        auto bytes = StringLength(staticStr);
+
+        location = VecLength(output);
+        if (location % 8 != 0) { // alignment went wrong!
+            return NULL;
+        }
+
+        MapPut_int_int(mapping, index, location / 8, true);
 
         auto headerOpCode = EncodeInt32(bytes);
         WriteCode(output, headerOpCode);
-        location++;
 
-        WriteString(output, staticStr);
-        location += chunks;
+        WriteString(output, staticStr, bytes);
         StringDeallocate(staticStr);
 
-        for (int p = 0; p < padSize; p++) { VecPush_char(output, 0); }
+        // pad so that we are always 64-bit aligned
+        int adj = VecLength(output) % 8;
+        if (adj != 0) { 
+            adj = 8 - adj;
+            for (int p = 0; p < adj; p++) { VecPush_char(output, 0); }
+        }
     }
+
+    // 3) update jump table with final location
+    int jumpDist = (VecLength(output) / 8) - 1;
+    jumpCode = EncodeLongOpcode('c', 's', jumpDist);
+    WriteCodeIndex(output, jumpCode, 0);
 
     // 4) Write the op-codes
     int opCodeCount = VecLength(tcc->_opcodes);
@@ -260,6 +290,7 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
 
         switch ((DataType)(code.type)) {
         case DataType::DebugStringPtr:
+        case DataType::StringPtr:
         case DataType::StaticStringPtr:
         {
             // Re-write to new location
@@ -274,12 +305,9 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
             break;
         }
 
-        case DataType::StringPtr:
         case DataType::Invalid:
-        {
             // Total failure!
             return NULL;
-        }
 
         default:
             WriteCode(output, code);

@@ -23,6 +23,8 @@ void StringClear(String *str);
 
 // Deallocate a string. Ignores if you pass NULL
 void StringDeallocate(String *str);
+// Returns true if the string is valid, false if it has been deallocated or damaged
+bool StringIsValid(String *str);
 
 // Length of a string
 unsigned int StringLength(String* str);

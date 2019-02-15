@@ -38,6 +38,11 @@ void StringDeallocate(String *str) {
     mfree(str);
 }
 
+bool StringIsValid(String *str) {
+    if (str == NULL) return false;
+    return VectorIsValid(str->chars);
+}
+
 String * StringNew(const char * str) {
     auto result = StringEmpty();
     if (result == NULL) return NULL;

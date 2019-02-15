@@ -30,12 +30,13 @@ Input handling:
   * [x] context
   * [x] desugar
   * [ ] optimisations
+  * [ ] symbol output
 
 The machine:
 ------------
 
 * [ ] Try introducing C++ namespacing?
-* [ ] TagCode reader (fix byte order)
+* [x] TagCode reader (fix byte order)
 * [ ] Convert runtime
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 * [ ] Debug symbols file and reader

@@ -15,6 +15,7 @@
 
 // Encoding:
 #include "TagData.h"
+#include "TagCodeReader.h"
 
 // System abstractions
 #include "FileSys.h"
@@ -137,7 +138,7 @@ int TestVector() {
     // Set a different element value
     auto newData = exampleElement{ 255,511 };
     exampleElement capturedOldData;
-    VecSet_exampleElement(gvec, 70, &newData, &capturedOldData);
+    VecSet_exampleElement(gvec, 70, newData, &capturedOldData);
     std::cout << "Replace value at 70. Old data = " << capturedOldData.a << ", " << capturedOldData.b << "\n";
     r = VecGet_exampleElement(gvec, 70);
     std::cout << "Element 70 new data = " << r->a << ", " << r->b << " (should be 255,511)\n";
@@ -778,26 +779,21 @@ int TestRuntimeExec() {
     auto tagCode = VecAllocate_DataTag();
     auto path = StringNew("tagcode.dat");
     uint64_t actual;
-    bool ok = FileLoadChunk(path, tagCode, 0, FILE_LOAD_ALL, &actual); // TODO
-
-    if (!ok || actual < 100) {
-        std::cout << "Failed to read tagcode file\n";
-        return -1;
-    }
+    bool ok = FileLoadChunk(path, tagCode, 0, FILE_LOAD_ALL, &actual);
+    if (!ok || actual < 100) { std::cout << "Failed to read tagcode file\n"; return -1; }
 
     std::cout << "Read file OK. Loaded " << VecLength(tagCode) << " elements\n";
 
-    // output the result. Should match from compiler
-
-    int opCount = VecLength(tagCode);
-    auto tagStr = StringEmpty();
-    for (int i = 0; i < opCount; i++) {
-        DataTag opcode = *VecGet_DataTag(tagCode, i);
-        DescribeTag(opcode, tagStr, NULL); // TODO: symbols to a debug DB file
-        StringAppendChar(tagStr, '\n');
+    uint32_t startOfCode, startOfMem;
+    if (!TCR_Read(tagCode, &startOfCode, &startOfMem)) {
+        std::cout << "Failed to read incoming byte code\n";
+        return -1;
     }
-    WriteStr(tagStr);
-    StringDeallocate(tagStr);
+
+    auto str = TCR_Describe(tagCode);
+    WriteStr(str);
+    StringDeallocate(str);
+    
 
 
     return 0;
