@@ -179,6 +179,7 @@
     <ClCompile Include="Scope.cpp" />
     <ClCompile Include="SourceCodeTokeniser.cpp" />
     <ClCompile Include="String.cpp" />
+    <ClCompile Include="TagCodeInterpreter.cpp" />
     <ClCompile Include="TagCodeReader.cpp" />
     <ClCompile Include="TagCodeTypes.cpp" />
     <ClCompile Include="TagCodeWriter.cpp" />
@@ -201,6 +202,7 @@
     <ClInclude Include="Scope.h" />
     <ClInclude Include="SourceCodeTokeniser.h" />
     <ClInclude Include="String.h" />
+    <ClInclude Include="TagCodeInterpreter.h" />
     <ClInclude Include="TagCodeReader.h" />
     <ClInclude Include="TagCodeTypes.h" />
     <ClInclude Include="TagCodeWriter.h" />

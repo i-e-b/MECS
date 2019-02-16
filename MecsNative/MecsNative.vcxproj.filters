@@ -23,6 +23,9 @@
     <Filter Include="Source Files\Compiler">
       <UniqueIdentifier>{8f094668-a236-45d1-89e8-1b5db2ea652a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Runtime">
+      <UniqueIdentifier>{ffe795e0-da81-4a99-9112-d903a12e249a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MecsNative.cpp">
@@ -85,6 +88,9 @@
     <ClCompile Include="TagCodeReader.cpp">
       <Filter>Source Files\InputOutput</Filter>
     </ClCompile>
+    <ClCompile Include="TagCodeInterpreter.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -146,6 +152,9 @@
     </ClInclude>
     <ClInclude Include="TagCodeReader.h">
       <Filter>Source Files\InputOutput</Filter>
+    </ClInclude>
+    <ClInclude Include="TagCodeInterpreter.h">
+      <Filter>Source Files\Runtime</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -16,7 +16,7 @@ Components to do:
 * [x] Bring heap in from scan-line experiments (and generalise)
 * [x] Tagged data format reader for 32-bit cpu
 * [x] String-to-num parsing
-* [ ] Extend numeric types (add rationals? -- use 42 bits of params+data)
+* [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
 
 Input handling:
 ---------------
@@ -30,7 +30,8 @@ Input handling:
   * [x] context
   * [x] desugar
   * [ ] optimisations
-  * [ ] symbol output
+  * [ ] symbol output (for debug)
+    * [ ] line to tag-code mapping
 
 The machine:
 ------------
@@ -38,6 +39,7 @@ The machine:
 * [ ] Try introducing C++ namespacing?
 * [x] TagCode reader (fix byte order)
 * [ ] Convert runtime
+  * [ ] Add breakpoints
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 * [ ] Debug symbols file and reader
 
@@ -48,6 +50,7 @@ Actor model stuff:
 * [x] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
     * [x] Remove stdlib malloc/free and replace 
     * [x] Fix arena/zone naming consistency in the allocator code
+    * [ ] Per-instance arenas for containers? (so we can be thread safe-ish)
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
 * [ ] Scheduler
