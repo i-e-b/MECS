@@ -16,6 +16,7 @@ namespace MecsCore.Runtime
         /// </summary>
         public readonly Scope Variables;
 
+        // nancode and static strings
         private readonly List<double> encodedTokens;
 
         public RuntimeMemoryModel(NanCodeWriter writer, Scope parentScope)

@@ -419,8 +419,10 @@ bool VectorDequeue(Vector * v, void * outValue) {
     if (v->_elementCount < 1) return false;
 
     // read the element at index `_baseOffset`, then increment `_baseOffset`.
-    auto ptr = byteOffset(v->_baseChunkTable, v->ChunkHeaderSize + (v->_baseOffset * v->ElementByteSize));
-    writeValue(outValue, 0, ptr, v->ElementByteSize);
+    if (outValue != NULL) {
+        auto ptr = byteOffset(v->_baseChunkTable, v->ChunkHeaderSize + (v->_baseOffset * v->ElementByteSize));
+        writeValue(outValue, 0, ptr, v->ElementByteSize);
+    }
     v->_baseOffset++;
     v->_elementCount--;
 
