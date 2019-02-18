@@ -42,6 +42,8 @@ Vector* ScopeAllVisible(Scope* s);
 // Start a new inner-most scope. Parameters are specially named by index (like "__p0", "__p1"). The compiler must match this.
 // `Parameters` is vector of DataTag
 void ScopePush(Scope* s, Vector* parameters);
+// Start a new inner-most scope, copying parameters from a static array
+void ScopePush(Scope* s, DataTag* parameters, uint32_t paramCount);
 
 // Remove innermost scope, and drop back to the previous one
 void ScopeDrop(Scope* s);

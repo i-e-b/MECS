@@ -111,6 +111,19 @@ ExecutionResult PausedExecutionResult() {
     return r;
 }
 
+String* DbgStr(InterpreterState* is, uint32_t hash)
+{
+    if (is->DebugSymbols == NULL) {
+        return StringNewFormat("\x03", hash);
+    }
+
+    StringPtr *symbolName = NULL;
+    if (!MapGet_Name_StringPtr(is->DebugSymbols, hash, &symbolName)) {
+        return StringNewFormat("<unknown> \x03", hash);
+    }
+    return StringNewFormat("\x01 (\x03)", *symbolName, hash);
+}
+
 String* DiagnosticString(DataTag tag, InterpreterState* is) {
     // TODO!!
     return StringEmpty();
@@ -126,25 +139,35 @@ DataTag* ReadParams(int position, uint16_t nbParams, Vector* valueStack) {
     return param;
 }
 
+// Defined at bottom
+DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is);
+
 DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
-    auto found = Functions.TryGetValue(functionNameHash, out var fun);
+    FunctionDefinition* fun = NULL;
+    bool found = MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &fun);
 
     if (!found) {
+
+        StringAppendFormat(is->_output,
+            "Tried to call an undefined function '\x01' at position \x02\n", DbgStr(is, functionNameHash), position);
+        return InvalidTag();
+        // TODO: "Did you mean?"
+        /*
         throw new Exception("Tried to call an undefined function '"
             + DbgStr(functionNameHash)
             + "' at position " + position
             + "\r\nKnown functions: " + string.Join(", ", Functions.Keys.Select(DbgStr))
             + "\r\nAs a string: " + TryDeref(functionNameHash) + "?"
-            + "\r\nKnown symbols: " + string.Join(", ", DebugSymbols.Keys.Select(DbgStr)));
+            + "\r\nKnown symbols: " + string.Join(", ", DebugSymbols.Keys.Select(DbgStr)));*/
     }
 
-    if (fun.Kind != FuncDef.Custom)
-        return EvaluateBuiltInFunction(ref position, fun.Kind, nbParams, param, returnStack, valueStack);
+    if (fun->Kind != FuncDef::Custom)
+        return EvaluateBuiltInFunction(position, fun->Kind, nbParams, param, is);
 
     // handle functions that are defined in the program
-    _memory.Variables.PushScope(param); // write parameters into new scope
-    returnStack.Push(position); // set position for 'cret' call
-    position = Functions.Get(functionNameHash).StartPosition; // move pointer to start of function
+    ScopePush(is->_memory, param, nbParams); // write parameters into new scope
+    VecPush_int(is->_returnStack, *position); // set position for 'cret' call
+    *position = fun->StartPosition; // move pointer to start of function
     return VoidReturn(); // return no value, continue execution elsewhere
 
 }
@@ -303,4 +326,10 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
 // Add IPC messages to an InterpreterState (only when it's not running)
 void InterpAddIPC(InterpreterState*is, Vector* ipcMessages) {
 
+}
+
+
+
+DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is) {
+    return InvalidTag(); //todo...
 }

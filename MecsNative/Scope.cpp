@@ -138,6 +138,24 @@ void ScopePush(Scope* s, Vector* parameters) {
     }
 }
 
+void ScopePush(Scope* s, DataTag* parameters, uint32_t paramCount) {
+    if (s == NULL) return;
+
+    auto newLevel = MapAllocate_Name_DataTag(64);
+    if (newLevel == NULL) return;
+
+    if (s->_scopes == NULL) {
+        s->_scopes = VecAllocate_MapPtr(); // THIS SHOULD NOT HAPPEN!
+    }
+    VecPush_MapPtr(s->_scopes, newLevel);
+
+    if (parameters == NULL) return;
+
+    for (int i = 0; i < paramCount; i++) {
+        MapPut_Name_DataTag(newLevel, ScopeNameForPosition(i), parameters[i], true);
+    }
+}
+
 void ScopeDrop(Scope* s) {
     if (s == NULL) return;
 
