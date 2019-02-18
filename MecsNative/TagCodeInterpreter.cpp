@@ -116,39 +116,53 @@ String* DiagnosticString(DataTag tag, InterpreterState* is) {
     return StringEmpty();
 }
 
-Vector* ReadParams(int position, uint16_t nbParams, Vector* valueStack) {
-    auto param = new double[nbParams];
+DataTag* ReadParams(int position, uint16_t nbParams, Vector* valueStack) {
+    DataTag* param = (DataTag*)mcalloc(nbParams, sizeof(DataTag)); //new double[nbParams];
     // Pop values from stack into a param cache
-    try {
-        for (int i = nbParams - 1; i >= 0; i--) {
-            param[i] = valueStack.Pop();
-        }
-    } catch (Exception ex) {
-        throw new Exception("Stack underflow. Ran out of values before function call at " + position, ex);
+    for (int i = nbParams - 1; i >= 0; i--) {
+        VecPop_DataTag(valueStack, &(param[i]));
     }
 
     return param;
 }
 
-void PrepareFunctionCall(int* position, uint16_t p1, InterpreterState* is) {
+DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
+    auto found = Functions.TryGetValue(functionNameHash, out var fun);
+
+    if (!found) {
+        throw new Exception("Tried to call an undefined function '"
+            + DbgStr(functionNameHash)
+            + "' at position " + position
+            + "\r\nKnown functions: " + string.Join(", ", Functions.Keys.Select(DbgStr))
+            + "\r\nAs a string: " + TryDeref(functionNameHash) + "?"
+            + "\r\nKnown symbols: " + string.Join(", ", DebugSymbols.Keys.Select(DbgStr)));
+    }
+
+    if (fun.Kind != FuncDef.Custom)
+        return EvaluateBuiltInFunction(ref position, fun.Kind, nbParams, param, returnStack, valueStack);
+
+    // handle functions that are defined in the program
+    _memory.Variables.PushScope(param); // write parameters into new scope
+    returnStack.Push(position); // set position for 'cret' call
+    position = Functions.Get(functionNameHash).StartPosition; // move pointer to start of function
+    return VoidReturn(); // return no value, continue execution elsewhere
+
+}
+
+void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
     DataTag nameTag = {};
     VecPop_DataTag(is->_valueStack, &nameTag);
     auto functionNameHash = DecodeVariableRef(nameTag);
 
-    auto param = ReadParams(position, nbParams, valueStack);
+    auto param = ReadParams(is->_position, nbParams, is->_valueStack);
 
     // Evaluate function.
-    var evalResult = EvaluateFunctionCall(ref position, functionNameHash, nbParams, param, returnStack, valueStack);
+    DataTag evalResult = EvaluateFunctionCall(position, functionNameHash, nbParams, param, is);
 
     // Add result on stack as a value.
-    if (NanTags.TypeOf(evalResult) != DataType.NoValue)
-    {
-        valueStack.Push(evalResult);
-    } else if (NanTags.DecodeNonValue(evalResult) == NonValueType.Unit) {
-        valueStack.Push(evalResult);
+    if (evalResult.type != (int)DataType::Not_a_Result) {
+        VecPush_DataTag(is->_valueStack, evalResult);
     }
-
-    return position;
 }
 void HandleFunctionDefinition(int* position, uint16_t p1, uint16_t p2, InterpreterState* is) {
     // TODO
