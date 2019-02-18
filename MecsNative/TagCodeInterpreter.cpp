@@ -41,6 +41,24 @@ typedef struct InterpreterState {
     int _position;
 } InterpreterState;
 
+// map built-in functions for the massive switch
+void AddBuiltInFunctionSymbols(HashMap* fd) {
+    if (fd == NULL) return;
+#define add(name,type)  MapPut_Name_FunctionDefinition(fd, GetCrushedName(name), FunctionDefinition{type}, true);
+
+    add("=", FuncDef::Equal); add("equals", FuncDef::Equal); add(">", FuncDef::GreaterThan);
+    add("<", FuncDef::LessThan); add("<>", FuncDef::NotEqual); add("not-equal", FuncDef::NotEqual);
+    add("assert", FuncDef::Assert); add("random", FuncDef::Random); add("eval", FuncDef::Eval);
+    add("call", FuncDef::Call); add("not", FuncDef::LogicNot); add("or", FuncDef::LogicOr);
+    add("and", FuncDef::LogicAnd); add("readkey", FuncDef::ReadKey); add("readline", FuncDef::ReadLine);
+    add("print", FuncDef::Print); add("substring", FuncDef::Substring);
+    add("length", FuncDef::Length); add("replace", FuncDef::Replace); add("concat", FuncDef::Concat);
+    add("+", FuncDef::MathAdd); add("-", FuncDef::MathSub); add("*", FuncDef::MathProd);
+    add("/", FuncDef::MathDiv); add("%", FuncDef::MathMod);
+    add("()", FuncDef::UnitEmpty); // empty value marker
+#undef add;
+}
+
 // Start up an interpreter
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.
 InterpreterState* InterpAllocate(Vector* tagCode, HashMap* debugSymbols) {
@@ -75,6 +93,8 @@ InterpreterState* InterpAllocate(Vector* tagCode, HashMap* debugSymbols) {
         return NULL;
     }
 
+    AddBuiltInFunctionSymbols(result->Functions);
+
     return result;
 }
 
@@ -92,9 +112,9 @@ void InterpDeallocate(InterpreterState* is) {
     mfree(is);
 }
 
-ExecutionResult FailureResult() {
+ExecutionResult FailureResult(uint32_t position) {
     ExecutionResult r = {};
-    r.Result = InvalidTag();
+    r.Result = RuntimeError(position);
     r.State = ExecutionState::ErrorState;
     return r;
 }
@@ -150,7 +170,7 @@ DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, 
 
         StringAppendFormat(is->_output,
             "Tried to call an undefined function '\x01' at position \x02\n", DbgStr(is, functionNameHash), position);
-        return InvalidTag();
+        return RuntimeError(is->_position);
         // TODO: "Did you mean?"
         /*
         throw new Exception("Tried to call an undefined function '"
@@ -250,7 +270,7 @@ bool ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, in
 // Remember to check execution state afterward
 ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycles) {
     if (is == NULL) {
-        return FailureResult();
+        return FailureResult(0);
     }
     DataTag evalResult = {};
     is->_runningVerbose = traceExecution;
@@ -293,7 +313,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             uint16_t p1, p2;
             DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2);
             if (!ProcessOpCode(codeClass, codeAction, p1, p2, &(is->_position), word, is)) {
-                return FailureResult();
+                return FailureResult(is->_position);
             }
             break;
 
@@ -328,8 +348,248 @@ void InterpAddIPC(InterpreterState*is, Vector* ipcMessages) {
 
 }
 
+DataTag _Exception(InterpreterState* is, const char* msg) {
+    StringAppend(is->_output, msg);
+    return RuntimeError(is->_position);
+}
+
+bool ListEquals(int nbParams, DataTag* param) {
+    if (nbParams < 1) return false;
+    auto type = param[0].type;
+    switch (type)
+    {
+        // Non-comparable types
+    case (int)DataType::Invalid:
+    case (int)DataType::Not_a_Result:
+    case (int)DataType::Exception:
+    case (int)DataType::Void:
+    case (int)DataType::Unit:
+    case (int)DataType::Opcode:
+        return false;
+
+        // Numeric types
+    case (int)DataType::Integer:
+    case (int)DataType::Fraction:
+    {
+        var target = _memory.CastDouble(list[0]);
+        for (int i = 1; i < list.Length; i++)
+        {
+            if (Math.Abs(target - _memory.CastDouble(list[i])) <= ComparisonPrecision) return true;
+        }
+        return false;
+    }
+
+    // String types
+    case (int)DataType::SmallString:
+    case (int)DataType::StaticStringPtr:
+    case (int)DataType::StringPtr:
+    {
+        var target = _memory.CastString(list[0]);
+        for (int i = 1; i < list.Length; i++)
+        {
+            if (target == _memory.CastString(list[i])) return true;
+        }
+        return false;
+    }
+
+    // Pointer equality
+    case (int)DataType::VariableRef:
+    case (int)DataType::HashtablePtr:
+    case (int)DataType::VectorPtr:
+    {
+        var target = NanTags.DecodeRaw(list[0]);
+        for (int i = 1; i < list.Length; i++)
+        {
+            if (target == NanTags.DecodeRaw(list[i])) return true;
+        }
+        return false;
+    }
+
+    default:
+        return false;
+    }
+}
 
 
 DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is) {
-    return InvalidTag(); //todo...
+    switch (kind)
+    {
+        // each element equal to the first
+    case FuncDef::Equal:
+        if (nbParams < 2) return _Exception(is, "equals ( = ) must have at least two things to compare");
+        return EncodeBool(ListEquals(nbParams, param));
+
+        // Each element smaller than the last
+    case FuncDef::GreaterThan:
+        if (nbParams < 2) return _Exception(is, "greater than ( > ) must have at least two things to compare");
+        return EncodeBool(FoldGreaterThan(param));
+
+        // Each element larger than the last
+    case FuncDef::LessThan:
+        if (nbParams < 2) return _Exception(is, "less than ( < ) must have at least two things to compare");
+        return EncodeBool(FoldLessThan(param));
+
+        // Each element DIFFERENT TO THE FIRST (does not check set uniqueness!)
+    case FuncDef::NotEqual:
+        if (nbParams < 2) return _Exception(is, "not-equal ( <> ) must have at least two things to compare");
+        return EncodeBool(!ListEquals(param));
+
+    case FuncDef::Assert:
+        if (nbParams < 1) return VoidReturn(); // assert nothing passes
+        var condition = param.ElementAt(0);
+        if (_memory.CastBoolean(condition) == false)
+        {
+            var msg = ConcatList(param, 1);
+            return _Exception(is, "Assertion failed: " + msg);
+        }
+        return VoidReturn();
+
+    case FuncDef::Random:
+        if (nbParams < 1) return rnd.NextDouble(); // 0 params - any size
+        if (nbParams < 2) return rnd.Next(_memory.CastInt(param.ElementAt(0))); // 1 param  - max size
+        return rnd.Next(_memory.CastInt(param.ElementAt(0)), _memory.CastInt(param.ElementAt(1))); // 2 params - range
+
+    case FuncDef::Eval:
+        var reader = new SourceCodeTokeniser();
+        var statements = _memory.CastString(param.ElementAt(0));
+        var programTmp = reader.Read(statements, false);
+        var bin = ToNanCodeCompiler.CompileRoot(programTmp, false);
+        var interpreter = new ByteCodeInterpreter();
+        interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
+        return interpreter.Execute(false, _runningVerbose, false).Result;
+
+    case FuncDef::Call:
+        DecodePointer(param.ElementAt(0), out var target, out var type);
+        if (type != DataType.PtrString && type != DataType.PtrStaticString)
+            return _Exception(is, "Tried to call a function by name, but passed a '" + type + "' at " + position);
+        // this should be a string, but we need a function name hash -- so calculate it:
+        var strName = _memory.DereferenceString(target);
+        var functionNameHash = NanTags.GetCrushedName(strName);
+        nbParams--;
+        var newParam = param.Skip(1).ToArray();
+        return EvaluateFunctionCall(ref position, functionNameHash, nbParams, newParam, returnStack, valueStack);
+
+    case FuncDef::LogicNot:
+        if (nbParams != 1) return _Exception(is, "'not' should be called with one argument");
+        var bval = _memory.CastBoolean(param.ElementAt(0));
+        return EncodeBool(!bval);
+
+    case FuncDef::LogicOr:
+    {
+        bool more = nbParams > 0;
+        int i = 0;
+        while (more)
+        {
+            var bresult = _memory.CastBoolean(param.ElementAt(i));
+            if (bresult) return NanTags.EncodeBool(true);
+
+            i++;
+            more = i < nbParams;
+        }
+
+        return NanTags.EncodeBool(false);
+    }
+
+    case FuncDef::LogicAnd:
+    {
+        bool more = nbParams > 0;
+        int i = 0;
+        while (more)
+        {
+            var bresult = _memory.CastBoolean(param.ElementAt(i));
+            if (!bresult) return NanTags.EncodeBool(false);
+
+            i++;
+            more = i < nbParams;
+        }
+
+        return NanTags.EncodeBool(true);
+    }
+
+    case FuncDef::ReadKey:
+        return _memory.StoreStringAndGetReference(((char)_input.Read()).ToString());
+
+    case FuncDef::ReadLine:
+        return _memory.StoreStringAndGetReference(_input.ReadLine());
+
+    case FuncDef::Print:
+    {
+        string lastStr = null;
+        foreach(var v in param)
+        {
+            lastStr = _memory.CastString(v);
+            _output.Write(lastStr);
+        }
+
+        if (lastStr != "") _output.WriteLine();
+    }
+    return NanTags.VoidReturn();
+
+    case FuncDef::Substring:
+        if (nbParams == 2)
+        {
+
+            var newString = _memory.CastString(param.ElementAt(0)).Substring(_memory.CastInt(param.ElementAt(1)));
+            return _memory.StoreStringAndGetReference(newString);
+        } else if (nbParams == 3)
+        {
+            int start = _memory.CastInt(param.ElementAt(1));
+            int length = _memory.CastInt(param.ElementAt(2));
+
+            string s = _memory.CastString(param.ElementAt(0)).Substring(start, length);
+            return _memory.StoreStringAndGetReference(s);
+        } else {
+            return _Exception(is, "'Substring' should be called with 2 or 3 parameters");
+        }
+
+    case FuncDef::Length:
+        return _memory.CastString(param.ElementAt(0)).Length; // TODO: lengths of other things
+
+    case FuncDef::Replace:
+        if (nbParams != 3) return _Exception(is, "'Replace' should be called with 3 parameters");
+        string exp = _memory.CastString(param.ElementAt(0));
+        string oldValue = _memory.CastString(param.ElementAt(1));
+        string newValue = _memory.CastString(param.ElementAt(2));
+        exp = exp.Replace(oldValue, newValue);
+        return _memory.StoreStringAndGetReference(exp);
+
+    case FuncDef::Concat:
+        var builder = new StringBuilder();
+
+        foreach(var v in param)
+        {
+            builder.Append(_memory.CastString(v));
+        }
+
+        return _memory.StoreStringAndGetReference(builder.ToString());
+
+    case FuncDef::UnitEmpty:
+    { // valueless marker (like an empty object)
+        return NanTags.EncodeNonValue(NonValueType.Unit);
+    }
+
+
+    case FuncDef::MathAdd:
+        if (nbParams == 1) return param[0];
+        return param.ChainSum();
+
+    case FuncDef::MathSub:
+        if (nbParams == 1) return -param[0];
+        return param.ChainDifference();
+
+    case FuncDef::MathProd:
+        if (nbParams == 1) return _Exception(is, "Uniary '*' is not supported");
+        return param.ChainProduct();
+
+    case FuncDef::MathDiv:
+        if (nbParams == 1) return _Exception(is, "Uniary '/' is not supported");
+        return param.ChainDivide();
+
+    case FuncDef::MathMod:
+        if (nbParams == 1) return param[0] % 2;
+        return param.ChainRemainder();
+
+    default:
+        return _Exception(is, "Unrecognised built-in! Type = " + ((int)kind));
+    }
 }

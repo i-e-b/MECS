@@ -92,6 +92,8 @@ DataTag EncodeVariableRef(uint32_t crushedName);
 uint32_t DecodeVariableRef(DataTag encoded);
 // Get hash code of names, as created by variable reference op codes
 uint32_t GetCrushedName(String* fullName);
+// Get hash code of names, as created by variable reference op codes
+uint32_t GetCrushedName(const char* fullName);
 
 // Encode a pointer with a type
 DataTag EncodePointer(uint32_t ptrTarget, DataType type);

@@ -104,6 +104,12 @@ uint32_t DecodeVariableRef(DataTag encoded) {
 uint32_t GetCrushedName(String* fullName) {
     return StringHash(fullName);
 }
+uint32_t GetCrushedName(const char* fullName) {
+    auto tmp = StringNew(fullName);
+    auto res = GetCrushedName(tmp);
+    StringDeallocate(tmp);
+    return res;
+}
 
 DataTag EncodePointer(uint32_t ptrTarget, DataType type) {
     DataTag t;
