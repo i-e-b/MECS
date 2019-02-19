@@ -46,6 +46,10 @@ enum class DataType {
     StaticStringPtr = 22,                          // Data is a pointer to a static string. Ignored by GC. Params not used.
     StringPtr = ALLOCATED_TYPE + StaticStringPtr,  // Data is pointer to dynamic string. Params not used. Can be collected by GC
 
+    // This special value means the interpreter needs to pause for input.
+    // The triggering opcode will be repeated when more input is available
+    MustWait = 250,
+
     Flag = 0xFF // A marker for internal testing
 };
 
@@ -74,6 +78,9 @@ DataTag VoidReturn();
 DataTag UnitReturn();
 DataTag NonResult();
 DataTag RuntimeError(uint32_t bytecodeLocation);
+
+// Interpreter has to pause
+DataTag MustWait(uint32_t resumePosition);
 
 // Encode an op-code with up to 2x16 bit params
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2);

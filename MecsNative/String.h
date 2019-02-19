@@ -21,6 +21,9 @@ String * StringNewFormat(const char* fmt, ...);
 // Clear the contents of a string, but leave it allocated
 void StringClear(String *str);
 
+// Make a shallow copy of a string. Can be deallocated without affecting the original.
+// But all other operations affect the original
+String* StringProxy(String* original);
 // Deallocate a string. Ignores if you pass NULL
 void StringDeallocate(String *str);
 // Returns true if the string is valid, false if it has been deallocated or damaged
@@ -71,6 +74,10 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
 bool StringFind(String* haystack, const char * needle, unsigned int start, unsigned int* outPosition);
 // Find the next position of a character. If the outPosition is NULL, it is ignored
 bool StringFind(String* haystack, char needle, unsigned int start, unsigned int* outPosition);
+
+// Find any number of instances of a substring. Each one is replaced with a new substring
+// in the output string.
+String* StringReplace(String* haystack, String* needle, String* replacement);
 
 // Test if one string starts with another
 bool StringStartsWith(String* haystack, String *needle);

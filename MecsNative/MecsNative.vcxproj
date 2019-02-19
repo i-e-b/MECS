@@ -186,6 +186,7 @@
     <ClCompile Include="TagData.cpp" />
     <ClCompile Include="TimingSys.cpp" />
     <ClCompile Include="Tree.cpp" />
+    <ClCompile Include="TypeCoersion.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -197,6 +198,7 @@
     <ClInclude Include="Fix16.h" />
     <ClInclude Include="HashMap.h" />
     <ClInclude Include="Heap.h" />
+    <ClInclude Include="MathBits.h" />
     <ClInclude Include="MemoryManager.h" />
     <ClInclude Include="RawData.h" />
     <ClInclude Include="Scope.h" />
@@ -209,6 +211,7 @@
     <ClInclude Include="TagData.h" />
     <ClInclude Include="TimingSys.h" />
     <ClInclude Include="Tree.h" />
+    <ClInclude Include="TypeCoersion.h" />
     <ClInclude Include="Vector.h" />
   </ItemGroup>
   <ItemGroup>

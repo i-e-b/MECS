@@ -91,6 +91,9 @@
     <ClCompile Include="TagCodeInterpreter.cpp">
       <Filter>Source Files\Runtime</Filter>
     </ClCompile>
+    <ClCompile Include="TypeCoersion.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -155,6 +158,12 @@
     </ClInclude>
     <ClInclude Include="TagCodeInterpreter.h">
       <Filter>Source Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeCoersion.h">
+      <Filter>Source Files\Runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="MathBits.h">
+      <Filter>Source Files\Math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

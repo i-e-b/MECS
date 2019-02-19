@@ -20,6 +20,10 @@ DataTag RuntimeError(uint32_t bytecodeLocation) {
     return DataTag{ (int)DataType::Exception, 0, bytecodeLocation };
 };
 
+DataTag MustWait(uint32_t resumePosition) {
+    return DataTag{ (int)DataType::MustWait, 0, resumePosition };
+};
+
 // return a tag that is never valid (denotes an error)
 DataTag InvalidTag() {
     return DataTag{ (int)DataType::Invalid, 0, 0 };

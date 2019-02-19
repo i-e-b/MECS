@@ -1,10 +1,15 @@
 #include "TagCodeInterpreter.h"
 
+#include "MemoryManager.h"
 #include "HashMap.h"
 #include "Scope.h"
 #include "TagCodeTypes.h"
-#include "MemoryManager.h"
+#include "TypeCoersion.h"
+#include "MathBits.h"
 
+#ifndef abs
+#define abs(x)  ((x < 0) ? (-(x)) : (x))
+#endif
 typedef uint32_t Name;
 
 RegisterHashMapStatics(Map)
@@ -14,6 +19,9 @@ RegisterHashMapFor(Name, FunctionDefinition, HashMapIntKeyHash, HashMapIntKeyCom
 RegisterVectorStatics(Vec)
 RegisterVectorFor(DataTag, Vec)
 RegisterVectorFor(int, Vec)
+
+// the smallest difference considered for float equality
+const float ComparisonPrecision = 1e-10;
 
 /*
     Our interpreter is a two-stack model
@@ -352,13 +360,18 @@ DataTag _Exception(InterpreterState* is, const char* msg) {
     StringAppend(is->_output, msg);
     return RuntimeError(is->_position);
 }
+DataTag _Exception(InterpreterState* is, const char* msg, String* details) {
+    StringAppend(is->_output, msg);
+    StringAppend(is->_output, details);
+    return RuntimeError(is->_position);
+}
 
-bool ListEquals(int nbParams, DataTag* param) {
+// List equals follows the logic: `true` if *any* of the values is equal to the first, `false` otherwise.
+bool ListEquals(int nbParams, DataTag* param, InterpreterState* is) {
     if (nbParams < 1) return false;
     auto type = param[0].type;
-    switch (type)
-    {
-        // Non-comparable types
+    switch (type) {
+    // Non-comparable types
     case (int)DataType::Invalid:
     case (int)DataType::Not_a_Result:
     case (int)DataType::Exception:
@@ -367,14 +380,14 @@ bool ListEquals(int nbParams, DataTag* param) {
     case (int)DataType::Opcode:
         return false;
 
-        // Numeric types
+    // Numeric types
     case (int)DataType::Integer:
     case (int)DataType::Fraction:
-    {
-        var target = _memory.CastDouble(list[0]);
-        for (int i = 1; i < list.Length; i++)
-        {
-            if (Math.Abs(target - _memory.CastDouble(list[i])) <= ComparisonPrecision) return true;
+    { 
+        auto target = CastDouble(is, param[0]);
+        for (int i = 1; i < nbParams; i++) {
+            auto diff = target - CastDouble(is, param[0]);
+            if (abs(diff) <= ComparisonPrecision) return true;
         }
         return false;
     }
@@ -384,10 +397,15 @@ bool ListEquals(int nbParams, DataTag* param) {
     case (int)DataType::StaticStringPtr:
     case (int)DataType::StringPtr:
     {
-        var target = _memory.CastString(list[0]);
-        for (int i = 1; i < list.Length; i++)
-        {
-            if (target == _memory.CastString(list[i])) return true;
+        auto target = CastString(is, param[0]);
+        for (int i = 1; i < nbParams; i++) {
+            auto pair = CastString(is, param[i]);
+            bool match = StringAreEqual(target, pair);
+            StringDeallocate(pair);
+            if (match) {
+                StringDeallocate(target);
+                return true;
+            }
         }
         return false;
     }
@@ -397,10 +415,9 @@ bool ListEquals(int nbParams, DataTag* param) {
     case (int)DataType::HashtablePtr:
     case (int)DataType::VectorPtr:
     {
-        var target = NanTags.DecodeRaw(list[0]);
-        for (int i = 1; i < list.Length; i++)
-        {
-            if (target == NanTags.DecodeRaw(list[i])) return true;
+        auto target = param[0];
+        for (int i = 1; i < nbParams; i++) {
+            if (target.type == param[i].type && target.data == param[i].data) return true;
         }
         return false;
     }
@@ -410,45 +427,95 @@ bool ListEquals(int nbParams, DataTag* param) {
     }
 }
 
+// True iff each element is larger than the previous
+bool FoldGreaterThan(int nbParams, DataTag* param, InterpreterState* is) {
+    bool first = true;
+    double prev = 0;
+    for (int i = 0; i < nbParams; i++) {
+        auto encoded = param[i];
+        if (first)
+        {
+            prev = CastDouble(is, encoded);
+            first = false;
+            continue;
+        }
+
+        auto current = CastDouble(is, encoded);
+        if (prev <= current) return false; // inverted for short-circuit
+        prev = current;
+    }
+
+    return true;
+}
+
+// True iff each element is smaller than the previous
+bool FoldLessThan(int nbParams, DataTag* param, InterpreterState* is) {
+    bool first = true;
+    double prev = 0;
+    for (int i = 0; i < nbParams; i++) {
+        auto encoded = param[i];
+        if (first)
+        {
+            prev = CastDouble(is, encoded);
+            first = false;
+            continue;
+        }
+
+        auto current = CastDouble(is, encoded);
+        if (prev >= current) return false; // inverted for short-circuit
+        prev = current;
+    }
+
+    return true;
+}
+
+String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterState* is) {
+    auto str = StringEmpty();
+    for (int i = startIndex; i < nbParams; i++) {
+        StringAppend(str, CastString(is, param[i]));
+    }
+    return str;
+}
 
 DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is) {
-    switch (kind)
-    {
-        // each element equal to the first
+    switch (kind) {
+    // each element equal to the first
     case FuncDef::Equal:
         if (nbParams < 2) return _Exception(is, "equals ( = ) must have at least two things to compare");
-        return EncodeBool(ListEquals(nbParams, param));
+        return EncodeBool(ListEquals(nbParams, param, is));
 
-        // Each element smaller than the last
+    // Each element smaller than the last
     case FuncDef::GreaterThan:
         if (nbParams < 2) return _Exception(is, "greater than ( > ) must have at least two things to compare");
-        return EncodeBool(FoldGreaterThan(param));
+        return EncodeBool(FoldGreaterThan(nbParams, param, is));
 
-        // Each element larger than the last
+    // Each element larger than the last
     case FuncDef::LessThan:
         if (nbParams < 2) return _Exception(is, "less than ( < ) must have at least two things to compare");
-        return EncodeBool(FoldLessThan(param));
+        return EncodeBool(FoldLessThan(nbParams, param, is));
 
-        // Each element DIFFERENT TO THE FIRST (does not check set uniqueness!)
+    // Each element DIFFERENT TO THE FIRST (does not check set uniqueness!)
     case FuncDef::NotEqual:
         if (nbParams < 2) return _Exception(is, "not-equal ( <> ) must have at least two things to compare");
-        return EncodeBool(!ListEquals(param));
+        return EncodeBool(!ListEquals(nbParams, param, is));
 
     case FuncDef::Assert:
         if (nbParams < 1) return VoidReturn(); // assert nothing passes
-        var condition = param.ElementAt(0);
-        if (_memory.CastBoolean(condition) == false)
-        {
-            var msg = ConcatList(param, 1);
-            return _Exception(is, "Assertion failed: " + msg);
+        auto condition = param[0];
+        if (CastBoolean(is, condition) == false) {
+            auto msg = ConcatList(nbParams, param, 1, is);
+            return _Exception(is, "Assertion failed: ", msg);
         }
         return VoidReturn();
 
     case FuncDef::Random:
-        if (nbParams < 1) return rnd.NextDouble(); // 0 params - any size
-        if (nbParams < 2) return rnd.Next(_memory.CastInt(param.ElementAt(0))); // 1 param  - max size
-        return rnd.Next(_memory.CastInt(param.ElementAt(0)), _memory.CastInt(param.ElementAt(1))); // 2 params - range
+        // TODO: the 0 param should give a float?
+        if (nbParams < 1) return EncodeInt32(int_random(is->_stepsTaken)); // 0 params - any size
+        if (nbParams < 2) return EncodeInt32(random_at_most(is->_stepsTaken, param[0].data)); // 1 param  - max size
+        return EncodeInt32(ranged_random(is->_stepsTaken, param[0].data, param[1].data)); // 2 params - range
 
+        /*
+        TODO: implement these:
     case FuncDef::Eval:
         var reader = new SourceCodeTokeniser();
         var statements = _memory.CastString(param.ElementAt(0));
@@ -468,104 +535,133 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         nbParams--;
         var newParam = param.Skip(1).ToArray();
         return EvaluateFunctionCall(ref position, functionNameHash, nbParams, newParam, returnStack, valueStack);
-
+        */
     case FuncDef::LogicNot:
         if (nbParams != 1) return _Exception(is, "'not' should be called with one argument");
-        var bval = _memory.CastBoolean(param.ElementAt(0));
+        auto bval = CastBoolean(is, param[0]);
         return EncodeBool(!bval);
 
     case FuncDef::LogicOr:
     {
         bool more = nbParams > 0;
         int i = 0;
-        while (more)
-        {
-            var bresult = _memory.CastBoolean(param.ElementAt(i));
-            if (bresult) return NanTags.EncodeBool(true);
+        while (more) {
+            auto bresult = CastBoolean(is, param[i]);
+            if (bresult) return EncodeBool(true);
 
             i++;
             more = i < nbParams;
         }
 
-        return NanTags.EncodeBool(false);
+        return EncodeBool(false);
     }
 
     case FuncDef::LogicAnd:
     {
         bool more = nbParams > 0;
         int i = 0;
-        while (more)
-        {
-            var bresult = _memory.CastBoolean(param.ElementAt(i));
-            if (!bresult) return NanTags.EncodeBool(false);
+        while (more) {
+            auto bresult = CastBoolean(is, param[i]);
+            if (!bresult) return EncodeBool(false);
 
             i++;
             more = i < nbParams;
         }
 
-        return NanTags.EncodeBool(true);
+        return EncodeBool(true);
     }
 
     case FuncDef::ReadKey:
-        return _memory.StoreStringAndGetReference(((char)_input.Read()).ToString());
+    {
+        // if there isn't enough data, we should set the ExecutionState to waiting and exit.
+        if (StringLength(is->_input) < 1) return MustWait(is->_position);
+
+        // otherwise read the character
+        return StoreStringAndGetReference(is, StringDequeue(is->_input));
+    }
 
     case FuncDef::ReadLine:
-        return _memory.StoreStringAndGetReference(_input.ReadLine());
+    {
+        // if there isn't enough data, we should set the ExecutionState to waiting and exit.
+        uint32_t pos = 0;
+        if (!StringFind(is->_input, '\n', 0, &pos)) return MustWait(is->_position);
+
+        auto str = StringEmpty();
+        for (int i = 0; i < pos; i++) {
+            StringAppendChar(str, StringDequeue(is->_input));
+        }
+        // otherwise read the character
+        return StoreStringAndGetReference(is, str);
+    }
 
     case FuncDef::Print:
     {
-        string lastStr = null;
-        foreach(var v in param)
-        {
-            lastStr = _memory.CastString(v);
-            _output.Write(lastStr);
+        bool emptyEnd = false;
+        for (int i = 0; i < nbParams; i++) {
+            auto str = CastString(is, param[i]);
+            emptyEnd = StringLength(str) == 0;
+            StringAppend(is->_output, str);
+            StringDeallocate(str);
         }
 
-        if (lastStr != "") _output.WriteLine();
+        if (!emptyEnd) StringNL(is->_output);
+        return VoidReturn();
     }
-    return NanTags.VoidReturn();
 
     case FuncDef::Substring:
-        if (nbParams == 2)
-        {
+        if (nbParams == 2) {
+            auto newString = CastString(is, param[0]);
+            int origLen = StringLength(newString);
+            int offset = CastInt(is, param[1]);
+            StringChop(newString, offset, origLen - offset);
+            return StoreStringAndGetReference(is, newString);
 
-            var newString = _memory.CastString(param.ElementAt(0)).Substring(_memory.CastInt(param.ElementAt(1)));
-            return _memory.StoreStringAndGetReference(newString);
-        } else if (nbParams == 3)
-        {
-            int start = _memory.CastInt(param.ElementAt(1));
-            int length = _memory.CastInt(param.ElementAt(2));
+        } else if (nbParams == 3) {
+            auto newString = CastString(is, param[0]);
+            int offset = CastInt(is, param[1]);
+            int len = CastInt(is, param[2]);
+            StringChop(newString, offset, len);
+            return StoreStringAndGetReference(is, newString);
 
-            string s = _memory.CastString(param.ElementAt(0)).Substring(start, length);
-            return _memory.StoreStringAndGetReference(s);
         } else {
             return _Exception(is, "'Substring' should be called with 2 or 3 parameters");
         }
 
     case FuncDef::Length:
-        return _memory.CastString(param.ElementAt(0)).Length; // TODO: lengths of other things
+    {
+        auto str = CastString(is, param[0]);
+        int v = StringLength(str);
+        StringDeallocate(str);
+        return EncodeInt32(v); // TODO: lengths of other things
+    }
 
     case FuncDef::Replace:
         if (nbParams != 3) return _Exception(is, "'Replace' should be called with 3 parameters");
-        string exp = _memory.CastString(param.ElementAt(0));
-        string oldValue = _memory.CastString(param.ElementAt(1));
-        string newValue = _memory.CastString(param.ElementAt(2));
-        exp = exp.Replace(oldValue, newValue);
-        return _memory.StoreStringAndGetReference(exp);
+        auto src = CastString(is, param[0]);
+        auto oldValue = CastString(is, param[1]);
+        auto newValue = CastString(is, param[2]);
+
+        auto out = StringReplace(src, oldValue, newValue);
+        auto v = StoreStringAndGetReference(is, out);
+        StringDeallocate(src);
+        StringDeallocate(oldValue);
+        StringDeallocate(newValue);
+        return v;
 
     case FuncDef::Concat:
-        var builder = new StringBuilder();
+        auto str = StringEmpty();
 
-        foreach(var v in param)
-        {
-            builder.Append(_memory.CastString(v));
+        for (int i = 0; i < nbParams; i++) { {
+            auto s = CastString(is, param[i]);
+            StringAppend(str, s);
+            StringDeallocate(s);
         }
 
-        return _memory.StoreStringAndGetReference(builder.ToString());
+        return StoreStringAndGetReference(is, str);
 
     case FuncDef::UnitEmpty:
     { // valueless marker (like an empty object)
-        return NanTags.EncodeNonValue(NonValueType.Unit);
+        return UnitReturn();
     }
 
 

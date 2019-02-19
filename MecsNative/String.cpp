@@ -7,6 +7,7 @@
 
 typedef struct String {
     Vector* chars; // vector of characters
+    bool isProxy; // normally false. If true, the vector is not touched when deallocating
     uint32_t hashval; // cached hash value. Any time we change the string, this should be set to 0.
 } String;
 
@@ -20,6 +21,17 @@ String * StringEmpty() {
     auto str = (String*)mcalloc(1, sizeof(String));
     str->chars = vec;
     str->hashval = 0;
+    str->isProxy = false;
+
+    return str;
+}
+String* StringProxy(String* original) {
+    if (original == NULL) return NULL;
+
+    auto str = (String*)mcalloc(1, sizeof(String));
+    str->chars = original->chars;
+    str->hashval = 0;
+    str->isProxy = true;
 
     return str;
 }
@@ -34,7 +46,7 @@ void StringClear(String *str) {
 
 void StringDeallocate(String *str) {
     if (str == NULL) return;
-    if (VectorIsValid(str->chars) == true) VectorDeallocate(str->chars);
+    if (str->isProxy == false && VectorIsValid(str->chars) == true) VectorDeallocate(str->chars);
     mfree(str);
 }
 
