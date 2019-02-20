@@ -105,6 +105,12 @@ void StringAppendInt32(String *str, int32_t value) {
     if (!latch) VPush_char(str->chars, '0');
 }
 
+String* StringFromInt32(int32_t i) {
+    auto str = StringEmpty();
+    StringAppendInt32(str, i);
+    return str;
+}
+
 void StringAppendInt32Hex(String *str, uint32_t value) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == false) return;

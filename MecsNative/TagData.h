@@ -104,6 +104,8 @@ uint32_t GetCrushedName(const char* fullName);
 
 // Encode a pointer with a type
 DataTag EncodePointer(uint32_t ptrTarget, DataType type);
+// Decode a previously encoded pointer
+uint32_t DecodePointer(DataTag encoded);
 
 DataTag EncodeInt32(int32_t original);
 int32_t DecodeInt32(DataTag encoded);

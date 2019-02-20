@@ -5,6 +5,7 @@
 
 #include "TagData.h"
 #include "Vector.h"
+#include "Scope.h"
 
 enum class ExecutionState {
     // Program could continue, but stopped by request (debug, step, etc.)
@@ -49,5 +50,11 @@ void WriteInput(InterpreterState* is, String* str);
 
 // Move output data to the supplied string
 void ReadOutput(InterpreterState* is, String* receiver);
+
+// Convert a tag code offset into a physical memory location
+void* InterpreterDeref(InterpreterState* is, uint32_t position);
+
+// Get the variables scope of the interpreter instance
+Scope* InterpreterScope(InterpreterState* is);
 
 #endif

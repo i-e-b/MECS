@@ -477,29 +477,66 @@ String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterStat
     return str;
 }
 
+DataTag ChainSum(InterpreterState* is, int nbParams, DataTag* param) {
+    double sum = 0.0;
+    for (int i = 0; i < nbParams; i++) {
+        sum += CastInt(is, param[i]);
+    }
+    return EncodeInt32(sum);
+}
+DataTag ChainDifference(InterpreterState* is, int nbParams, DataTag* param) {
+    double sum = CastInt(is, param[0]);
+    for (int i = 1; i < nbParams; i++) {
+        sum -= CastInt(is, param[i]);
+    }
+    return EncodeInt32(sum);
+}
+DataTag ChainProduct(InterpreterState* is, int nbParams, DataTag* param) {
+    double sum = CastInt(is, param[0]);
+    for (int i = 1; i < nbParams; i++) {
+        sum *= CastInt(is, param[i]);
+    }
+    return EncodeInt32(sum);
+}
+DataTag ChainDivide(InterpreterState* is, int nbParams, DataTag* param) {
+    double sum = CastInt(is, param[0]);
+    for (int i = 1; i < nbParams; i++) {
+        sum /= CastInt(is, param[i]);
+    }
+    return EncodeInt32(sum);
+}
+DataTag ChainRemainder(InterpreterState* is, int nbParams, DataTag* param) {
+    int sum = CastInt(is, param[0]);
+    for (int i = 1; i < nbParams; i++) {
+        sum = sum % CastInt(is, param[i]);
+    }
+    return EncodeInt32(sum);
+}
+
 DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is) {
     switch (kind) {
-    // each element equal to the first
+        // each element equal to the first
     case FuncDef::Equal:
         if (nbParams < 2) return _Exception(is, "equals ( = ) must have at least two things to compare");
         return EncodeBool(ListEquals(nbParams, param, is));
 
-    // Each element smaller than the last
+        // Each element smaller than the last
     case FuncDef::GreaterThan:
         if (nbParams < 2) return _Exception(is, "greater than ( > ) must have at least two things to compare");
         return EncodeBool(FoldGreaterThan(nbParams, param, is));
 
-    // Each element larger than the last
+        // Each element larger than the last
     case FuncDef::LessThan:
         if (nbParams < 2) return _Exception(is, "less than ( < ) must have at least two things to compare");
         return EncodeBool(FoldLessThan(nbParams, param, is));
 
-    // Each element DIFFERENT TO THE FIRST (does not check set uniqueness!)
+        // Each element DIFFERENT TO THE FIRST (does not check set uniqueness!)
     case FuncDef::NotEqual:
         if (nbParams < 2) return _Exception(is, "not-equal ( <> ) must have at least two things to compare");
         return EncodeBool(!ListEquals(nbParams, param, is));
 
     case FuncDef::Assert:
+    {
         if (nbParams < 1) return VoidReturn(); // assert nothing passes
         auto condition = param[0];
         if (CastBoolean(is, condition) == false) {
@@ -507,6 +544,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
             return _Exception(is, "Assertion failed: ", msg);
         }
         return VoidReturn();
+    }
 
     case FuncDef::Random:
         // TODO: the 0 param should give a float?
@@ -537,10 +575,11 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         return EvaluateFunctionCall(ref position, functionNameHash, nbParams, newParam, returnStack, valueStack);
         */
     case FuncDef::LogicNot:
+    {
         if (nbParams != 1) return _Exception(is, "'not' should be called with one argument");
         auto bval = CastBoolean(is, param[0]);
         return EncodeBool(!bval);
-
+    }
     case FuncDef::LogicOr:
     {
         bool more = nbParams > 0;
@@ -609,6 +648,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
     }
 
     case FuncDef::Substring:
+    {
         if (nbParams == 2) {
             auto newString = CastString(is, param[0]);
             int origLen = StringLength(newString);
@@ -626,6 +666,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         } else {
             return _Exception(is, "'Substring' should be called with 2 or 3 parameters");
         }
+    }
 
     case FuncDef::Length:
     {
@@ -636,6 +677,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
     }
 
     case FuncDef::Replace:
+    {
         if (nbParams != 3) return _Exception(is, "'Replace' should be called with 3 parameters");
         auto src = CastString(is, param[0]);
         auto oldValue = CastString(is, param[1]);
@@ -647,17 +689,20 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         StringDeallocate(oldValue);
         StringDeallocate(newValue);
         return v;
+    }
 
     case FuncDef::Concat:
+    {
         auto str = StringEmpty();
 
-        for (int i = 0; i < nbParams; i++) { {
+        for (int i = 0; i < nbParams; i++) {
             auto s = CastString(is, param[i]);
             StringAppend(str, s);
             StringDeallocate(s);
         }
 
         return StoreStringAndGetReference(is, str);
+    }
 
     case FuncDef::UnitEmpty:
     { // valueless marker (like an empty object)
@@ -666,24 +711,24 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
 
     case FuncDef::MathAdd:
-        if (nbParams == 1) return param[0];
-        return param.ChainSum();
+        if (nbParams == 1) return EncodeInt32(CastInt(is, param[0])); // todo: check for number type, do promotion
+        return ChainSum(is, nbParams, param);
 
     case FuncDef::MathSub:
-        if (nbParams == 1) return -param[0];
-        return param.ChainDifference();
+        if (nbParams == 1) return EncodeInt32(-CastInt(is, param[0]));
+        return ChainDifference(is, nbParams, param);
 
     case FuncDef::MathProd:
         if (nbParams == 1) return _Exception(is, "Uniary '*' is not supported");
-        return param.ChainProduct();
+        return ChainProduct(is, nbParams, param);
 
     case FuncDef::MathDiv:
         if (nbParams == 1) return _Exception(is, "Uniary '/' is not supported");
-        return param.ChainDivide();
+        return ChainDivide(is, nbParams, param);
 
     case FuncDef::MathMod:
-        if (nbParams == 1) return param[0] % 2;
-        return param.ChainRemainder();
+        if (nbParams == 1) return EncodeInt32(-CastInt(is, param[0]) % 2);
+        return ChainRemainder(is, nbParams, param);
 
     default:
         return _Exception(is, "Unrecognised built-in! Type = " + ((int)kind));

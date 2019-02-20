@@ -46,7 +46,7 @@ uint32_t int_random(uint32_t seedStep) {
 
 float float_random(uint32_t seedStep) {
     float b = triple32(seedStep);
-    return b / ((float)RAND_MAX));
+    return b / ((float)RAND_MAX);
 }
 
 #endif

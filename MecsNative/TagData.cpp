@@ -123,6 +123,10 @@ DataTag EncodePointer(uint32_t ptrTarget, DataType type) {
     return t;
 }
 
+uint32_t DecodePointer(DataTag encoded) {
+    return encoded.data;
+}
+
 DataTag EncodeInt32(int32_t original) {
     return DataTag{ (int)DataType::Integer, 0, (uint32_t)original };
 }

@@ -16,8 +16,10 @@ String *StringEmpty();
 String *StringNew(const char *str);
 // Create a mutable string from a single character
 String *StringNew(char c);
-// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+// Somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
 String * StringNewFormat(const char* fmt, ...);
+// Create a new string representation of an integer
+String* StringFromInt32(int32_t i);
 // Clear the contents of a string, but leave it allocated
 void StringClear(String *str);
 
