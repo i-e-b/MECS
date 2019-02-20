@@ -17,7 +17,7 @@ String* Stringify(InterpreterState* is, DataTag token, DataType type, HashMap* d
 // Interpret or cast value as a boolean
 bool CastBoolean(InterpreterState* is, DataTag encoded);
 // null, empty, "false" or "0" are false. All other strings are true.
-bool StringTruthyness(InterpreterState* is, String* strVal);
+bool StringTruthyness(String* strVal);
 // Interpret, or cast value as double
 float CastDouble(InterpreterState* is, DataTag encoded);
 // Cast a value to int. If not applicable, returns zero

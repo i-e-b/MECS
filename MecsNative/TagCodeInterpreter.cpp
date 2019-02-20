@@ -34,8 +34,9 @@ typedef struct InterpreterState {
     String* _output;
 
     // the string table and opcodes
-    Vector* _program; // Vector<DataTag>
-    Scope* _memory;
+    Vector* _program; // Vector<DataTag> (read only)
+    Scope* _variables; // scoped variable references
+    Arena* _memory; // read/write memory
 
     // Functions that have been defined at run-time
     HashMap*  Functions; // Map<CrushName -> FunctionDefinition>
@@ -69,7 +70,7 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
 
 // Start up an interpreter
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.
-InterpreterState* InterpAllocate(Vector* tagCode, HashMap* debugSymbols) {
+InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* debugSymbols) {
     if (tagCode == NULL) return NULL;
     auto result = (InterpreterState*)mmalloc(sizeof(InterpreterState));
     if (result == NULL) return NULL;
@@ -78,7 +79,8 @@ InterpreterState* InterpAllocate(Vector* tagCode, HashMap* debugSymbols) {
     result->DebugSymbols = debugSymbols; // ok if NULL
 
     result->_program = tagCode;
-    result->_memory = ScopeAllocate();
+    result->_variables = ScopeAllocate();
+    result->_memory = NewArena(memorySize);
 
     result->_position = 0;
     result->_stepsTaken = 0;
@@ -94,6 +96,7 @@ InterpreterState* InterpAllocate(Vector* tagCode, HashMap* debugSymbols) {
         || (result->_returnStack == NULL)
         || (result->_valueStack == NULL)
         || (result->_input == NULL)
+        || (result->_variables == NULL)
         || (result->_memory == NULL)
         || (result->_output == NULL)) {
         InterpDeallocate(result);
@@ -110,7 +113,8 @@ InterpreterState* InterpAllocate(Vector* tagCode, HashMap* debugSymbols) {
 void InterpDeallocate(InterpreterState* is) {
     if (is == NULL) return;
 
-    if (is->_memory != NULL) ScopeDeallocate(is->_memory);
+    if (is->_memory != NULL) DropArena(&(is->_memory));
+    if (is->_variables != NULL) ScopeDeallocate(is->_variables);
     if (is->Functions != NULL) MapDeallocate(is->Functions);
     if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
     if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
@@ -193,7 +197,7 @@ DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, 
         return EvaluateBuiltInFunction(position, fun->Kind, nbParams, param, is);
 
     // handle functions that are defined in the program
-    ScopePush(is->_memory, param, nbParams); // write parameters into new scope
+    ScopePush(is->_variables, param, nbParams); // write parameters into new scope
     VecPush_int(is->_returnStack, *position); // set position for 'cret' call
     *position = fun->StartPosition; // move pointer to start of function
     return VoidReturn(); // return no value, continue execution elsewhere
@@ -259,7 +263,7 @@ bool ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, in
 
     case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
         varRef = p2 + (p1 << 16);
-        ScopeMutateNumber(is->_memory, varRef, (int8_t)codeAction);
+        ScopeMutateNumber(is->_variables, varRef, (int8_t)codeAction);
         break;
 
     case 's': // reserved for System operation.

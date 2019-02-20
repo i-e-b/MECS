@@ -33,7 +33,7 @@ typedef struct InterpreterState InterpreterState;
 
 // Start up an interpreter.
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.
-InterpreterState* InterpAllocate(Vector* tagCode, HashMap* debugSymbols);
+InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* debugSymbols);
 
 // Close down an interpreter and free all memory
 void InterpDeallocate(InterpreterState* is);
