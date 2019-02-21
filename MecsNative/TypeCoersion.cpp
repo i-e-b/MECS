@@ -55,7 +55,33 @@ bool StringTruthyness(String* strVal) {
 float CastDouble(InterpreterState* is, DataTag encoded);
 
 // Cast a value to int. If not applicable, returns zero
-int CastInt(InterpreterState* is, DataTag  encoded);
+int CastInt(InterpreterState* is, DataTag  encoded) {
+    int result;
+    auto type = encoded.type;
+    switch (type) {
+    case DataType.VariableRef:
+        // Follow scope
+        var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+        return CastInt(next);
+
+    case DataType.ValSmallString:
+        int.TryParse(NanTags.DecodeShortStr(encoded), out result);
+        return result;
+
+    case DataType.PtrStaticString:
+    case DataType.PtrString:
+        NanTags.DecodePointer(encoded, out var target, out _);
+        int.TryParse(DereferenceString(target), out result);
+        return result;
+
+    case DataType.Number: return (int)encoded;
+    case DataType.ValInt32: return NanTags.DecodeInt32(encoded);
+    case DataType.ValUInt32: return (int)NanTags.DecodeUInt32(encoded);
+
+    default:
+        return 0;
+    }
+}
 
 String* DereferenceString(InterpreterState* is, uint32_t position) {
     auto original = (String*)InterpreterDeref(is, position);
