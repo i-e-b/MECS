@@ -119,12 +119,7 @@ void* mmalloc(size_t size) {
 void* mcalloc(int count, size_t size) {
     ArenaPtr a = MMCurrent();
     if (a != NULL) {
-        size_t sz = count * size;
-        char* res = (char*)ArenaAllocate(a, sz);
-        for (size_t i = 0; i < sz; i++) {
-            res[i] = 0;
-        }
-        return (void*)res;
+        return ArenaAllocateAndClear(a, count*size);
     } else {
         return calloc(count, size);
     }

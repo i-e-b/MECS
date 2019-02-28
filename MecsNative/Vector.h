@@ -2,12 +2,16 @@
 #ifndef vector_h
 #define vector_h
 
+#include "ArenaAllocator.h"
+
 // Generalised auto-sizing vector
 // Can be used as a stack or array
 typedef struct Vector Vector;
 
 // Create a new dynamic vector with the given element size (must be fixed per vector)
 Vector *VectorAllocate(int elementSize);
+// Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
+Vector *VectorAllocateArena(Arena* a, int elementSize);
 // Check the vector is correctly allocated
 bool VectorIsValid(Vector *v);
 // Clear all elements out of the vector, but leave it valid
@@ -59,6 +63,7 @@ int VectorElementSize(Vector *v);
 // These must be registered for each type, as they are type variant
 #define RegisterVectorFor(typeName, nameSpace) \
     inline Vector* nameSpace##Allocate_##typeName(){ return VectorAllocate(sizeof(typeName)); } \
+    inline Vector* nameSpace##AllocateArena_##typeName(Arena* a){ return VectorAllocateArena(a, sizeof(typeName)); } \
     inline bool nameSpace##Push_##typeName(Vector *v, typeName value){ return VectorPush(v, (void*)&value); } \
     inline typeName * nameSpace##Get_##typeName(Vector *v, unsigned int index){ return (typeName*)VectorGet(v, index); } \
     inline bool nameSpace##Copy_##typeName(Vector *v, unsigned int idx, typeName *target){ return VectorCopy(v, idx, (void*) target); } \

@@ -34,6 +34,9 @@ bool ArenaContainsPointer(Arena* a, void* ptr);
 // Allocate memory of the given size
 void* ArenaAllocate(Arena* a, size_t byteCount);
 
+// Allocate memory of the given size and set all bytes to zero
+void* ArenaAllocateAndClear(Arena* a, size_t byteCount);
+
 // Remove a reference to memory. When no references are left, the memory is deallocated
 bool ArenaDereference(Arena* a, void* ptr);
 

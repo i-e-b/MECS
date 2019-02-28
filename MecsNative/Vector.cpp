@@ -8,6 +8,8 @@
 typedef struct Vector {
     bool IsValid; // if this is false, creation failed
 
+    Arena* _arena; // the arena this vector should be pinned to (the active one when the vector was created)
+
     // Calculated parts
     int ElemsPerChunk;
     int ElementByteSize;
@@ -86,10 +88,23 @@ const long SKIP_TABLE_SIZE_LIMIT = 1024;
 
 void MaybeRebuildSkipTable(Vector *v); // defined later
 
+// abstract over alloc/free to help us pin to one arena
+void* VecCAlloc(Vector *v, int count, int size) {
+    if (v->_arena == NULL) return mcalloc(count, size);
+    return ArenaAllocateAndClear(v->_arena, count*size);
+}
+void VecFree(Vector *v, void* ptr) {
+    if (v->_arena == NULL) mfree(ptr);
+    else ArenaDereference(v->_arena, ptr);
+}
+void* VecAlloc(Vector *v, int size) {
+    if (v->_arena == NULL) return mmalloc(size);
+    return ArenaAllocate(v->_arena,size);
+}
+
 // add a new chunk at the end of the chain
-void *NewChunk(Vector *v)
-{
-    auto ptr = mcalloc(1, v->ChunkBytes); // avoid garbage data in the chunks (help when we pre-alloc)
+void *NewChunk(Vector *v) {
+    auto ptr = VecCAlloc(v, 1, v->ChunkBytes); // calloc to avoid garbage data in the chunks
     if (ptr == NULL) return NULL;
 
     ((size_t*)ptr)[0] = 0; // set the continuation pointer of the new chunk to invalid
@@ -196,7 +211,7 @@ void RebuildSkipTable(Vector *v)
     v->_skipTableDirty = false;
     auto chunkTotal = v->_elementCount / v->ElemsPerChunk;
     if (chunkTotal < 4) { // not worth having a skip table
-        if (v->_skipTable != NULL) mfree(v->_skipTable);
+        if (v->_skipTable != NULL) VecFree(v, v->_skipTable);
         v->_skipEntries = 0;
         v->_skipTable = NULL;
         v->_rebuilding = false;
@@ -209,7 +224,7 @@ void RebuildSkipTable(Vector *v)
     // General case: not every chunk will fit in the skip table
     // Find representative chunks using the existing table.
     // (finding will be a combination of search and scan)
-    auto newTablePtr = mmalloc(SKIP_ELEM_SIZE * entries);
+    auto newTablePtr = VecAlloc(v, SKIP_ELEM_SIZE * entries);
     if (newTablePtr == NULL) { v->_rebuilding = false; return; } // live with the old one
 
     auto stride = v->_elementCount / entries;
@@ -225,7 +240,7 @@ void RebuildSkipTable(Vector *v)
         FindNearestChunk(v, target, &found, &chunkPtr, &chunkIndex);
 
         if (!found || chunkPtr == NULL) { // total fail
-            mfree(newTablePtr);
+            VecFree(v,newTablePtr);
             v->_rebuilding = false;
             return;
         }
@@ -238,13 +253,13 @@ void RebuildSkipTable(Vector *v)
     }
 
     if (newSkipEntries < 1) {
-        mfree(newTablePtr); // failed to build
+        VecFree(v, newTablePtr); // failed to build
         v->_rebuilding = false;
         return;
     }
 
     v->_skipEntries = newSkipEntries;
-    if (v->_skipTable != NULL) mfree(v->_skipTable);
+    if (v->_skipTable != NULL) VecFree(v, v->_skipTable);
     v->_skipTable = newTablePtr;
     v->_rebuilding = false;
 }
@@ -272,6 +287,7 @@ void * PtrOfElem(Vector *v, uint index) {
 Vector *VectorAllocate(int elementSize) {
     auto result = (Vector*)mcalloc(1, sizeof(Vector));
 
+    result->_arena = MMCurrent();
     result->ElementByteSize = elementSize;
 
     // Work out how many elements can fit in an arena
@@ -289,6 +305,51 @@ Vector *VectorAllocate(int elementSize) {
 
     result->ChunkBytes = (unsigned short)(result->ChunkHeaderSize + (result->ElemsPerChunk * result->ElementByteSize));
 
+    // Make a table, which can store a few chunks, and can have a next-chunk-table pointer
+    // Each chunk can hold a few elements.
+    result->_skipEntries = NULL;
+    result->_skipTable = NULL;
+    result->_endChunkPtr = NULL;
+    result->_baseChunkTable = NULL;
+
+    auto baseTable = NewChunk(result);
+
+    if (baseTable == NULL) {
+        result->IsValid = false;
+        return result;
+    }
+    result->_baseChunkTable = baseTable;
+    result->_elementCount = 0;
+    result->_baseOffset = 0;
+    RebuildSkipTable(result);
+
+    // All done
+    result->IsValid = true;
+    return result;
+}
+
+// Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
+Vector *VectorAllocateArena(Arena* a, int elementSize) {
+    if (a == NULL) return NULL;
+    auto result = (Vector*)ArenaAllocateAndClear(a, sizeof(Vector));//(Vector*)mcalloc(1, sizeof(Vector));
+
+    result->_arena = a;
+    result->ElementByteSize = elementSize;
+
+    // Work out how many elements can fit in an arena
+    result->ChunkHeaderSize = PTR_SIZE;
+    auto spaceForElements = ARENA_SIZE - result->ChunkHeaderSize; // need pointer space
+    result->ElemsPerChunk = (int)(spaceForElements / result->ElementByteSize);
+
+    if (result->ElemsPerChunk <= 1) {
+        result->IsValid = false;
+        return result;
+    }
+
+    if (result->ElemsPerChunk > TARGET_ELEMS_PER_CHUNK)
+        result->ElemsPerChunk = TARGET_ELEMS_PER_CHUNK; // no need to go crazy with small items.
+
+    result->ChunkBytes = (unsigned short)(result->ChunkHeaderSize + (result->ElemsPerChunk * result->ElementByteSize));
 
     // Make a table, which can store a few chunks, and can have a next-chunk-table pointer
     // Each chunk can hold a few elements.
@@ -328,7 +389,7 @@ void VectorClear(Vector *v) {
 
     // empty out the skip table, if present
     if (v->_skipTable != NULL) {
-        mfree(v->_skipTable);
+        VecFree(v, v->_skipTable);
         v->_skipTable = NULL;
     }
 
@@ -340,7 +401,7 @@ void VectorClear(Vector *v) {
     while (current != NULL) {
         var next = readPtr(current, 0);
         writePtr(current, 0, NULL); // just in case we have a loop
-        mfree(current);
+        VecFree(v, current);
         current = next;
     }
 }
@@ -348,7 +409,7 @@ void VectorClear(Vector *v) {
 void VectorDeallocate(Vector *v) {
     if (v == NULL) return;
     v->IsValid = false;
-    if (v->_skipTable != NULL) mfree(v->_skipTable);
+    if (v->_skipTable != NULL) VecFree(v, v->_skipTable);
     v->_skipTable = NULL;
     // Walk through the chunk chain, removing until we hit an invalid pointer
     var current = v->_baseChunkTable;
@@ -357,7 +418,7 @@ void VectorDeallocate(Vector *v) {
 
         var next = readPtr(current, 0);
         writePtr(current, 0, NULL); // just in case we have a loop
-        mfree(current);
+        VecFree(v, current);
 
         if (current == v->_endChunkPtr) break; // sentinel
         current = next;
@@ -367,7 +428,14 @@ void VectorDeallocate(Vector *v) {
     v->_elementCount = 0;
     v->ElementByteSize = 0;
     v->ElemsPerChunk = 0;
-    mfree(v);
+
+    // arena aware clean-up
+    auto a = v->_arena;
+    if (a == NULL) {
+        mfree(v);
+    } else {
+        ArenaDereference(a, v);
+    }
 }
 
 int VectorLength(Vector *v) {
@@ -441,27 +509,27 @@ bool VectorDequeue(Vector * v, void * outValue) {
     // Advance the base and free the old
     auto oldChunk = v->_baseChunkTable;
     v->_baseChunkTable = nextChunk;
-    mfree(oldChunk);
+    VecFree(v, oldChunk);
 
     if (v->_skipTable == NULL) return true; // don't need to fix the table
 
     // Make a truncated version of the skip table
     v->_skipEntries--;
     if (v->_skipEntries < 4) { // no point having a table
-        mfree(v->_skipTable);
+        VecFree(v, v->_skipTable);
         v->_skipEntries = 0;
         v->_skipTable = NULL;
         return true;
     }
     // Copy of the skip table with first element gone
     uint length = SKIP_ELEM_SIZE * v->_skipEntries;
-    auto newTablePtr = (char*)mmalloc(length);
+    auto newTablePtr = (char*)VecAlloc(v, length);
     auto oldTablePtr = (char*)v->_skipTable;
     for (uint i = 0; i < length; i++) {
         newTablePtr[i] = oldTablePtr[i + SKIP_ELEM_SIZE];
     }
     v->_skipTable = newTablePtr;
-    mfree(oldTablePtr);
+    VecFree(v, oldTablePtr);
 
     return true;
 }
@@ -491,7 +559,7 @@ bool VectorPop(Vector *v, void *target) {
             v->IsValid = false;
             return false;
         }
-        mfree(v->_endChunkPtr);
+        VecFree(v, v->_endChunkPtr);
         v->_endChunkPtr = prevChunkPtr;
         writePtr(prevChunkPtr, 0, NULL); // remove the 'next' pointer from the new end chunk
 
@@ -572,14 +640,14 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2) {
     if (A == NULL || B == NULL) return false;
 
     var bytes = v->ElementByteSize;
-    var tmp = mmalloc(bytes);
+    var tmp = VecAlloc(v, bytes);
     if (tmp == NULL) return false;
 
     writeValue(tmp, 0, A, bytes); // tmp = A
     writeValue(A, 0, B, bytes); // A = B
     writeValue(B, 0, tmp, bytes); // B = tmp
 
-    mfree(tmp);
+    VecFree(v, tmp);
 
     return true;
 }
@@ -663,10 +731,10 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     // Allocate the temporary structures
     uint32_t n = VectorLength(v);
     auto size = v->ElementByteSize;
-    void* arr1 = mmalloc((n+1) * size); // extra space for swapping
+    void* arr1 = VecAlloc(v, (n+1) * size); // extra space for swapping
     if (arr1 == NULL) return;
-    void* arr2 = mmalloc(n * size);
-    if (arr2 == NULL) { mfree(arr1); return; }
+    void* arr2 = VecAlloc(v, n * size);
+    if (arr2 == NULL) { VecFree(v, arr1); return; }
 
     // write into array in pairs, doing the scale=1 merge
     uint32_t i = 0;
@@ -694,8 +762,8 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     }
 
     // clean up
-    mfree(arr1);
-    mfree(arr2);
+    VecFree(v, arr1);
+    VecFree(v, arr2);
 }
 
 int VectorElementSize(Vector * v) {

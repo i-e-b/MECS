@@ -164,6 +164,15 @@ void* ArenaAllocate(Arena* a, size_t byteCount) {
     return NULL;
 }
 
+void* ArenaAllocateAndClear(Arena* a, size_t byteCount) {
+    char* res = (char*)ArenaAllocate(a, byteCount);
+    if (res == NULL) return NULL;
+    for (size_t i = 0; i < byteCount; i++) {
+        res[i] = 0;
+    }
+    return (void*)res;
+}
+
 
 int ZoneForPtr(Arena* a, void* ptr) {
     if (ptr < a->_start || ptr > a->_limit) return -1;

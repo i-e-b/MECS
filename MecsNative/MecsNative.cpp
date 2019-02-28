@@ -176,6 +176,36 @@ int TestVector() {
     VectorDeallocate(gvec);
 
 
+
+    // Check that vectors pin to the arena they were created in:
+    size_t beforeOuter, afterInner, afterOuter, finalOuter;
+    ArenaGetState(MMCurrent(), &beforeOuter, NULL, NULL, NULL, NULL, NULL);
+    auto pinv = VecAllocate_char();
+    if (!MMPush(256 KILOBYTES)) {
+        std::cout << "Arena allcation failed";
+        return 253;
+    }
+    for (int i = 0; i < (100 KILOBYTES); i++) {
+        VecPush_char(pinv, (char)((i % 100) + 33));
+    }
+    ArenaGetState(MMCurrent(), &afterInner, NULL, NULL, NULL, NULL, NULL);
+
+    // delete the arena, check we can still access data
+    MMPop();
+    char c;
+    for (int i = 0; i < (100 KILOBYTES); i++) {
+        VecPop_char(pinv, &c);
+    }
+
+    int refs = 0;
+    ArenaGetState(MMCurrent(), &afterOuter, NULL, NULL, NULL, &refs, NULL);
+    VecDeallocate(pinv);
+    ArenaGetState(MMCurrent(), &finalOuter, NULL, NULL, NULL, NULL, NULL);
+
+    std::cout << "Memory arena pinning: Outer before=" << beforeOuter << "; after=" << afterOuter << "; final=" << finalOuter << "\n";
+    std::cout << "                      Inner after=" << afterInner << " (should be zero)\n";
+    std::cout << "                      References after pops=" << refs << "\n";
+
     return 0;
 }
 
@@ -676,7 +706,6 @@ int TestArenaAllocator() {
     std::cout << "Used and dereferenced Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
     DropArena(&arena2);
 
-
     // TODO: expand this when String/Vector/Hashtable etc can use the arena allocator
 
     return 0;
@@ -841,7 +870,7 @@ int main() {
     auto sres = TestString();
     if (sres != 0) return sres;
     MMPop();
-    /*
+
     MMPush(1 MEGABYTE);
     auto fpres = TestFixedPoint();
     if (fpres != 0) return fpres;
@@ -876,6 +905,6 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-    */
+
     ShutdownManagedMemory();
 }

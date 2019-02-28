@@ -25,6 +25,21 @@ String * StringEmpty() {
 
     return str;
 }
+
+// Create an empty string in a specific memory arena
+String *StringEmptyInArena(Arena* a) {
+    if (a == NULL) return NULL;
+    auto vec = VAllocateArena_char(a);
+    if (!VectorIsValid(vec)) return NULL;
+
+    auto str = (String*)ArenaAllocateAndClear(a, sizeof(String));//mcalloc(1, sizeof(String));
+    str->chars = vec;
+    str->hashval = 0;
+    str->isProxy = false;
+
+    return str;
+}
+
 String* StringProxy(String* original) {
     if (original == NULL) return NULL;
 

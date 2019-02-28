@@ -4,6 +4,7 @@
 #define string_h
 
 #include "Vector.h"
+#include "ArenaAllocator.h"
 #include <stdint.h>
 
 // A mutable variable length string structure
@@ -22,6 +23,9 @@ String * StringNewFormat(const char* fmt, ...);
 String* StringFromInt32(int32_t i);
 // Clear the contents of a string, but leave it allocated
 void StringClear(String *str);
+
+// Create an empty string in a specific memory arena
+String *StringEmptyInArena(Arena* a);
 
 // Make a shallow copy of a string. Can be deallocated without affecting the original.
 // But all other operations affect the original
