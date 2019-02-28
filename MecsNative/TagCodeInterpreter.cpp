@@ -164,7 +164,7 @@ String* DbgStr(InterpreterState* is, uint32_t hash)
 }
 
 String* DiagnosticString(DataTag tag, InterpreterState* is) {
-    // TODO!!
+    // TODO: Diagnostic string
     return StringEmpty();
 }
 
@@ -186,7 +186,7 @@ DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, 
     bool found = MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &fun);
 
     if (!found) {
-
+        is->ErrorFlag = true;
         StringAppendFormat(is->_output,
             "Tried to call an undefined function '\x01' at position \x02\n", DbgStr(is, functionNameHash), position);
         return RuntimeError(is->_position);
@@ -211,6 +211,111 @@ DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, 
 
 }
 
+
+// List equals follows the logic: `true` if *any* of the values is equal to the first, `false` otherwise.
+bool ListEquals(int nbParams, DataTag* param, InterpreterState* is) {
+    if (nbParams < 1) return false;
+    auto type = param[0].type;
+    switch (type) {
+        // Non-comparable types
+    case (int)DataType::Invalid:
+    case (int)DataType::Not_a_Result:
+    case (int)DataType::Exception:
+    case (int)DataType::Void:
+    case (int)DataType::Unit:
+    case (int)DataType::Opcode:
+        return false;
+
+        // Numeric types
+    case (int)DataType::Integer:
+    case (int)DataType::Fraction:
+    {
+        auto target = CastDouble(is, param[0]);
+        for (int i = 1; i < nbParams; i++) {
+            auto diff = target - CastDouble(is, param[0]);
+            if (abs(diff) <= ComparisonPrecision) return true;
+        }
+        return false;
+    }
+
+    // String types
+    case (int)DataType::SmallString:
+    case (int)DataType::StaticStringPtr:
+    case (int)DataType::StringPtr:
+    {
+        auto target = CastString(is, param[0]);
+        for (int i = 1; i < nbParams; i++) {
+            auto pair = CastString(is, param[i]);
+            bool match = StringAreEqual(target, pair);
+            StringDeallocate(pair);
+            if (match) {
+                StringDeallocate(target);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Pointer equality
+    case (int)DataType::VariableRef:
+    case (int)DataType::HashtablePtr:
+    case (int)DataType::VectorPtr:
+    {
+        auto target = param[0];
+        for (int i = 1; i < nbParams; i++) {
+            if (target.type == param[i].type && target.data == param[i].data) return true;
+        }
+        return false;
+    }
+
+    default:
+        return false;
+    }
+}
+
+// True iff each element is larger than the previous
+bool FoldGreaterThan(int nbParams, DataTag* param, InterpreterState* is) {
+    bool first = true;
+    double prev = 0;
+    for (int i = 0; i < nbParams; i++) {
+        auto encoded = param[i];
+        if (first)
+        {
+            prev = CastDouble(is, encoded);
+            first = false;
+            continue;
+        }
+
+        auto current = CastDouble(is, encoded);
+        if (prev <= current) return false; // inverted for short-circuit
+        prev = current;
+    }
+
+    return true;
+}
+
+// True iff each element is smaller than the previous
+bool FoldLessThan(int nbParams, DataTag* param, InterpreterState* is) {
+    bool first = true;
+    double prev = 0;
+    for (int i = 0; i < nbParams; i++) {
+        auto encoded = param[i];
+        if (first)
+        {
+            prev = CastDouble(is, encoded);
+            first = false;
+            continue;
+        }
+
+        auto current = CastDouble(is, encoded);
+        if (prev >= current) return false; // inverted for short-circuit
+        prev = current;
+    }
+
+    return true;
+}
+
+
 DataTag TryPopTag(InterpreterState* is, int position) {
     DataTag tag;
     if (!VecPop_DataTag(is->_valueStack, &tag)) {
@@ -219,6 +324,40 @@ DataTag TryPopTag(InterpreterState* is, int position) {
         return InvalidTag();
     }
     return tag;
+}
+
+void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
+    auto target = TryPopTag(is, is->_position);
+    auto value = ScopeResolve(is->_variables, DecodeVariableRef(target));
+
+    switch (value.type)
+    {
+        // Note: Numeric types should read the bit at index
+        // Hashes and arrays do the obvious lookup
+        // Sets return true/false for occupancy
+    case (int)DataType::StringPtr:
+    case (int)DataType::StaticStringPtr:
+    {
+        // get the other indexes. If more than one, build a string out of the bits?
+        // What to do with out-of-range?
+        auto src = CastString(is, value);
+        auto srcLength = StringLength(src);
+        auto dst = StringEmpty();
+        for (int i = 0; i < paramCount; i++) {
+            auto idx = CastInt(is, TryPopTag(is, is->_position));
+            if (idx >= 0 && idx < srcLength) StringAppendChar(dst, StringCharAtIndex(src, idx));
+        }
+
+        auto result = StoreStringAndGetReference(is, dst);
+        StringDeallocate(src);
+        VecPush_DataTag(is->_valueStack, result);
+        return;
+    }
+    default:
+
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Can't index at position: '\x02'", is->_position);
+    }
 }
 
 void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
@@ -326,12 +465,68 @@ void HandleControlSignal(int* position, char codeAction, int opCodeCount, Interp
 
 }
 
-void HandleCompoundCompare(int* position, char  codeAction, uint16_t p1, uint16_t p2, InterpreterState* is) {
-    // TODO
+int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint16_t opCodeCount, InterpreterState* is) {
+    auto param = ReadParams(position, argCount, is->_valueStack);
+    auto cmp = (CmpOp)codeAction;
+    switch (cmp) {
+    case CmpOp::Equal:
+        return ListEquals(argCount, param, is) ? position : position + opCodeCount;
+    case CmpOp::NotEqual:
+        return ListEquals(argCount, param, is) ? position + opCodeCount : position;
+    case CmpOp::Less:
+        return FoldLessThan(argCount, param, is) ? position : position + opCodeCount;
+    case CmpOp::Greater:
+        return FoldGreaterThan(argCount, param, is) ? position : position + opCodeCount;
+    default:
+    {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Unknown compound compare at position \x02", position);
+        return -1;
+    }
+    }
 }
 
-void HandleMemoryAccess(int* position, char codeAction, int varRef, uint16_t p1, InterpreterState* is) {
-    // TODO
+void HandleMemoryAccess(int* position, char action, int varRef, uint16_t paramCount, InterpreterState* is) {
+    switch (action)
+    {
+    case 'g': // get (adds a value to the stack, false if not set)
+        VecPush_DataTag(is->_valueStack, ScopeResolve(is->_variables, varRef));
+        break;
+
+    case 's': // set
+    {
+        DataTag tag;
+        if (!VecPop_DataTag(is->_valueStack, &tag)) {
+            is->ErrorFlag = true;
+            StringAppendFormat(is->_output, "There were no values to save. Did you forget a `return` in a function? Position:  \x02", *position);
+            return;
+        }
+
+        ScopeSetValue(is->_variables, varRef, tag);
+        break;
+    }
+    case 'i': // is set? (adds a bool to the stack)
+    {
+        auto val = EncodeBool(ScopeCanResolve(is->_variables, varRef));
+        VecPush_DataTag(is->_valueStack, val);
+        break;
+    }
+    case 'u': // unset
+    {
+        ScopeRemove(is->_variables, varRef);
+        break;
+    }
+    case 'G': // indexed get
+        DoIndexedGet(is, paramCount);
+        break;
+
+    default:
+    {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Unknown memory opcode: '\x04'", action);
+        return;
+    }
+    }
 }
 
 // dispatch for op codes. valueStack is Vector<DataTag>, returnStack is Vector<int>
@@ -355,7 +550,7 @@ bool ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, in
     break;
 
     case 'C': // compound compare and jump
-        HandleCompoundCompare(position, codeAction, p1, p2, is);
+        *position = HandleCompoundCompare(*position, codeAction, p1, p2, is);
         break;
 
     case 'm': // Memory access - get|set|isset|unset
@@ -473,109 +668,6 @@ DataTag _Exception(InterpreterState* is, const char* msg, String* details) {
     StringAppend(is->_output, msg);
     StringAppend(is->_output, details);
     return RuntimeError(is->_position);
-}
-
-// List equals follows the logic: `true` if *any* of the values is equal to the first, `false` otherwise.
-bool ListEquals(int nbParams, DataTag* param, InterpreterState* is) {
-    if (nbParams < 1) return false;
-    auto type = param[0].type;
-    switch (type) {
-    // Non-comparable types
-    case (int)DataType::Invalid:
-    case (int)DataType::Not_a_Result:
-    case (int)DataType::Exception:
-    case (int)DataType::Void:
-    case (int)DataType::Unit:
-    case (int)DataType::Opcode:
-        return false;
-
-    // Numeric types
-    case (int)DataType::Integer:
-    case (int)DataType::Fraction:
-    { 
-        auto target = CastDouble(is, param[0]);
-        for (int i = 1; i < nbParams; i++) {
-            auto diff = target - CastDouble(is, param[0]);
-            if (abs(diff) <= ComparisonPrecision) return true;
-        }
-        return false;
-    }
-
-    // String types
-    case (int)DataType::SmallString:
-    case (int)DataType::StaticStringPtr:
-    case (int)DataType::StringPtr:
-    {
-        auto target = CastString(is, param[0]);
-        for (int i = 1; i < nbParams; i++) {
-            auto pair = CastString(is, param[i]);
-            bool match = StringAreEqual(target, pair);
-            StringDeallocate(pair);
-            if (match) {
-                StringDeallocate(target);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Pointer equality
-    case (int)DataType::VariableRef:
-    case (int)DataType::HashtablePtr:
-    case (int)DataType::VectorPtr:
-    {
-        auto target = param[0];
-        for (int i = 1; i < nbParams; i++) {
-            if (target.type == param[i].type && target.data == param[i].data) return true;
-        }
-        return false;
-    }
-
-    default:
-        return false;
-    }
-}
-
-// True iff each element is larger than the previous
-bool FoldGreaterThan(int nbParams, DataTag* param, InterpreterState* is) {
-    bool first = true;
-    double prev = 0;
-    for (int i = 0; i < nbParams; i++) {
-        auto encoded = param[i];
-        if (first)
-        {
-            prev = CastDouble(is, encoded);
-            first = false;
-            continue;
-        }
-
-        auto current = CastDouble(is, encoded);
-        if (prev <= current) return false; // inverted for short-circuit
-        prev = current;
-    }
-
-    return true;
-}
-
-// True iff each element is smaller than the previous
-bool FoldLessThan(int nbParams, DataTag* param, InterpreterState* is) {
-    bool first = true;
-    double prev = 0;
-    for (int i = 0; i < nbParams; i++) {
-        auto encoded = param[i];
-        if (first)
-        {
-            prev = CastDouble(is, encoded);
-            first = false;
-            continue;
-        }
-
-        auto current = CastDouble(is, encoded);
-        if (prev >= current) return false; // inverted for short-circuit
-        prev = current;
-    }
-
-    return true;
 }
 
 String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterState* is) {
@@ -869,6 +961,7 @@ Scope* InterpreterScope(InterpreterState* is) {
 }
 
 // Store a new string at the end of memory, and return a string pointer token for it
+// The original string parameter is deallocated
 DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
     // short strings are stack/scope values
     if (StringLength(str) <= 6) {

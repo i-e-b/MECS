@@ -23,6 +23,7 @@
 // The MECS compiler and runtime
 #include "SourceCodeTokeniser.h"
 #include "CompilerCore.h"
+#include "TagCodeInterpreter.h"
 
 
 typedef struct exampleElement {
@@ -838,6 +839,13 @@ int TestRuntimeExec() {
     WriteStr(str);
     StringDeallocate(str);
     
+    // Try a single run of the interpreter to start with...
+    auto interp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
+
+    auto result = InterpRun(interp, true, 1);
+
+    // clean up
+    InterpDeallocate(interp);
 
 
     return 0;
