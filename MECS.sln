@@ -6,6 +6,7 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Info", "_Info", "{3EBC1FDE-D82F-4162-A000-E31BC8B3FE47}"
 	ProjectSection(SolutionItems) = preProject
 		README.MD = README.MD
+		Transcript.txt = Transcript.txt
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MecsCore", "MecsCore\MecsCore.csproj", "{9D58D57E-3979-426B-B894-F1295CE8A632}"

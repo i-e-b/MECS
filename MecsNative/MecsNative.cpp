@@ -839,10 +839,21 @@ int TestRuntimeExec() {
     WriteStr(str);
     StringDeallocate(str);
     
-    // Try a single run of the interpreter to start with...
+    // Prepare a runtime task
     auto interp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
 
-    auto result = InterpRun(interp, true, 1);
+    // TODO: NOTE!
+    // The parser or compiler is treating `()` incorrectly
+    // function calls like `func()` are output as `mg` rather than `fc`
+    // Also the `()` at the end of strings is being output as an `mg` rather than a 'unit' value.
+
+    // run a few cycles and print any output
+    auto result = InterpRun(interp, true, 200);
+    str = StringEmpty();
+    ReadOutput(interp, str);
+    WriteStr(str);
+    StringDeallocate(str);
+
 
     // clean up
     InterpDeallocate(interp);

@@ -133,6 +133,7 @@ String* TCR_Describe(Vector* data) {
     // Output the opcodes
     int opCount = VecLength(data);
     for (i = offset + 1; i < opCount; i++) {
+        StringAppendFormat(tagStr, "\x02  ", i);
         DataTag opcode = *VecGet_DataTag(data, i);
         DescribeTag(opcode, tagStr, NULL); // TODO: symbols to a debug DB file
         StringAppendChar(tagStr, '\n');

@@ -131,6 +131,24 @@ void InterpDeallocate(InterpreterState* is) {
     mfree(is);
 }
 
+// Add string data to the waiting input stream
+void WriteInput(InterpreterState* is, String* str) {
+    if (is == NULL || str == NULL) return;
+    StringAppend(is->_input, str);
+}
+
+// Move output data to the supplied string
+void ReadOutput(InterpreterState* is, String* receiver) {
+    if (is == NULL || receiver == NULL) return;
+
+    int limit = StringLength(is->_output);
+    char c;
+    for (int i = 0; i < limit; i++) {
+        c = StringDequeue(is->_output);
+        if (c != 0) StringAppendChar(receiver, c);
+    }
+}
+
 ExecutionResult FailureResult(uint32_t position) {
     ExecutionResult r = {};
     r.Result = RuntimeError(position);
@@ -587,7 +605,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
     int localSteps = 0;
 
     while (is->_position < programEnd) {
-        if (localSteps > maxCycles) {
+        if (localSteps >= maxCycles) {
             return PausedExecutionResult();
         }
         if (is->ErrorFlag) {
