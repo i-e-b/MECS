@@ -57,4 +57,10 @@ void* InterpreterDeref(InterpreterState* is, uint32_t position);
 // Get the variables scope of the interpreter instance
 Scope* InterpreterScope(InterpreterState* is);
 
+// Store a new string at the end of memory, and return a string pointer token for it
+DataTag StoreStringAndGetReference(InterpreterState* is, String* str);
+
+// Store a new string at the end of memory, and return a string pointer token for it
+DataTag StoreStringAndGetReference(InterpreterState* is, char c);
+
 #endif

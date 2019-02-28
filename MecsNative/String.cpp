@@ -262,6 +262,7 @@ char StringCharAtIndex(String *str, int idx) {
     return val;
 }
 
+// Create a new string from a range in an existing string. The existing string is not modified
 String *StringSlice(String* str, int startIdx, int length) {
     if (str == NULL) return NULL;
     auto len = StringLength(str);
@@ -279,6 +280,7 @@ String *StringSlice(String* str, int startIdx, int length) {
     return result;
 }
 
+// Create a new string from a range in an existing string, and DEALLOCATE the original string
 String *StringChop(String* str, int startIdx, int length) {
     auto result = StringSlice(str, startIdx, length);
     StringDeallocate(str);
@@ -300,11 +302,15 @@ char *StringToCStr(String *str, int start) {
     if (start < 0) { // from end
         start += len;
     }
-    len -= start;
+    if (len > start) { len -= start; }
 
     auto result = (char*)mmalloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
     for (unsigned int i = 0; i < len; i++) {
-        result[i] = *VGet_char(str->chars, i + start);
+        char *cp = VGet_char(str->chars, i + start);
+        if (cp == NULL) {
+            break;
+        }
+        result[i] = *cp;
     }
     result[len] = 0;
     return result;
@@ -536,6 +542,50 @@ bool StringFind(String* haystack, char needle, unsigned int start, unsigned int*
     return false;
 }
 
+
+// Append part of a source string into the end of the destination
+void StringAppendSubstr(String* dest, String* src, int srcStart, int srcLength) {
+    if (dest == NULL || src == NULL) return;
+    auto slice = StringSlice(src, srcStart, srcLength);
+    StringAppend(dest, slice);
+    StringDeallocate(slice);
+}
+
+// Find any number of instances of a substring. Each one is replaced with a new substring in the output string.
+String* StringReplace(String* haystack, String* needle, String* replacement) {
+    if (haystack == NULL || needle == NULL) return NULL;
+
+    // use `StringFind` to get to the next occurance.
+    // for each occurance, copy across the chars up to that point, then copy across replacement, then skip the occurance
+    auto result = StringEmpty();
+    if (result == NULL) return NULL;
+
+    int length = StringLength(haystack);
+    int nlen = StringLength(needle);
+    uint32_t tail = 0;
+    uint32_t next = 0;
+    bool found = StringFind(haystack, needle, tail, &next);
+    
+    while (found) {
+        // replacements
+        StringAppendSubstr(result, haystack, tail, next - tail);
+        StringAppend(result, replacement);
+
+        // next one
+        tail = next+nlen;
+        found = StringFind(haystack, needle, tail, &next);
+        if (next == 0) {
+            found = false;
+        }
+    }
+
+    // final tail
+    if (tail < length) {
+        StringAppendSubstr(result, haystack, tail, -1);
+    }
+
+    return result;
+}
 
 bool StringTryParse_int32(String *str, int32_t *dest) {
     if (str == NULL || dest == NULL) return false;

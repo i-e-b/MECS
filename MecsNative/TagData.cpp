@@ -143,6 +143,7 @@ bool DecodeBool(DataTag encoded) {
 
 DataTag EncodeShortStr(String* str) {
     DataTag result = { (int)DataType::SmallString, 0, 0 };
+    if (str == NULL) return result;
 
     for (int i = 0; i < 3; i++) {
         result.params |= StringDequeue(str) << (16 - (i*8));
@@ -150,6 +151,12 @@ DataTag EncodeShortStr(String* str) {
     for (int i = 0; i < 4; i++) {
         result.data |= StringDequeue(str) << (24 - (i * 8));
     }
+    return result;
+}
+
+DataTag EncodeShortStr(char c) {
+    DataTag result = { (int)DataType::SmallString, 0, 0 };
+    result.params |= c << 16;
     return result;
 }
 

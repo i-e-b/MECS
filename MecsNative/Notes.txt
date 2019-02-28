@@ -17,6 +17,7 @@ Components to do:
 * [x] Tagged data format reader for 32-bit cpu
 * [x] String-to-num parsing
 * [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
+* [ ] Allow containers to have a target Arena embedded into them (optional)
 
 Input handling:
 ---------------
@@ -61,4 +62,4 @@ Garbage collector:
 * [ ] periodically look for 'potential garbage' names in the running scope. If not found, deallocate
 * [ ] extend 'potential garbage' to hold a list instead of single refs
 * [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
-
+* [ ] maybe have 'destroy&recreate' for actors?

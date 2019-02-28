@@ -517,7 +517,7 @@ DataTag ChainRemainder(InterpreterState* is, int nbParams, DataTag* param) {
     return EncodeInt32(sum);
 }
 
-DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is) {
+DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is){
     switch (kind) {
         // each element equal to the first
     case FuncDef::Equal:
@@ -738,3 +738,72 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         return _Exception(is, "Unrecognised built-in! Type = " + ((int)kind));
     }
 }
+
+
+// Convert a tag code offset into a physical memory location
+void* InterpreterDeref(InterpreterState* is, uint32_t position) {
+    // TODO
+    // **** This might need to know the difference between static and arena **** //
+    return NULL;
+}
+
+// Get the variables scope of the interpreter instance
+Scope* InterpreterScope(InterpreterState* is) {
+    if (is == NULL) return NULL;
+    return is->_variables;
+}
+
+
+// Store a new string at the end of memory, and return a string pointer token for it
+DataTag StoreStringAndGetReference(InterpreterState* is, char c) {
+    return EncodeShortStr(c);
+}
+// Store a new string at the end of memory, and return a string pointer token for it
+DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
+    // short strings are stack/scope values
+    if (StringLength(str) <= 6) {
+        return EncodeShortStr(str);
+    }
+
+    // The C# version of this piled stuff into the end of the bytecode data.
+    // I'm not sure if this should do the same, or go into the interpreter arena.
+    // The arena would be overall better, but the de-referencing would have to be smarter (esp. between static and non-static)
+    /*
+    // Longer strings need to be allocated
+    var location = encodedTokens.Count;
+
+    var bytes = Encoding.ASCII.GetBytes(str);
+    var headerOpCode = NanTags.EncodeUInt32((uint)bytes.Length);
+
+    encodedTokens.Add(headerOpCode);
+
+    ulong pack = 0;
+    int rem = 0;
+    for (int i = 0; i < bytes.Length; i++)
+    {
+        pack += ((ulong)bytes[i]) << rem;
+
+        rem += 8;
+        if (rem > 56)
+        {
+            encodedTokens.Add(BitConverter.Int64BitsToDouble((long)pack));
+            rem = 0;
+            pack = 0;
+        }
+    }
+
+    if (rem != 0) {
+        for (; rem < 64; rem += 8)
+        {
+            pack += ((ulong)'_') << rem;
+        }
+        encodedTokens.Add(BitConverter.Int64BitsToDouble((long)pack));
+    }
+    var token = NanTags.EncodePointer(location, DataType::StringPtr);
+
+    Variables.PotentialGarbage.Add(token);
+    */
+    return DataTag{};
+}
+
+

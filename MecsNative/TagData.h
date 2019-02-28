@@ -118,6 +118,9 @@ void DecodeShortStr(DataTag token, String* target);
 // Encode the first 7 characters of a string into a tag. The chars are removed from the original string.
 DataTag EncodeShortStr(String* str);
 
+// Encode a single character as a short string
+DataTag EncodeShortStr(char c);
+
 // Encode a marker tag for development use
 DataTag EncodeVisualMarker();
 

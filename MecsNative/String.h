@@ -48,6 +48,8 @@ void StringAppendChar(String *str, char c);
 void StringAppendChar(String *str, char c, int count);
 // Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
 void StringAppendFormat(String *str, const char* fmt, ...);
+// Append part of a source string into the end of the destination
+void StringAppendSubstr(String* dest, String* src, int srcStart, int srcLength);
 
 
 // Create a new string from a range in an existing string. The existing string is not modified
@@ -76,9 +78,8 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
 bool StringFind(String* haystack, const char * needle, unsigned int start, unsigned int* outPosition);
 // Find the next position of a character. If the outPosition is NULL, it is ignored
 bool StringFind(String* haystack, char needle, unsigned int start, unsigned int* outPosition);
-
-// Find any number of instances of a substring. Each one is replaced with a new substring
-// in the output string.
+// Find any number of instances of a substring. Each one is replaced with a new substring in the output string.
+// Result value is a new string instance, all input strings are unchanged.
 String* StringReplace(String* haystack, String* needle, String* replacement);
 
 // Test if one string starts with another

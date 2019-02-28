@@ -1,6 +1,7 @@
 #include "TypeCoersion.h"
 
 #include "Scope.h"
+#include "Fix16.h"
 
 /*
 Convert from RuntimeMemoryModel.cs
@@ -57,7 +58,46 @@ bool StringTruthyness(String* strVal) {
 }
 
 // Interpret, or cast value as double
-float CastDouble(InterpreterState* is, DataTag encoded);
+float CastDouble(InterpreterState* is, DataTag encoded) {
+    auto type = encoded.type;
+    float result;
+    switch (type) {
+    case (int)DataType::Integer:
+        return encoded.data;
+
+
+    case (int)DataType::VariableRef:
+    {
+        // Follow scope
+        auto next = ScopeResolve(InterpreterScope(is), DecodeVariableRef(encoded));
+        return CastDouble(is, next);
+    }
+    case (int)DataType::SmallString:
+    {
+        String* temp = StringEmpty();
+        DecodeShortStr(encoded, temp);
+        fix16_t dest; // TODO: move over to float
+        bool ok = StringTryParse_f16(temp, &dest);
+        StringDeallocate(temp);
+        return (ok) ? (fix16_to_float(dest)) : 0;
+    }
+    case (int)DataType::StaticStringPtr:
+    case (int)DataType::StringPtr:
+    {
+        auto ptr = DecodePointer(encoded);
+        auto temp = DereferenceString(is, ptr);
+        DecodeShortStr(encoded, temp);
+        fix16_t dest; // TODO: move over to float
+        bool ok = StringTryParse_f16(temp, &dest);
+        StringDeallocate(temp);
+
+        return (ok) ? (fix16_to_float(dest)) : 0;
+    }
+
+    // All the things that can't be meaningfully cast
+    default: return 0.0;
+    }
+}
 
 // Cast a value to int. If not applicable, returns zero
 int CastInt(InterpreterState* is, DataTag  encoded) {
@@ -67,7 +107,7 @@ int CastInt(InterpreterState* is, DataTag  encoded) {
     case (int)DataType::VariableRef:
     {
         // Follow scope
-        auto next = ScopeResolve(InterpreterScope(is), DecodeVariableRef(encoded));//Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+        auto next = ScopeResolve(InterpreterScope(is), DecodeVariableRef(encoded));
         return CastInt(is, next);
     }
     case (int)DataType::SmallString:
@@ -142,5 +182,3 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     }
 }
 
-// Store a new string at the end of memory, and return a string pointer token for it
-DataTag StoreStringAndGetReference(InterpreterState* is, String* str);

@@ -416,6 +416,21 @@ int TestString() {
 
     StringDeallocate(str1);
     StringDeallocate(str2);
+
+    // Test search-and-replace:
+    str1 = StringNew("This is a line in the sand, and will stand as a pillar of our hopes and dreams.");
+    auto needle = StringNew("and");
+    auto replacement = StringNew("but also");
+    str2 = StringReplace(str1, needle, replacement);
+
+    WriteStr(str1);
+    WriteStr(str2); // This is a line in the sbut also, but also will stbut also as a pillar of our hopes but also dreams.
+
+    StringDeallocate(str1);
+    StringDeallocate(str2);
+    StringDeallocate(needle);
+    StringDeallocate(replacement);
+
     return 0;
 }
 
@@ -826,7 +841,7 @@ int main() {
     auto sres = TestString();
     if (sres != 0) return sres;
     MMPop();
-
+    /*
     MMPush(1 MEGABYTE);
     auto fpres = TestFixedPoint();
     if (fpres != 0) return fpres;
@@ -861,6 +876,6 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-
+    */
     ShutdownManagedMemory();
 }

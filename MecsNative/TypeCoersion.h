@@ -14,6 +14,7 @@
 
 // Make or return reference to a string version of the given token. `debugSymbols` is Map<crushname->string>
 String* Stringify(InterpreterState* is, DataTag token, DataType type, HashMap* debugSymbols);
+
 // Interpret or cast value as a boolean
 bool CastBoolean(InterpreterState* is, DataTag encoded);
 // null, empty, "false" or "0" are false. All other strings are true.
@@ -26,9 +27,5 @@ int CastInt(InterpreterState* is, DataTag  encoded);
 // Get a resonable string representation from a value.
 // This should include stringifying non-string types (numbers, structures etc)
 String* CastString(InterpreterState* is, DataTag encoded);
-// Store a new string at the end of memory, and return a string pointer token for it
-DataTag StoreStringAndGetReference(InterpreterState* is, String* str);
-// Store a new string at the end of memory, and return a string pointer token for it
-DataTag StoreStringAndGetReference(InterpreterState* is, char c);
 
 #endif
