@@ -3,7 +3,8 @@
 #include "MemoryManager.h"
 #include "HashMap.h"
 #include "Scope.h"
-#include "TagCodeTypes.h"
+#include "TagCodeFunctionTypes.h"
+#include "TagCodeReader.h"
 #include "TypeCoersion.h"
 #include "MathBits.h"
 
@@ -36,7 +37,7 @@ typedef struct InterpreterState {
     // the string table and opcodes
     Vector* _program; // Vector<DataTag> (read only)
     Scope* _variables; // scoped variable references
-    Arena* _memory; // read/write memory
+    Arena* _memory; // read/write memory (for non-short strings and other 'heap' containers
 
     // Functions that have been defined at run-time
     HashMap*  Functions; // Map<CrushName -> FunctionDefinition>
@@ -620,7 +621,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         if (StringLength(is->_input) < 1) return MustWait(is->_position);
 
         // otherwise read the character
-        return StoreStringAndGetReference(is, StringDequeue(is->_input));
+        return EncodeShortStr(StringDequeue(is->_input));
     }
 
     case FuncDef::ReadLine:
@@ -740,11 +741,21 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 }
 
 
+// Read and return a copy of the opcode at the given index
+DataTag GetOpcodeAtIndex(InterpreterState* is, uint32_t index) {
+    if (is == NULL) return InvalidTag();
+    if (index >= VecLength(is->_program)) return InvalidTag();
+
+    auto p = VecGet_DataTag(is->_program, index);
+    return *p;
+}
+
 // Convert a tag code offset into a physical memory location
-void* InterpreterDeref(InterpreterState* is, uint32_t position) {
-    // TODO
-    // **** This might need to know the difference between static and arena **** //
-    return NULL;
+void* InterpreterDeref(InterpreterState* is, DataTag encodedPosition) {
+    if (!IsAllocated(encodedPosition)) return NULL; // should NOT have been called for this type
+
+    auto offset = DecodePointer(encodedPosition);
+    return ArenaOffsetToPtr(is->_memory, offset);
 }
 
 // Get the variables scope of the interpreter instance
@@ -753,11 +764,6 @@ Scope* InterpreterScope(InterpreterState* is) {
     return is->_variables;
 }
 
-
-// Store a new string at the end of memory, and return a string pointer token for it
-DataTag StoreStringAndGetReference(InterpreterState* is, char c) {
-    return EncodeShortStr(c);
-}
 // Store a new string at the end of memory, and return a string pointer token for it
 DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
     // short strings are stack/scope values
@@ -766,44 +772,26 @@ DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
     }
 
     // The C# version of this piled stuff into the end of the bytecode data.
-    // I'm not sure if this should do the same, or go into the interpreter arena.
-    // The arena would be overall better, but the de-referencing would have to be smarter (esp. between static and non-static)
-    /*
-    // Longer strings need to be allocated
-    var location = encodedTokens.Count;
+    // In the C++ version, all the runtime container data goes into the interpreter's `_memory` arena.
+    // The arena is overall better, but the de-referencing has to be smarter (esp. between static and non-static)
 
-    var bytes = Encoding.ASCII.GetBytes(str);
-    var headerOpCode = NanTags.EncodeUInt32((uint)bytes.Length);
-
-    encodedTokens.Add(headerOpCode);
-
-    ulong pack = 0;
-    int rem = 0;
-    for (int i = 0; i < bytes.Length; i++)
-    {
-        pack += ((ulong)bytes[i]) << rem;
-
-        rem += 8;
-        if (rem > 56)
-        {
-            encodedTokens.Add(BitConverter.Int64BitsToDouble((long)pack));
-            rem = 0;
-            pack = 0;
-        }
+    String* result = StringEmptyInArena(is->_memory);
+    auto length = StringLength(str);
+    for (uint32_t i = 0; i < length; i++) {
+        StringAppendChar(result, StringDequeue(str));
     }
+    StringDeallocate(str);
+    
+    uint32_t encPtr = ArenaPtrToOffset(is->_memory, result); // allows us to place a 32-bit ptr in 64-bit space
 
-    if (rem != 0) {
-        for (; rem < 64; rem += 8)
-        {
-            pack += ((ulong)'_') << rem;
-        }
-        encodedTokens.Add(BitConverter.Int64BitsToDouble((long)pack));
-    }
-    var token = NanTags.EncodePointer(location, DataType::StringPtr);
+    return EncodePointer(encPtr, DataType::StringPtr);
 
-    Variables.PotentialGarbage.Add(token);
-    */
     return DataTag{};
 }
 
+
+String* ReadStaticString(InterpreterState* is, int position, int length) {
+    if (is == NULL) return NULL;
+    return DecodeString(is->_program, position, length);
+}
 

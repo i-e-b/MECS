@@ -9,7 +9,7 @@
 
 #include "Tree.h"
 #include "String.h"
-#include "TagCodeTypes.h"
+#include "TagCodeFunctionTypes.h"
 #include <stdint.h>
 
 // Is a node an add or subtract that can be encoded as an increment. `node` should be TreeNode<SourceNode>.

@@ -43,8 +43,8 @@ enum class DataType {
 
     DebugStringPtr = 20,                           // A string debug pointer, used for symbols / tracing
     SmallString = 21,                              // A small string, no allocation. Params + Data contain up to 7 characters.
-    StaticStringPtr = 22,                          // Data is a pointer to a static string. Ignored by GC. Params not used.
-    StringPtr = ALLOCATED_TYPE + StaticStringPtr,  // Data is pointer to dynamic string. Params not used. Can be collected by GC
+    StaticStringPtr = 22,                          // Data is a pointer to a static string in tag code vector. Ignored by GC. Params not used.
+    StringPtr = ALLOCATED_TYPE + StaticStringPtr,  // Data is pointer to dynamic string in arena memory. Params not used. Can be collected by GC
 
     // This special value means the interpreter needs to pause for input.
     // The triggering opcode will be repeated when more input is available

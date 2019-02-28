@@ -262,3 +262,23 @@ void ArenaGetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes,
     if (totalReferenceCount != NULL) *totalReferenceCount = totalReferences;
     if (largestContiguous != NULL) *largestContiguous = largestFree;
 }
+
+// Get an offset into the arena for a pointer to memory
+uint32_t ArenaPtrToOffset(Arena* a, void* ptr) {
+    if (!ArenaContainsPointer(a, ptr)) return 0;
+
+    size_t base = (size_t)a;
+    size_t actual = (size_t)ptr;
+
+    if (base >= actual) return 0;
+
+    return actual - base;
+}
+
+// Get a raw memory pointer from an offset into an arena
+void* ArenaOffsetToPtr(Arena* a, uint32_t offset) {
+    void* actual = a + offset;
+    if (!ArenaContainsPointer(a, actual)) return NULL; // not a valid answer
+    return actual;
+}
+

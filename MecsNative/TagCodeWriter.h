@@ -4,7 +4,7 @@
 #define tagcodewriter_h
 
 #include "TagData.h"
-#include "TagCodeTypes.h"
+#include "TagCodeFunctionTypes.h"
 
 #include "HashMap.h"
 #include "Vector.h"

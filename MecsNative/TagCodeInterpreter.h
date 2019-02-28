@@ -52,15 +52,20 @@ void WriteInput(InterpreterState* is, String* str);
 void ReadOutput(InterpreterState* is, String* receiver);
 
 // Convert a tag code offset into a physical memory location
-void* InterpreterDeref(InterpreterState* is, uint32_t position);
+void* InterpreterDeref(InterpreterState* is, DataTag encodedPosition);
 
 // Get the variables scope of the interpreter instance
 Scope* InterpreterScope(InterpreterState* is);
 
-// Store a new string at the end of memory, and return a string pointer token for it
+// Store a new string in the RW memory, and return a string pointer token for it
+// The original string parameter is deallocated
 DataTag StoreStringAndGetReference(InterpreterState* is, String* str);
 
-// Store a new string at the end of memory, and return a string pointer token for it
-DataTag StoreStringAndGetReference(InterpreterState* is, char c);
+// Read and return a copy of the opcode at the given index
+DataTag GetOpcodeAtIndex(InterpreterState* is, uint32_t index);
+
+// Read RO tag code memory as a string
+String* ReadStaticString(InterpreterState* is, int position, int length);
+
 
 #endif

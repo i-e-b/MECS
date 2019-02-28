@@ -12,9 +12,6 @@
     Runtime casting and coersion of unknown types to required types
 */
 
-// Make or return reference to a string version of the given token. `debugSymbols` is Map<crushname->string>
-String* Stringify(InterpreterState* is, DataTag token, DataType type, HashMap* debugSymbols);
-
 // Interpret or cast value as a boolean
 bool CastBoolean(InterpreterState* is, DataTag encoded);
 // null, empty, "false" or "0" are false. All other strings are true.

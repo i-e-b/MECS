@@ -181,7 +181,7 @@
     <ClCompile Include="String.cpp" />
     <ClCompile Include="TagCodeInterpreter.cpp" />
     <ClCompile Include="TagCodeReader.cpp" />
-    <ClCompile Include="TagCodeTypes.cpp" />
+    <ClCompile Include="TagCodeFunctionTypes.cpp" />
     <ClCompile Include="TagCodeWriter.cpp" />
     <ClCompile Include="TagData.cpp" />
     <ClCompile Include="TimingSys.cpp" />
@@ -206,7 +206,7 @@
     <ClInclude Include="String.h" />
     <ClInclude Include="TagCodeInterpreter.h" />
     <ClInclude Include="TagCodeReader.h" />
-    <ClInclude Include="TagCodeTypes.h" />
+    <ClInclude Include="TagCodeFunctionTypes.h" />
     <ClInclude Include="TagCodeWriter.h" />
     <ClInclude Include="TagData.h" />
     <ClInclude Include="TimingSys.h" />

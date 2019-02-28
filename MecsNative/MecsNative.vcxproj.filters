@@ -76,9 +76,6 @@
     <ClCompile Include="TimingSys.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
-    <ClCompile Include="TagCodeTypes.cpp">
-      <Filter>Source Files\Encoding</Filter>
-    </ClCompile>
     <ClCompile Include="CompilerOptimisations.cpp">
       <Filter>Source Files\Compiler</Filter>
     </ClCompile>
@@ -93,6 +90,9 @@
     </ClCompile>
     <ClCompile Include="TypeCoersion.cpp">
       <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="TagCodeFunctionTypes.cpp">
+      <Filter>Source Files\Encoding</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -132,9 +132,6 @@
     <ClInclude Include="MemoryManager.h">
       <Filter>Source Files\Containers</Filter>
     </ClInclude>
-    <ClInclude Include="TagCodeTypes.h">
-      <Filter>Source Files\Encoding</Filter>
-    </ClInclude>
     <ClInclude Include="CompilerCore.h">
       <Filter>Source Files\Compiler</Filter>
     </ClInclude>
@@ -164,6 +161,9 @@
     </ClInclude>
     <ClInclude Include="MathBits.h">
       <Filter>Source Files\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TagCodeFunctionTypes.h">
+      <Filter>Source Files\Encoding</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

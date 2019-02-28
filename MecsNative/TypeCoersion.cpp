@@ -8,13 +8,25 @@ Convert from RuntimeMemoryModel.cs
 */
 
 
-String* DereferenceString(InterpreterState* is, uint32_t position) {
-    auto original = (String*)InterpreterDeref(is, position);
-    return StringProxy(original);
-}
+String* DereferenceString(InterpreterState* is, DataTag stringTag) {
+    if (stringTag.type == (int)DataType::StringPtr) {
+        // A runtime string. We just need the pointer
+        auto original = (String*)InterpreterDeref(is, stringTag);
+        return StringProxy(original);
+    } else {
+        // a static string. We need to read out of RO data into memory.
 
-// Make or return reference to a string version of the given token. `debugSymbols` is Map<crushname->string>
-String* Stringify(InterpreterState* is, DataTag token, DataType type, HashMap* debugSymbols);
+        // a static string is [NanTag(UInt32): byte length] [string bytes, padded to 8 byte chunks]
+        auto position = DecodePointer(stringTag);
+        //  1) read the byte length
+
+        auto header = GetOpcodeAtIndex(is, position);
+        if (header.type != (int)DataType::Integer) return NULL; //throw new Exception("String header was not a UInt32");
+        auto length = DecodeInt32(header);
+
+        return ReadStaticString(is, position + 1, length);
+    }
+}
 
 // Interpret or cast value as a boolean
 bool CastBoolean(InterpreterState* is, DataTag encoded) {
@@ -85,8 +97,7 @@ float CastDouble(InterpreterState* is, DataTag encoded) {
     case (int)DataType::StringPtr:
     {
         auto ptr = DecodePointer(encoded);
-        auto temp = DereferenceString(is, ptr);
-        DecodeShortStr(encoded, temp);
+        auto temp = DereferenceString(is, encoded);
         fix16_t dest; // TODO: move over to float
         bool ok = StringTryParse_f16(temp, &dest);
         StringDeallocate(temp);
@@ -124,9 +135,7 @@ int CastInt(InterpreterState* is, DataTag  encoded) {
     case (int)DataType::StaticStringPtr:
     case (int)DataType::StringPtr:
     {
-        auto ptr = DecodePointer(encoded);
-        auto temp = DereferenceString(is, ptr);
-        DecodeShortStr(encoded, temp);
+        auto temp = DereferenceString(is, encoded);
         bool ok = StringTryParse_int32(temp, &result);
         StringDeallocate(temp);
 
@@ -171,7 +180,7 @@ String* CastString(InterpreterState* is, DataTag encoded) {
 
     case (int)DataType::StaticStringPtr:
     case (int)DataType::StringPtr:
-        return DereferenceString(is, DecodePointer(encoded));
+        return DereferenceString(is, encoded);
 
     case (int)DataType::HashtablePtr:
     case (int)DataType::VectorPtr:

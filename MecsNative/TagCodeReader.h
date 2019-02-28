@@ -4,7 +4,7 @@
 #define tagcodereader_h
 
 #include "TagData.h"
-#include "TagCodeTypes.h"
+#include "TagCodeFunctionTypes.h"
 
 #include "HashMap.h"
 #include "Vector.h"
@@ -24,5 +24,8 @@ bool TCR_Read(Vector* v, uint32_t* outStartOfCode, uint32_t* outStartOfMemory);
 
 // Generate a string representation of the tag code data
 String* TCR_Describe(Vector* data);
+
+// Read a string out of the tag code data
+String* DecodeString(Vector* data, int position, int length);
 
 #endif
