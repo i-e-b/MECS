@@ -34,10 +34,14 @@ typedef struct InterpreterState {
     String* _input;
     String* _output;
 
+    // If the `ErrorFlag` is true, the interpreter will stop as soon as it can
+    // and return an error result.
+    bool ErrorFlag;
+
     // the string table and opcodes
     Vector* _program; // Vector<DataTag> (read only)
     Scope* _variables; // scoped variable references
-    Arena* _memory; // read/write memory (for non-short strings and other 'heap' containers
+    Arena* _memory; // read/write memory (for non-short strings and other 'heap' containers)
 
     // Functions that have been defined at run-time
     HashMap*  Functions; // Map<CrushName -> FunctionDefinition>
@@ -78,6 +82,7 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
 
     result->Functions = MapAllocate_Name_FunctionDefinition(128);
     result->DebugSymbols = debugSymbols; // ok if NULL
+    result->ErrorFlag = false;
 
     result->_program = tagCode;
     result->_variables = ScopeAllocate();
@@ -114,6 +119,7 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
 void InterpDeallocate(InterpreterState* is) {
     if (is == NULL) return;
 
+    is->ErrorFlag = true;
     if (is->_memory != NULL) DropArena(&(is->_memory));
     if (is->_variables != NULL) ScopeDeallocate(is->_variables);
     if (is->Functions != NULL) MapDeallocate(is->Functions);
@@ -220,15 +226,43 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
         VecPush_DataTag(is->_valueStack, evalResult);
     }
 }
-void HandleFunctionDefinition(int* position, uint16_t p1, uint16_t p2, InterpreterState* is) {
-    // TODO
+
+void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCount, InterpreterState* is) {
+    if (is == NULL || position == NULL) { return; }
+
+    DataTag tag;
+    if (!VecPop_DataTag(is->_valueStack, &tag)) {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Stack underflow during function definition at position \x02", *position);
+        return;
+    }
+    auto functionNameHash = DecodeVariableRef(tag);
+
+    if (MapContains_Name_FunctionDefinition(is->Functions, functionNameHash)) {
+        is->ErrorFlag = true;
+        FunctionDefinition* original;
+        MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &original);
+        StringAppendFormat(is->_output, "Function '\x01' redefined at \x02. Original at \x02.", functionNameHash, *position, original->StartPosition);
+        return;
+    }
+
+    FunctionDefinition newF = {};
+    newF.Kind = FuncDef::Custom;
+    newF.ParamCount = argCount;
+    newF.StartPosition = *position;
+    MapPut_Name_FunctionDefinition(is->Functions, functionNameHash, newF, true);
+
+    *position = *position + tokenCount + 1; // start + definition length + terminator token
 }
+
 void HandleControlSignal(int* position, char codeAction, int opCodeCount, InterpreterState* is) {
     // TODO
 }
+
 void HandleCompoundCompare(int* position, char  codeAction, uint16_t p1, uint16_t p2, InterpreterState* is) {
     // TODO
 }
+
 void HandleMemoryAccess(int* position, char codeAction, int varRef, uint16_t p1, InterpreterState* is) {
     // TODO
 }
@@ -293,6 +327,9 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
     while (is->_position < programEnd) {
         if (localSteps > maxCycles) {
             return PausedExecutionResult();
+        }
+        if (is->ErrorFlag) {
+            return FailureResult(0);
         }
 
         is->_stepsTaken++;
