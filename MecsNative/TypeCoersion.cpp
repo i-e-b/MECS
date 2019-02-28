@@ -7,6 +7,11 @@ Convert from RuntimeMemoryModel.cs
 */
 
 
+String* DereferenceString(InterpreterState* is, uint32_t position) {
+    auto original = (String*)InterpreterDeref(is, position);
+    return StringProxy(original);
+}
+
 // Make or return reference to a string version of the given token. `debugSymbols` is Map<crushname->string>
 String* Stringify(InterpreterState* is, DataTag token, DataType type, HashMap* debugSymbols);
 
@@ -59,34 +64,42 @@ int CastInt(InterpreterState* is, DataTag  encoded) {
     int result;
     auto type = encoded.type;
     switch (type) {
-    case DataType.VariableRef:
+    case (int)DataType::VariableRef:
+    {
         // Follow scope
-        var next = Variables.Resolve(NanTags.DecodeVariableRef(encoded));
-        return CastInt(next);
+        auto next = ScopeResolve(InterpreterScope(is), DecodeVariableRef(encoded));//Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+        return CastInt(is, next);
+    }
+    case (int)DataType::SmallString:
+    {
+        int32_t result;
+        String* temp = StringEmpty();
+        DecodeShortStr(encoded, temp);
+        bool ok = StringTryParse_int32(temp, &result);
+        StringDeallocate(temp);
 
-    case DataType.ValSmallString:
-        int.TryParse(NanTags.DecodeShortStr(encoded), out result);
+        if (!ok) return 0;
         return result;
+    }
+    case (int)DataType::StaticStringPtr:
+    case (int)DataType::StringPtr:
+    {
+        auto ptr = DecodePointer(encoded);
+        auto temp = DereferenceString(is, ptr);
+        DecodeShortStr(encoded, temp);
+        bool ok = StringTryParse_int32(temp, &result);
+        StringDeallocate(temp);
 
-    case DataType.PtrStaticString:
-    case DataType.PtrString:
-        NanTags.DecodePointer(encoded, out var target, out _);
-        int.TryParse(DereferenceString(target), out result);
+        if (!ok) return 0;
         return result;
-
-    case DataType.Number: return (int)encoded;
-    case DataType.ValInt32: return NanTags.DecodeInt32(encoded);
-    case DataType.ValUInt32: return (int)NanTags.DecodeUInt32(encoded);
+    }
+    case (int)DataType::Integer: return (int)encoded.data;
 
     default:
         return 0;
     }
 }
 
-String* DereferenceString(InterpreterState* is, uint32_t position) {
-    auto original = (String*)InterpreterDeref(is, position);
-    return StringProxy(original);
-}
 
 // Get a resonable string representation from a value.
 // This should include stringifying non-string types (numbers, structures etc)
