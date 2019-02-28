@@ -94,11 +94,10 @@ namespace MecsCore.Runtime
             {
 			    _stepsTaken++;
                 //if (stepsTaken > 1000) throw new Exception("trap");
-                // TODO: add a hook for a step event here?
                 
                 // Prevent stackoverflow.
                 // Ex: if(true 1 10 20)
-			    if ((_stepsTaken & 127) == 0 && _valueStack.Count > 100) // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
+			    if ((_stepsTaken & 127) == 0 && _valueStack.Count > 100)
                 {
                     var oldValues = _valueStack.ToArray();
                     _valueStack = new Stack<double>(oldValues.Skip(oldValues.Length - 100));
@@ -475,7 +474,7 @@ namespace MecsCore.Runtime
                     var programTmp = reader.Read(statements, false);
                     var bin = ToNanCodeCompiler.CompileRoot(programTmp, false);
                     var interpreter = new ByteCodeInterpreter();
-                    interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
+                    interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols);
                     return interpreter.Execute(false, _runningVerbose, false).Result;
 
                 case FuncDef.Call:
@@ -564,7 +563,7 @@ namespace MecsCore.Runtime
                     }
 
                 case FuncDef.Length:
-                    return _memory.CastString(param.ElementAt(0)).Length; // TODO: lengths of other things
+                    return _memory.CastString(param.ElementAt(0)).Length;
 
                 case FuncDef.Replace:
                     if (nbParams != 3) throw new Exception("'Replace' should be called with 3 parameters");

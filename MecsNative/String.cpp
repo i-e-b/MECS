@@ -223,6 +223,9 @@ void vStringAppendFormat(String *str, const char* fmt, va_list args) {
         } else if (*fmt == '\x03') {
             int i = va_arg(args, int);
             StringAppendInt32Hex(str, i);
+        } else if (*fmt == '\x04') {
+            char c = va_arg(args, char);
+            StringAppendChar(str, c);
         } else {
             StringAppendChar(str, *fmt);
         }

@@ -211,6 +211,16 @@ DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, 
 
 }
 
+DataTag TryPopTag(InterpreterState* is, int position) {
+    DataTag tag;
+    if (!VecPop_DataTag(is->_valueStack, &tag)) {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Value stack underflow at position \x02", position);
+        return InvalidTag();
+    }
+    return tag;
+}
+
 void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
     DataTag nameTag = {};
     VecPop_DataTag(is->_valueStack, &nameTag);
@@ -233,7 +243,7 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
     DataTag tag;
     if (!VecPop_DataTag(is->_valueStack, &tag)) {
         is->ErrorFlag = true;
-        StringAppendFormat(is->_output, "Stack underflow during function definition at position \x02", *position);
+        StringAppendFormat(is->_output, "Value stack underflow during function definition at position \x02", *position);
         return;
     }
     auto functionNameHash = DecodeVariableRef(tag);
@@ -255,8 +265,65 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
     *position = *position + tokenCount + 1; // start + definition length + terminator token
 }
 
+void HandleReturn(int* position, InterpreterState* is) {
+    if (is == NULL) return;
+    int result;
+    if (!VecPop_int(is->_returnStack, &result)) {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Return stack empty. Check program logic at position \x02", position);
+    }
+
+    ScopeDrop(is->_variables);
+    *position = result;
+}
+
 void HandleControlSignal(int* position, char codeAction, int opCodeCount, InterpreterState* is) {
-    // TODO
+    switch (codeAction)
+    {
+    // cmp - relative jump *DOWN* if top of stack is false
+    case 'c':
+    {
+        DataTag tag = TryPopTag(is, *position);
+        auto condition = CastBoolean(is, tag);
+
+        if (condition == false) { *position += opCodeCount; }
+        break;
+    }
+    // jmp - unconditional relative jump *UP*
+    case 'j':
+    {
+        int jmpLength = opCodeCount;
+        *position++;
+        *position -= 1; // this opcode
+        *position -= jmpLength;
+        break;
+    }
+    // skip - unconditional relative jump *DOWN*
+    case 's':
+    {
+        *position += opCodeCount;
+        break;
+    }
+    // ct - call term - a function that returns values ended without returning
+    case 't':
+    {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "A function returned without setting a value. Did you miss a 'return' in a function? At position \x02", position);
+        return;
+    }
+    // ret - pop return stack and jump to absolute position
+    case 'r':
+        HandleReturn(position, is);
+        break;
+
+    default:
+    {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Unknown control signal '\x04'", codeAction);
+        return;
+    }
+    }
+
 }
 
 void HandleCompoundCompare(int* position, char  codeAction, uint16_t p1, uint16_t p2, InterpreterState* is) {

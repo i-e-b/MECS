@@ -305,7 +305,7 @@ namespace MecsCore.Runtime
                 case DataType.PtrGrid:
                 case DataType.PtrSet:
                 case DataType.PtrVector:
-                    return "<complex type>"; // TODO: add stringification later
+                    return "<complex type>";
 
                 case DataType.ValInt32: return NanTags.DecodeInt32(encoded).ToString();
                 case DataType.ValUInt32: return NanTags.DecodeUInt32(encoded).ToString();

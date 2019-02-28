@@ -88,7 +88,7 @@ namespace MecsCore.Runtime
                         i++;
                     }
                 }
-                _currentScopeIdx++; // TODO: check for current > length
+                _currentScopeIdx++;
                 _scopes[_currentScopeIdx] = sd;
             }
         }

@@ -177,7 +177,6 @@ namespace MecsCore.InputOutput
         /// <param name="s"></param>
         public void Comment(string s)
         {
-            // TODO: move this out to symbols file
             //_stringTable.Add(s);
             //_opcodes.Add(NanTags.EncodePointer(_stringTable.Count - 1, DataType.PtrDiagnosticString));
         }
@@ -193,7 +192,6 @@ namespace MecsCore.InputOutput
 
         public void Memory(char action, string targetName, int paramCount)
         {
-            //TODO: indexing
             uint crush;
             switch (action)
             {

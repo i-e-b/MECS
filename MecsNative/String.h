@@ -50,7 +50,8 @@ void StringAppend(String *first, const char *second);
 void StringAppendChar(String *str, char c);
 // Add a character to the end of a string, that character repeated a number of times
 void StringAppendChar(String *str, char c, int count);
-// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars:
+// '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=single char;
 void StringAppendFormat(String *str, const char* fmt, ...);
 // Append part of a source string into the end of the destination
 void StringAppendSubstr(String* dest, String* src, int srcStart, int srcLength);

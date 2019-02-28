@@ -248,7 +248,6 @@ namespace MecsCore.Compiler
                 return;
             }
 
-            // TODO: replace with a file resolver?
             if (!File.Exists(targetFile)) throw new Exception("Import failed. Can't read file '" + targetFile + "'");
 
             var text = File.ReadAllText(targetFile);

@@ -365,8 +365,6 @@ namespace MecsCore.Compiler
                 case 'e' : return '\x1B'; // ASCII escape
                 case '0' : return '\0';
                 
-                // TODO: unicode escapes
-
                 default: return car;
             }
         }

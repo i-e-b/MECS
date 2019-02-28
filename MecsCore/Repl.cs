@@ -31,7 +31,7 @@ namespace MecsCore
 
             var program = sourceCodeReader.Read(languageInput, false);
             if ( ! program.IsValid) {
-                output.WriteLine("Program is not well formed"); // TODO: be more helpful
+                output.WriteLine("Program is not well formed");
                 return TimeSpan.Zero;
             }
 
