@@ -250,7 +250,7 @@ bool ListEquals(int nbParams, DataTag* param, InterpreterState* is) {
     {
         auto target = CastDouble(is, param[0]);
         for (int i = 1; i < nbParams; i++) {
-            auto diff = target - CastDouble(is, param[0]);
+            auto diff = target - CastDouble(is, param[i]);
             if (abs(diff) <= ComparisonPrecision) return true;
         }
         return false;
@@ -664,10 +664,9 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
     }
 
     // reset state, just incase we get run again
+    // it's up to the caller to clear input and output if required.
     VecClear(is->_returnStack);
     VecClear(is->_valueStack);
-    StringClear(is->_input);
-    StringClear(is->_output);
     is->_position = 0;
 
     return CompleteExecutionResult(evalResult);

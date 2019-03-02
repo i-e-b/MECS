@@ -32,12 +32,19 @@ enum NodeType {
     // Opening or closing parenthesis
     ScopeDelimiter = 104,
     // String delimiter or similar
-    Delimiter = 105
+    Delimiter = 105,
+    // Cursor start position
+    CaretLeft = 106,
+    // Cursor end position
+    CaretRight = 107
 };
 
 typedef struct SourceNode {
     // Semantic class of the node
     NodeType NodeType;
+
+    // If true, this atom is used like a function call.
+    bool functionLike;
 
     // Text value of the node. For strings, this is after escape codes are processed
     String* Text;

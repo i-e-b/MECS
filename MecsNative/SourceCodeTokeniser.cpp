@@ -410,6 +410,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                 car = StringCharAtIndex(source, i);
                 if (car == '(')
                 {
+                    // we need the atom we create to NOT be a leaf!
                     if (IsNumeric(word)) {
                         tmp = newNodeError(i, StringNew("Error: '"));
                         StringAppend(tmp.ErrorMessage, word);
@@ -421,6 +422,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
                     parent = current;
                     tmp = newNodeAtom(startLoc, word);
+                    tmp.functionLike = true;
                     current = TAddChild_Node(parent, &tmp);
 
                     MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);

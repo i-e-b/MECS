@@ -19,6 +19,7 @@ Components to do:
 * [x] Allow containers to have a target Arena embedded into them (optional)
 
 * [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
+  * [ ] Investigate a reduction of ( http://dec64.com/ ) as a single number type -- bottom 32 bits in tag data, exponent and remaining bits in tag params.
 
 Input handling:
 ---------------
@@ -40,7 +41,7 @@ The machine:
 
 * [ ] Try introducing C++ namespacing?
 * [x] TagCode reader (fix byte order)
-* [ ] Convert runtime
+* [x] Convert runtime
   * [ ] Add breakpoints
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 * [ ] Debug symbols file and reader
@@ -52,7 +53,7 @@ Actor model stuff:
 * [x] Arenas (once implemented, wrap the parser, compiler, etc in arena allocater to ensure complete cleanup)
     * [x] Remove stdlib malloc/free and replace 
     * [x] Fix arena/zone naming consistency in the allocator code
-    * [ ] Per-instance arenas for containers? (so we can be thread safe-ish)
+    * [x] Per-instance arenas for containers? (so we can be thread safe-ish)
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
 * [ ] Scheduler

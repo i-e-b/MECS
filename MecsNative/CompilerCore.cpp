@@ -278,18 +278,24 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
     // Split the condition and action
 
     // build a tree for the if/while condition
+    // TODO: I THINK THIS IS WRONG!
     auto condition = TreeAllocate_SourceNode();
     auto condData = TreeReadBody_SourceNode(condition);
     condData->Text = StringNew("()");
-    condData->SourceLocation = nodeData->SourceLocation;
-    TreeAppendNode(condition, TreeChild(node));
+    condData->SourceLocation = condData->SourceLocation;
+
+    // Copy to top of the condition call:
+    auto crbod = TreeReadBody_SourceNode(TreeChild(node)); // like a '=' call
+    auto call = TreeAddChild_SourceNode(condition, crbod);
+    // add the rest of the condition code:
+    TreeAppendNode(call, TreeChild(TreeChild(node)));
 
     // build a tree for the if/while body
     int topOfBlock = TCW_Position(wr) - 1;
     auto body = TreeAllocate_SourceNode();
     auto bodyData = TreeReadBody_SourceNode(body);
     bodyData->Text = StringNew("()");
-    bodyData->SourceLocation = nodeData->SourceLocation;
+    bodyData->SourceLocation = bodyData->SourceLocation;
 
     auto chain = TreeSibling(TreeChild(node));
     TreeAppendNode(body, chain);
@@ -435,9 +441,18 @@ bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, TreeNode* node
     int nodeChildCount = TreeCountChildren(node);
     if (debug) { TCW_Comment(wr, StringNewFormat("// Function : '\x01' with \x02 parameter(s)", funcName, nodeChildCount)); }
 
-    if (StringAreEqual(funcName, "return")) { TCW_Return(wr, nodeChildCount); } else { TCW_FunctionCall(wr, funcName, nodeChildCount); }
+    if (StringAreEqual(funcName, "return")) { 
+        TCW_Return(wr, nodeChildCount);
+    } else {
+        TCW_FunctionCall(wr, funcName, nodeChildCount);
+    }
 
     return (StringAreEqual(funcName, "return")) && (nodeChildCount > 0); // is there a value return?
+}
+
+bool IsLeafNode(TreeNode* node) {
+    auto nodeData = TreeReadBody_SourceNode(node);
+    return TreeIsLeaf(node) && !nodeData->functionLike;
 }
 
 // Function/Program compiler. This is called recursively when subroutines are found
@@ -447,7 +462,7 @@ TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNa
     auto wr = TCW_Allocate();
 
     // end of syntax line
-    if (TreeIsLeaf(root)) {
+    if (IsLeafNode(root)) {
         EmitLeafNode(root, debug, parameterNames, compileContext, wr);
         return wr;
     }
@@ -460,7 +475,7 @@ TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNa
 
         auto node = chain;
         chain = TreeSibling(chain);
-        if (TreeIsLeaf(node)) {
+        if (IsLeafNode(node)) {
             TCW_Merge(wr, Compile(node, indent + 1, debug, parameterNames, includedFiles, compileContext));
             continue;
         }

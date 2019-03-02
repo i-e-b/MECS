@@ -156,7 +156,7 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     // IMPORTANT: this should NEVER send back an original string -- it will get deallocated!
     auto type = encoded.type;
     switch (type) {
-    case (int)DataType::Invalid: return StringNew("<invalid value>");
+    case (int)DataType::Invalid: return StringEmpty();
     case (int)DataType::Integer: return StringFromInt32(encoded.data); //encoded.ToString(CultureInfo.InvariantCulture);
     case (int)DataType::Fraction: return StringNew("TODO");
     case (int)DataType::Opcode: return StringNew("<Op Code>");
