@@ -67,5 +67,7 @@ DataTag GetOpcodeAtIndex(InterpreterState* is, uint32_t index);
 // Read RO tag code memory as a string
 String* ReadStaticString(InterpreterState* is, int position, int length);
 
+// ONLY FOR DEBUG USE!!
+Arena* InterpInternalMemory(InterpreterState* is);
 
 #endif

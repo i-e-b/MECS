@@ -849,6 +849,15 @@ int TestRuntimeExec() {
     WriteStr(str);
     StringDeallocate(str);
 
+    // Check memory state
+    auto arena = MMCurrent();
+    size_t alloc;
+    size_t unalloc;
+    int objects;
+    ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
+    std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+    ArenaGetState(InterpInternalMemory(interp), &alloc, &unalloc, NULL, NULL, &objects, NULL);
+    std::cout << "Runtime used in internal memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
 
     // clean up
     InterpDeallocate(interp);
@@ -859,7 +868,7 @@ int TestRuntimeExec() {
 
 int main() {
     StartManagedMemory();
-
+    /*
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -909,7 +918,7 @@ int main() {
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
     MMPop();
-    
+    */
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;

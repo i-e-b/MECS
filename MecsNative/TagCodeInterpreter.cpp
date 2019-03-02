@@ -55,6 +55,11 @@ typedef struct InterpreterState {
     int _position;
 } InterpreterState;
 
+
+Arena* InterpInternalMemory(InterpreterState* is) {
+    return is->_memory;
+}
+
 // map built-in functions for the massive switch
 void AddBuiltInFunctionSymbols(HashMap* fd) {
     if (fd == NULL) return;
@@ -80,7 +85,7 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     auto result = (InterpreterState*)mmalloc(sizeof(InterpreterState));
     if (result == NULL) return NULL;
 
-    result->Functions = MapAllocate_Name_FunctionDefinition(128);
+    result->Functions = MapAllocate_Name_FunctionDefinition(256);
     result->DebugSymbols = debugSymbols; // ok if NULL
     result->ErrorFlag = false;
 
@@ -118,15 +123,15 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
 // Close down an interpreter and free all memory (except input tagCode and debugSymbols)
 void InterpDeallocate(InterpreterState* is) {
     if (is == NULL) return;
-
+    
     is->ErrorFlag = true;
-    if (is->_memory != NULL) DropArena(&(is->_memory));
-    if (is->_variables != NULL) ScopeDeallocate(is->_variables);
+    if (is->_input != NULL) StringDeallocate(is->_input);
+    if (is->_output != NULL) StringDeallocate(is->_output);
     if (is->Functions != NULL) MapDeallocate(is->Functions);
     if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
     if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
-    if (is->_input != NULL) StringDeallocate(is->_input);
-    if (is->_output != NULL) StringDeallocate(is->_output);
+    if (is->_variables != NULL) ScopeDeallocate(is->_variables);
+    if (is->_memory != NULL) DropArena(&(is->_memory));
 
     mfree(is);
 }
@@ -201,12 +206,19 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
 DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
     FunctionDefinition* fun = NULL;
+    
+    if (!MapIsValid(is->Functions)) {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Function hash map has been damaged at position \x02\n", *position);
+        return RuntimeError(is->_position);
+    }
+
     bool found = MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &fun);
 
     if (!found) {
         is->ErrorFlag = true;
         StringAppendFormat(is->_output,
-            "Tried to call an undefined function '\x01' at position \x02\n", DbgStr(is, functionNameHash), position);
+            "Tried to call an undefined function '\x01' at position \x02\n", DbgStr(is, functionNameHash), *position);
         return RuntimeError(is->_position);
         // TODO: "Did you mean?"
         /*

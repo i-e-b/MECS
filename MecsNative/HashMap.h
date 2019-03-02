@@ -19,6 +19,9 @@ HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, 
 // Deallocate internal storage of the hash-map. Does not deallocate the keys or values
 void HashMapDeallocate(HashMap *h);
 
+// Do some basic sanity checks on the hash map
+bool HashMapIsValid(HashMap *h);
+
 // Returns true if value found. If so, it's pointer is copied to `*outValue`
 bool HashMapGet(HashMap *h, void* key, void** outValue);
 // Add a key/value pair to the map. If `canReplace` is true, conflicts replace existing data. if false, existing data survives
@@ -55,6 +58,7 @@ unsigned int HashMapIntKeyHash(void* key);
     inline Vector* nameSpace##AllEntries(HashMap *h)/*<! returns a Vector<HashMap_KVP> */{ return HashMapAllEntries(h); }\
     inline void nameSpace##Clear(HashMap *h){ HashMapClear(h); }\
     inline unsigned int nameSpace##Count(HashMap *h){ return HashMapCount(h); }\
+    inline bool nameSpace##IsValid(HashMap *h){return HashMapIsValid(h);}\
 
 
 // These must be registered for each distinct pair, as they are type variant

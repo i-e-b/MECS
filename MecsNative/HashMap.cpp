@@ -55,6 +55,15 @@ typedef struct HashMap {
 
 } HashMap;
 
+
+bool HashMapIsValid(HashMap *h) {
+    if (h == NULL) return false;
+    if (!VectorIsValid(h->buckets)) return false;
+    if (!VectorIsValid(h->keys)) return false;
+    if (!VectorIsValid(h->values)) return false;
+    return h->IsValid;
+}
+
 bool ResizeNext(HashMap * h); // defined below
 
 uint DistanceToInitIndex(HashMap * h, uint indexStored) {
@@ -84,7 +93,8 @@ bool PutInternal(HashMap * h, HashMap_Entry* entry, bool canReplace, bool checkD
     for (uint i = 0; i < h->count; i++) {
         var indexCurrent = (indexInit + i) & h->countMod;
 
-        if (!VectorIsValid(h->buckets)) return false;
+        if (!VectorIsValid(h->buckets))
+            return false;
         var current = (HashMap_Entry*)VectorGet(h->buckets, indexCurrent);
         if (current == NULL) return false; // internal failure
 
@@ -99,7 +109,8 @@ bool PutInternal(HashMap * h, HashMap_Entry* entry, bool canReplace, bool checkD
             ) {
             if (!canReplace) return false;
 
-            if (!VectorIsValid(h->buckets)) return false;
+            if (!VectorIsValid(h->buckets))
+                return false;
             VectorSet(h->buckets, indexCurrent, entry, NULL);
             return true;
         }
@@ -108,7 +119,8 @@ bool PutInternal(HashMap * h, HashMap_Entry* entry, bool canReplace, bool checkD
         var probeDistance = DistanceToInitIndex(h, indexCurrent);
         if (probeCurrent > probeDistance) {
             probeCurrent = probeDistance;
-            if (!Swap(h->buckets, indexCurrent, entry)) return false;
+            if (!Swap(h->buckets, indexCurrent, entry))
+                return false;
         }
         probeCurrent++;
     }
@@ -168,14 +180,14 @@ bool Resize(HashMap * h, uint newSize, bool autoSize) {
             uint valueIdx = VectorLength(h->values);
             VectorPush(h->values, VectorGet(oldValVec, oldEntry->value));
 
-            // Put new etry into new bucket vector
+            // Put new entry into new bucket vector
             auto newEntry = HashMap_Entry{ oldEntry->hash, keyIdx, valueIdx };
             PutInternal(h, &newEntry, false, false);
         }
     }
 
     VectorDeallocate(oldBuckets);
-    if (VectorIsValid(oldKeyVec)) VectorDeallocate(oldKeyVec); // TODO: this is breaking. I think the chain pointers are being corrupted.
+    if (VectorIsValid(oldKeyVec)) VectorDeallocate(oldKeyVec);
     if (VectorIsValid(oldValVec)) VectorDeallocate(oldValVec);
     return true;
 }
