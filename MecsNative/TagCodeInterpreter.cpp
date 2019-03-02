@@ -461,10 +461,8 @@ void HandleControlSignal(int* position, char codeAction, int opCodeCount, Interp
     // jmp - unconditional relative jump *UP*
     case 'j':
     {
-        int jmpLength = opCodeCount;
-        *position++;
-        *position -= 1; // this opcode
-        *position -= jmpLength;
+        int newPosition = (*position) - opCodeCount;
+        *position = newPosition;
         break;
     }
     // skip - unconditional relative jump *DOWN*

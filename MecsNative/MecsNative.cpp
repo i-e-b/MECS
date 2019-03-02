@@ -843,9 +843,26 @@ int TestRuntimeExec() {
     auto interp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
 
     // run a few cycles and print any output
-    auto result = InterpRun(interp, true, 200);
+    auto result = InterpRun(interp, true, 500);
     str = StringEmpty();
     ReadOutput(interp, str);
+    switch (result.State) {
+    case ExecutionState::Complete:
+        StringAppend(str, "\r\nProgram Complete");
+        break;
+    case ExecutionState::Paused:
+        StringAppend(str, "\r\nProgram paused without finishing");
+        break;
+    case ExecutionState::Waiting:
+        StringAppend(str, "\r\nProgram waiting for input");
+        break;
+    case ExecutionState::ErrorState:
+        StringAppend(str, "\r\nProgram ERRORED");
+        break;
+    case ExecutionState::Running:
+        StringAppend(str, "\r\nProgram still running?");
+        break;
+    }
     WriteStr(str);
     StringDeallocate(str);
 
