@@ -609,11 +609,19 @@ bool StringTryParse_int32(String *str, int32_t *dest) {
     if (str == NULL || dest == NULL) return false;
 
     int len = StringLength(str);
+    if (len < 1) return false;
     int32_t result = 0;
     bool invert = false;
 
     int i = 0;
-    if (StringCharAtIndex(str, 0) == '-') { invert = true; i++; }
+    if (StringCharAtIndex(str, 0) == '-') {
+        if (len == 1) return false; // just a `-` symbol
+        invert = true; i++;
+    }
+    if (StringCharAtIndex(str, 0) == '+') {
+        if (len == 1) return false; // just a `+` symbol
+        i++;
+    }
 
     for (; i < len; i++) {
         char c = StringCharAtIndex(str, i);
@@ -635,7 +643,6 @@ bool StringTryParse_int32(String *str, int32_t *dest) {
 bool StringTryParse_f16(String *str, int32_t *dest) {
     if (str == NULL) return false;
 
-    // TODO: Implement!
     // Plan: parse each side of the '.' as int32, truncate and weld
     uint32_t point = 0;
 
@@ -667,6 +674,10 @@ bool StringTryParse_f16(String *str, int32_t *dest) {
     int flen = StringLength(fracp);
     bool ok = StringTryParse_int32(fracp, &fracpart);
     StringDeallocate(fracp);
+    if (fracpart < 0) {
+        // `1.-2` is not valid!
+        return false;
+    }
     if (!ok) fracpart = 0;
 
     // Combine int and frac

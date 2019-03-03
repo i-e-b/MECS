@@ -959,7 +959,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         return ChainRemainder(is, nbParams, param);
 
     default:
-        return _Exception(is, "Unrecognised built-in! Type = " + ((int)kind));
+        return _Exception(is, "Unrecognised built-in!", StringNewFormat(" Type = \x02\n", ((int)kind)));
     }
 }
 

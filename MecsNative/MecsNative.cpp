@@ -779,6 +779,7 @@ int TestCompiler() {
         while (VecPop_StringPtr(errs, &msg)) {
             WriteStr(msg);
         }
+        return -1;
     } else {
         std::cout << "Compile OK\n";
         std::cout << "Listing tag-code (excluding strings)\n\n";
