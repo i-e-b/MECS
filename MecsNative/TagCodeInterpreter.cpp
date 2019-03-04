@@ -8,6 +8,10 @@
 #include "TypeCoersion.h"
 #include "MathBits.h"
 
+// required only for 'eval'
+#include "SourceCodeTokeniser.h"
+#include "CompilerCore.h"
+
 #ifndef abs
 #define abs(x)  ((x < 0) ? (-(x)) : (x))
 #endif
@@ -787,21 +791,28 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
     case FuncDef::Eval:
     {
-        // This mess is a little tricky...
-        // I'd prefer to add a new block to our code base and jump to it.
+        // Add a new block to our code base and jump to it.
         // that keeps our stepping mechanism working.
-        // Static string pointers might need an offset mechanism
-        /*
-        var reader = new SourceCodeTokeniser();
-        var statements = _memory.CastString(param.ElementAt(0));
-        var programTmp = reader.Read(statements, false);
-        var bin = ToNanCodeCompiler.CompileRoot(programTmp, false);
-        var interpreter = new ByteCodeInterpreter();
-        interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
-        return interpreter.Execute(false, _runningVerbose, false).Result;
-        */
-        StringAppend(is->_output, "\n(eval not yet implemented)\n");
-        break;
+        // Static string pointers need an offset mechanism,
+        // handled by the tag code writer.
+
+        MMPush(1 MEGABYTE);
+
+        auto code = CastString(is, param[0]);
+        auto compilableSyntaxTree = ParseSourceCode(code, false); 
+        auto tagCode = CompileRoot(compilableSyntaxTree, false); // TODO: a variant that "returns" instead of 'EndOfProgram'
+        StringDeallocate(code);
+        DeallocateAST(compilableSyntaxTree);
+
+        auto nextPos = TCW_AppendToStream(tagCode, is->_program); // TODO: some way of removing this once it's done. New opcode?
+        TCW_Deallocate(tagCode);
+
+        MMPop();
+
+        ScopePush(is->_variables, param, nbParams); // write parameters into new scope
+        VecPush_int(is->_returnStack, *position); // set position for 'cret' call
+        *position = nextPos; // move pointer to start of function
+        return VoidReturn(); // return no value, continue execution elsewhere
     }
     case FuncDef::Call:
     {
@@ -812,6 +823,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         // this should be a string, but we need a function name hash -- so calculate it:
         auto strName = CastString(is, param[0]);
         auto functionNameHash = GetCrushedName(strName);
+        StringDeallocate(strName);
         return EvaluateFunctionCall(position, functionNameHash, nbParams - 1, param + 1, is);
     }
     case FuncDef::LogicNot:
