@@ -401,7 +401,8 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
     DataTag evalResult = EvaluateFunctionCall(position, functionNameHash, nbParams, param, is);
 
     // Add result on stack as a value.
-    if (evalResult.type != (int)DataType::Not_a_Result) {
+    if (evalResult.type != (int)DataType::Not_a_Result
+        && evalResult.type != (int)DataType::Void) {
         VecPush_DataTag(is->_valueStack, evalResult);
     }
 }
@@ -635,7 +636,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
 
         DataTag word = *VecGet_DataTag(is->_program, is->_position);
 
-        if (traceExecution) {/* TODO: this stuff!
+        if (traceExecution) {/* TODO: this stuff, when diagnostic string is done
             _output.WriteLine("          stack :" + string.Join(", ", _valueStack.ToArray().Select(t = > _memory.DiagnosticString(t, DebugSymbols))));
             _output.WriteLine("          #" + _stepsTaken + "; p=" + _position
                 + "; w=" + _memory.DiagnosticString(word, DebugSymbols));*/
@@ -644,7 +645,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         switch (word.type) {
         case (int)DataType::Invalid:
         {
-            StringAppendFormat(is->_output, "Unknown code point at \x02\n", is->_position);
+            StringAppendFormat(is->_output, "Unknown code point at position \x02\n", is->_position);
         }
 
         case (int)DataType::Opcode:
@@ -657,6 +658,9 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             }
             break;
 
+        case (int)DataType::EndOfProgram:
+            goto quickExit;
+
         default:
            VecPush_DataTag(is->_valueStack, word); // these could be raw doubles, encoded real values, or references/pointers
             break;
@@ -665,6 +669,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         is->_position++;
     }
 
+    quickExit:
     // Exited the program. Cleanup and return value
 
     if (VecLength(is->_valueStack) != 0) {
@@ -780,9 +785,13 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         if (nbParams < 2) return EncodeInt32(random_at_most(is->_stepsTaken, param[0].data)); // 1 param  - max size
         return EncodeInt32(ranged_random(is->_stepsTaken, param[0].data, param[1].data)); // 2 params - range
 
-        /*
-        TODO: implement these:
     case FuncDef::Eval:
+    {
+        // This mess is a little tricky...
+        // I'd prefer to add a new block to our code base and jump to it.
+        // that keeps our stepping mechanism working.
+        // Static string pointers might need an offset mechanism
+        /*
         var reader = new SourceCodeTokeniser();
         var statements = _memory.CastString(param.ElementAt(0));
         var programTmp = reader.Read(statements, false);
@@ -790,18 +799,21 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         var interpreter = new ByteCodeInterpreter();
         interpreter.Init(new RuntimeMemoryModel(bin, _memory.Variables), _input, _output, DebugSymbols); // todo: optional other i/o for eval?
         return interpreter.Execute(false, _runningVerbose, false).Result;
-
-    case FuncDef::Call:
-        DecodePointer(param.ElementAt(0), out var target, out var type);
-        if (type != DataType.PtrString && type != DataType.PtrStaticString)
-            return _Exception(is, "Tried to call a function by name, but passed a '" + type + "' at " + position);
-        // this should be a string, but we need a function name hash -- so calculate it:
-        var strName = _memory.DereferenceString(target);
-        var functionNameHash = NanTags.GetCrushedName(strName);
-        nbParams--;
-        var newParam = param.Skip(1).ToArray();
-        return EvaluateFunctionCall(ref position, functionNameHash, nbParams, newParam, returnStack, valueStack);
         */
+        StringAppend(is->_output, "\n(eval not yet implemented)\n");
+        break;
+    }
+    case FuncDef::Call:
+    {
+        auto type = param[0].type;
+        if (type != (int)DataType::StringPtr && type != (int)DataType::StaticStringPtr)
+            return _Exception(is, "Tried to call a function by name, but was not a string", StringNewFormat("passed a '\x02' at \x02\n", type, position));
+
+        // this should be a string, but we need a function name hash -- so calculate it:
+        auto strName = CastString(is, param[0]);
+        auto functionNameHash = GetCrushedName(strName);
+        return EvaluateFunctionCall(position, functionNameHash, nbParams - 1, param + 1, is);
+    }
     case FuncDef::LogicNot:
     {
         if (nbParams != 1) return _Exception(is, "'not' should be called with one argument");

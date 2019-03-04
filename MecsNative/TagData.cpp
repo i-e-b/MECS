@@ -20,6 +20,9 @@ DataTag RuntimeError(uint32_t bytecodeLocation) {
     return DataTag{ (int)DataType::Exception, 0, bytecodeLocation };
 };
 
+DataTag MarkEndOfProgram() {
+    return DataTag{ (int)DataType::EndOfProgram, 0, 0 };
+}
 DataTag MustWait(uint32_t resumePosition) {
     return DataTag{ (int)DataType::MustWait, 0, resumePosition };
 };

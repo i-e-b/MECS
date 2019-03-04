@@ -90,7 +90,7 @@ void TCW_UnconditionalJump(TagCodeCache* tcc, int opCodeCount);
 void TCW_LiteralNumber(TagCodeCache* tcc, int32_t d);
 // Write a static string. Static strings aren't seen by the GC and exist in memory outside of the normal allocation space. Returns `true` iff the string is already present
 bool TCW_LiteralString(TagCodeCache* tcc, String* s);
-// Add a pre-encode string
+// Add a pre-encoded string
 void TCW_RawToken(TagCodeCache* tcc, DataTag value);
 
 

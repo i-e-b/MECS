@@ -38,6 +38,7 @@ TagCodeCache* CompileRoot(TreeNode* root, bool debug) {
     // The implementation of `Compile` is way down at the bottom
     TCW_Merge(wr, Compile(root, 0, debug, parameterNames, includedFiles, Context::Default));
 
+    TCW_RawToken(wr, MarkEndOfProgram());
     return wr;
 }
 
