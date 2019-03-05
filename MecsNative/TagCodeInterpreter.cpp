@@ -801,10 +801,15 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         auto code = CastString(is, param[0]);
         auto compilableSyntaxTree = ParseSourceCode(code, false); 
         auto tagCode = CompileRoot(compilableSyntaxTree, false); // TODO: a variant that "returns" instead of 'EndOfProgram'
+
+
+        // NOTE: ############################
+        // This append is trying to write to a byte vector
+        // need to change to a TagCode vector
+        auto nextPos = TCW_AppendToStream(tagCode, is->_program); // TODO: some way of removing this once it's done. New opcode?
+
         StringDeallocate(code);
         DeallocateAST(compilableSyntaxTree);
-
-        auto nextPos = TCW_AppendToStream(tagCode, is->_program); // TODO: some way of removing this once it's done. New opcode?
         TCW_Deallocate(tagCode);
 
         MMPop();

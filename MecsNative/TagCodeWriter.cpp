@@ -236,14 +236,20 @@ void WriteString(Vector* output, String* staticStr, int expectedLength) {
 
 Vector* TCW_WriteToStream(TagCodeCache* tcc) {
     auto output = VecAllocate_char();
+    TCW_AppendToStream(tcc, output);
+    return output;
+}
+
+int TCW_AppendToStream(TagCodeCache* tcc, Vector* output) {
     // a string is [Integer Tag: byte length] [string bytes, padded to 8 byte chunks]
 
     // 1) Write a jump command to skip the table (we will update this later)
+    int baseLocation = VecLength(output);
     auto jumpCode = EncodeLongOpcode('c', 's', 0);
     WriteCode(output, jumpCode);
 
     // 2) Write the strings, with a mapping dictionary
-    long location = 1; // counting initial jump as 0
+    long location = VecLength(output); // counting initial jump as 0
     int stringTableCount = VecLength(tcc->_stringTable);
     auto mapping = MapAllocate_int_int(1024);
     for (int index = 0; index < stringTableCount; index++) {
@@ -271,7 +277,7 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
 
         // pad so that we are always 64-bit aligned
         int adj = VecLength(output) % 8;
-        if (adj != 0) { 
+        if (adj != 0) {
             adj = 8 - adj;
             for (int p = 0; p < adj; p++) { VecPush_char(output, 0); }
         }
@@ -280,7 +286,7 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
     // 3) update jump table with final location
     int jumpDist = (VecLength(output) / 8) - 1;
     jumpCode = EncodeLongOpcode('c', 's', jumpDist);
-    WriteCodeIndex(output, jumpCode, 0);
+    WriteCodeIndex(output, jumpCode, baseLocation);
 
     // 4) Write the op-codes
     int opCodeCount = VecLength(tcc->_opcodes);
@@ -314,9 +320,9 @@ Vector* TCW_WriteToStream(TagCodeCache* tcc) {
             break;
         }
     }
-    return output;
+    MapDeallocate(mapping);
+    return baseLocation;
 }
-
 
 bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym) {
     if (tcc == NULL || sym == NULL) return false;

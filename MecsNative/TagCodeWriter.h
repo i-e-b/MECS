@@ -48,10 +48,10 @@ int TCW_OpCodeCount(TagCodeCache* tcc);
 // NOTE: The `srcFragment` parameter will be deallocted!
 void TCW_Merge(TagCodeCache* dest, TagCodeCache* srcFragment);
 
-// Write opcodes and data section to a byte vector. References to string constants will be recalculated
+// Write opcodes and data section to a BYTE vector. References to string constants will be recalculated
 Vector* TCW_WriteToStream(TagCodeCache* tcc);
 
-// Adds opcodes and data section to a byte vector. References to string constants will be recalculated
+// Adds opcodes and data section to a BYTE vector. References to string constants will be recalculated
 // this is mainly for use with 'eval' runtime code generation. Returns start of code index.
 int TCW_AppendToStream(TagCodeCache* tcc, Vector* existing);
 
