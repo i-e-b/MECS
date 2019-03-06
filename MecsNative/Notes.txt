@@ -19,6 +19,7 @@ Components to do:
 * [x] Allow containers to have a target Arena embedded into them (optional)
 
 * [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
+  * [ ] Handle parsing, including scientific notation
   * [ ] Investigate a reduction of ( http://dec64.com/ ) as a single number type -- bottom 32 bits in tag data, exponent and remaining bits in tag params.
 
 Input handling:

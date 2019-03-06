@@ -306,8 +306,10 @@ int TCW_AppendToStream(TagCodeCache* tcc, Vector* output) {
 
     // 3) update jump table with final location
     int jumpDist = (VecLength(output) / 8) - 1;
-    jumpCode = EncodeLongOpcode('c', 's', jumpDist);
-    WriteCodeIndex(output, jumpCode, baseLocation);
+    if (jumpDist > 0) {
+        jumpCode = EncodeLongOpcode('c', 's', jumpDist);
+        WriteCodeIndex(output, jumpCode, baseLocation);
+    }
 
     // 4) Write the op-codes
     int opCodeCount = VecLength(tcc->_opcodes);
@@ -382,9 +384,11 @@ int TCW_AppendToVector(TagCodeCache* tcc, Vector* output) {
     }
 
     // 3) update jump table with final location
-    int jumpDist = (VecLength(output) / 8) - 1;
-    jumpCode = EncodeLongOpcode('c', 's', jumpDist);
-    VecSet_DataTag(output, baseLocation, jumpCode, NULL);
+    int jumpDist = (VecLength(output)) - 1;
+    if (jumpDist > 0) {
+        jumpCode = EncodeLongOpcode('c', 's', jumpDist);
+        VecSet_DataTag(output, baseLocation, jumpCode, NULL);
+    }
 
     // 4) Write the op-codes
     int opCodeCount = VecLength(tcc->_opcodes);

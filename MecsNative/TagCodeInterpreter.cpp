@@ -394,10 +394,19 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
         auto src = CastString(is, value);
         auto srcLength = StringLength(src);
         auto dst = StringEmpty();
-        for (int i = 0; i < paramCount; i++) {
+        auto indexes = VecAllocateArena_int(is->_memory);
+
+        for (int i = 0; i < paramCount; i++) { // get indexes from stack order to index order
             auto idx = CastInt(is, TryPopTag(is, is->_position));
-            if (idx >= 0 && idx < srcLength) StringAppendChar(dst, StringCharAtIndex(src, idx));
+            if (idx >= 0 && idx < srcLength) VecPush_int(indexes, idx);
         }
+
+        int idx = 0;
+        while (VecPop_int(indexes, &idx)) {
+            char c = StringCharAtIndex(src, idx);
+            if (idx >= 0 && idx < srcLength) StringAppendChar(dst, c);
+        }
+        VecDeallocate(indexes);
 
         auto result = StoreStringAndGetReference(is, dst);
         StringDeallocate(src);

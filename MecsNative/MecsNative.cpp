@@ -866,22 +866,100 @@ int TestRuntimeExec() {
     }
     WriteStr(str);
     StringDeallocate(str);
-
-    // Check memory state
-    auto arena = MMCurrent();
     size_t alloc;
     size_t unalloc;
     int objects;
-    ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
-    std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+
+    // Check memory state
     ArenaGetState(InterpInternalMemory(interp), &alloc, &unalloc, NULL, NULL, &objects, NULL);
     std::cout << "Runtime used in internal memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
 
     // clean up
     InterpDeallocate(interp);
+    auto arena = MMCurrent();
+    ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
+    std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
 
 
     return 0;
+}
+
+int RunProgram(const char* filename) {
+    // Load, compile and  run a program inside an arena
+
+    std::cout << "########## Attempting program: " << filename << " #########\n";
+    MMPush(10 MEGABYTES);
+
+    // Compile and load
+    auto code = StringEmpty();
+    auto fileName = StringNew(filename);
+    auto vec = StringGetByteVector(code);
+    uint64_t read = 0;
+    if (!FileLoadChunk(fileName, vec, 0, 10000, &read)) {
+        std::cout << "Failed to read file. Test inconclusive.\n";
+        return 1;
+    }
+    StringDeallocate(fileName);
+    auto compilableSyntaxTree = ParseSourceCode(code, false);
+    auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
+
+    auto program = VecAllocate_DataTag();
+    auto nextPos = TCW_AppendToVector(tagCode, program);
+    auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
+
+    StringDeallocate(code);
+    DeallocateAST(compilableSyntaxTree);
+    TCW_Deallocate(tagCode);
+
+    // run
+    auto result = InterpRun(is, true, 0xFFFFFF);
+    auto str = StringEmpty();
+
+    int errState = 0;
+    switch (result.State) {
+    case ExecutionState::Complete:
+        StringAppend(str, "\r\nProgram Complete\r\n");
+        break;
+    case ExecutionState::Paused:
+        StringAppend(str, "\r\nProgram paused without finishing\r\n");
+        break;
+    case ExecutionState::Waiting:
+        StringAppend(str, "\r\nProgram waiting for input\r\n");
+        break;
+    case ExecutionState::ErrorState:
+        errState = 1;
+        StringAppend(str, "\r\nProgram ERRORED\r\n");
+        break;
+    case ExecutionState::Running:
+        errState = 1;
+        StringAppend(str, "\r\nProgram still running?\r\n");
+        break;
+    }
+    ReadOutput(is, str);
+    WriteStr(str);
+    StringDeallocate(str);
+    InterpDeallocate(is);
+
+    MMPop();
+    return errState;
+}
+
+int TestProgramSuite() {
+    // Run a range of programs.
+    // These should be loaded into the 'jail' folder from the repo's samples
+
+    int errs = 0;
+
+    errs += RunProgram("demo_program2.ecs");
+    errs += RunProgram("fib.ecs");
+    errs += RunProgram("Importer.ecs");
+    errs += RunProgram("getWithIndex.ecs");
+    errs += RunProgram("listMath.ecs");
+    errs += RunProgram("pick.ecs");
+    errs += RunProgram("pick2.ecs");
+
+    std::cout << "########## Error count = " << errs << " #########\n";
+    return errs;
 }
 
 int main() {
@@ -946,6 +1024,9 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
+
+    auto suite = TestProgramSuite();
+    if (suite != 0) return suite;
 
     ShutdownManagedMemory();
 }
