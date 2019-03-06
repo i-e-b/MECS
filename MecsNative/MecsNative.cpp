@@ -886,7 +886,7 @@ int TestRuntimeExec() {
 
 int main() {
     StartManagedMemory();
-    /*
+
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -936,7 +936,7 @@ int main() {
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
     MMPop();
-    */
+
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
