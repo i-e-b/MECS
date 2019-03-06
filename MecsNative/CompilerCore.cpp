@@ -39,9 +39,9 @@ TagCodeCache* CompileRoot(TreeNode* root, bool debug, bool isSubprogram) {
     TCW_Merge(wr, Compile(root, 0, debug, parameterNames, includedFiles, Context::Default));
 
     if (isSubprogram) {
-        TCW_RawToken(wr, EncodeLongOpcode('c','r', 0));// TODO: stack marker and clean?
+        TCW_RawToken(wr, MarkEndOfSubProgram()); // Interpreter uses this to clean up eval opcodes
     } else {
-        TCW_RawToken(wr, MarkEndOfProgram());
+        TCW_RawToken(wr, MarkEndOfProgram()); // Interpreter will full-stop when it sees this
     }
     return wr;
 }
@@ -283,7 +283,6 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
     // Split the condition and action
 
     // build a tree for the if/while condition
-    // TODO: I THINK THIS IS WRONG!
     auto condition = TreeAllocate_SourceNode();
     auto condData = TreeReadBody_SourceNode(condition);
     condData->Text = StringNew("()");

@@ -158,6 +158,23 @@ void ReadOutput(InterpreterState* is, String* receiver) {
     }
 }
 
+// pop items from the interpreter program until we see either EndOfProgram or EndOfSubProgram
+void RollBackSubProgram(InterpreterState* is) {
+    DataTag tag = {};
+
+    bool found = VecPeek_DataTag(is->_program, &tag);
+    // sanity check:
+    if (!found || tag.type != (int)DataType::EndOfSubProgram) return;
+
+    while (true) {
+        VecPop_DataTag(is->_program, NULL);
+        found = VecPeek_DataTag(is->_program, &tag);
+        if (!found
+            || tag.type == (int)DataType::EndOfSubProgram
+            || tag.type == (int)DataType::EndOfProgram) return;
+    }
+}
+
 ExecutionResult FailureResult(uint32_t position) {
     ExecutionResult r = {};
     r.Result = RuntimeError(position);
@@ -717,10 +734,11 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
         auto code = CastString(is, param[0]);
         auto compilableSyntaxTree = ParseSourceCode(code, false); 
-        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that "returns" instead of 'EndOfProgram'
+        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
 
-
-        auto nextPos = TCW_AppendToVector(tagCode, is->_program); // TODO: some way of removing this once it's done. New opcode?
+        auto nextPos = TCW_AppendToVector(tagCode, is->_program); // These opcodes should be removed when 'EndOfSubProgram' is reached
+        // NOTE: If `eval` code uses `return` to exit, we will probably leak. TODO: compiler could replace root-level `return` with 'EndOfSubProgram'?
+        // Because `eval` is greedy, it should be ok to nest evals inside other evals. Not a good idea, but possible.
 
         StringDeallocate(code);
         DeallocateAST(compilableSyntaxTree);
@@ -842,9 +860,9 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
     case FuncDef::Length:
     {
         auto str = CastString(is, param[0]);
-        int v = StringLength(str);
+        int v = StringLength(str); // TODO: lengths of other things
         StringDeallocate(str);
-        return EncodeInt32(v); // TODO: lengths of other things
+        return EncodeInt32(v);
     }
 
     case FuncDef::Replace:
@@ -987,13 +1005,15 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
 
         // Prevent stackoverflow.
         // Ex: if(true 1 10 20)
-        if ((is->_stepsTaken & 127) == 0 && VecLength(is->_valueStack) > 100) { // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
+        if ((is->_stepsTaken & 127) == 0 && VecLength(is->_valueStack) > 100) { // TODO: improve this mess. Maybe add sentinels and dequeue on returns?
             for (int i = 0; i < 100; i++) {
                 VectorDequeue(is->_valueStack, NULL); // knock values off the far side of the stack.
             }
         }
 
-        DataTag word = *VecGet_DataTag(is->_program, is->_position);
+        auto wptr = VecGet_DataTag(is->_program, is->_position);
+        if (wptr == NULL) break;
+        DataTag word = *wptr;
 
         if (traceExecution) {/* TODO: this stuff, when diagnostic string is done
             _output.WriteLine("          stack :" + string.Join(", ", _valueStack.ToArray().Select(t = > _memory.DiagnosticString(t, DebugSymbols))));
@@ -1016,6 +1036,12 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
                 return FailureResult(is->_position);
             }
             programEnd = VectorLength(is->_program); // In case 'eval' changed it
+            break;
+
+        case (int)DataType::EndOfSubProgram:
+            // Delete back to the 'EndOfProgram' marker
+            RollBackSubProgram(is);
+            HandleReturn(&(is->_position), is);
             break;
 
         case (int)DataType::EndOfProgram:

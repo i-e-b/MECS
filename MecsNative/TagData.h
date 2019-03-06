@@ -22,18 +22,19 @@ enum class DataType {
     Invalid      = 0, // Tag is not initialised, or is a sentinel value
 
     // ##### Core bytecode types ###########
-    VariableRef  = 1,   // Data is a 32-bit hash that refers to a variable name.
-    Opcode = 2,         // Params are 2xchar to define opcode, Data is either 1x32 or 2x16 bit params for the opcode
-    EndOfProgram = 3,   // A marker for the end of a program. Interpreter should stop.
+    VariableRef  = 1,       // Data is a 32-bit hash that refers to a variable name.
+    Opcode = 2,             // Params are 2xchar to define opcode, Data is either 1x32 or 2x16 bit params for the opcode
+    EndOfProgram = 3,       // A marker for the end of a program. Interpreter should stop.
+    EndOfSubProgram = 4,    // A marker for the end of a sub-program. Interpreter should clean-up and continue.
 
 
     // ##### Runtime result types ##########
     // A result was expected, but not produced (like trying to read an undefined slot in a collection)
     // Use of NaR will propagate through calculations.
-    Not_a_Result = 4,
-    Exception = 5,    // A non-recoverable run-time error occured. The interpreter will stop for inspection. Data contains interpreter location.
-    Void = 6,         // Nothing returned
-    Unit = 7,         // No result, but as part of a return
+    Not_a_Result = 5, // A nonsense value. Any calculation with NAR can be short-cut into another NAR. 'exists' checks should return false.
+    Exception = 6,    // A non-recoverable run-time error occured. The interpreter will stop for inspection. Data contains interpreter location.
+    Void = 7,         // Nothing returned
+    Unit = 8,         // No result, but as part of a return
 
 
     // ##### Runtime data types ############
@@ -81,6 +82,7 @@ DataTag UnitReturn();
 DataTag NonResult();
 DataTag RuntimeError(uint32_t bytecodeLocation);
 
+DataTag MarkEndOfSubProgram();
 DataTag MarkEndOfProgram();
 
 // Interpreter has to pause
