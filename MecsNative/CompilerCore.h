@@ -36,7 +36,9 @@ enum class Context {
 
 
 // Compile source code from a syntax tree into a tag code cache
-TagCodeCache* CompileRoot(TreeNode* root, bool debug);
+// Setting `debug` to true will cause additional symbol output, and may turn off some optimisations
+// Setting `isSubprogram` to true will set a return-like marker at the end of the program. If false, it will set a termination marker.
+TagCodeCache* CompileRoot(TreeNode* root, bool debug, bool isSubprogram);
 
 // Function/Program compiler. This is called recursively when subroutines are found
 TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNames, HashMap* includedFiles, Context compileContext);

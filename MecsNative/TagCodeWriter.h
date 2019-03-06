@@ -51,9 +51,12 @@ void TCW_Merge(TagCodeCache* dest, TagCodeCache* srcFragment);
 // Write opcodes and data section to a BYTE vector. References to string constants will be recalculated
 Vector* TCW_WriteToStream(TagCodeCache* tcc);
 
-// Adds opcodes and data section to a BYTE vector. References to string constants will be recalculated
-// this is mainly for use with 'eval' runtime code generation. Returns start of code index.
+// Adds opcodes and data section to a BYTE vector. References to string constants will be recalculated. Returns start of code index.
 int TCW_AppendToStream(TagCodeCache* tcc, Vector* existing);
+
+// Adds opcodes and data section to a `DataTag` vector. References to string constants will be recalculated
+// this is mainly for use with 'eval' runtime code generation. Returns start of code index.
+int TCW_AppendToVector(TagCodeCache* tcc, Vector* existing);
 
 // Add a symbol set to the known symbols table
 bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym);

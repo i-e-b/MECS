@@ -770,7 +770,7 @@ int TestCompiler() {
     WriteStr(nstr);
 
     std::cout << "Attempting to compile:\n";
-    auto tagCode = CompileRoot(compilableSyntaxTree, false);
+    auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
 
     if (TCW_HasErrors(tagCode)) {
         std::cout << "COMPILE FAILED!\n";

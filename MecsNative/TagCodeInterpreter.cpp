@@ -608,89 +608,6 @@ bool ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, in
 }
 
 
-// Run the interpreter until end or cycle count (whichever comes first)
-// Remember to check execution state afterward
-ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycles) {
-    if (is == NULL) {
-        return FailureResult(0);
-    }
-    DataTag evalResult = {};
-    is->_runningVerbose = traceExecution;
-    auto programEnd = VectorLength(is->_program);
-    int localSteps = 0;
-
-    while (is->_position < programEnd) {
-        if (localSteps >= maxCycles) {
-            return PausedExecutionResult();
-        }
-        if (is->ErrorFlag) {
-            return FailureResult(0);
-        }
-
-        is->_stepsTaken++;
-        localSteps++;
-
-        // Prevent stackoverflow.
-        // Ex: if(true 1 10 20)
-        if ((is->_stepsTaken & 127) == 0 && VecLength(is->_valueStack) > 100) { // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
-            for (int i = 0; i < 100; i++) {
-                VectorDequeue(is->_valueStack, NULL); // knock values off the far side of the stack.
-            }
-        }
-
-        DataTag word = *VecGet_DataTag(is->_program, is->_position);
-
-        if (traceExecution) {/* TODO: this stuff, when diagnostic string is done
-            _output.WriteLine("          stack :" + string.Join(", ", _valueStack.ToArray().Select(t = > _memory.DiagnosticString(t, DebugSymbols))));
-            _output.WriteLine("          #" + _stepsTaken + "; p=" + _position
-                + "; w=" + _memory.DiagnosticString(word, DebugSymbols));*/
-        }
-
-        switch (word.type) {
-        case (int)DataType::Invalid:
-        {
-            StringAppendFormat(is->_output, "Unknown code point at position \x02\n", is->_position);
-        }
-
-        case (int)DataType::Opcode:
-            // decode opcode and do stuff
-            char codeClass, codeAction;
-            uint16_t p1, p2;
-            DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2);
-            if (!ProcessOpCode(codeClass, codeAction, p1, p2, &(is->_position), word, is)) {
-                return FailureResult(is->_position);
-            }
-            break;
-
-        case (int)DataType::EndOfProgram:
-            goto quickExit;
-
-        default:
-           VecPush_DataTag(is->_valueStack, word); // these could be raw doubles, encoded real values, or references/pointers
-            break;
-        }
-
-        is->_position++;
-    }
-
-    quickExit:
-    // Exited the program. Cleanup and return value
-
-    if (VecLength(is->_valueStack) != 0) {
-        VecPop_DataTag(is->_valueStack, &evalResult);
-    } else {
-        evalResult = VoidReturn();
-    }
-
-    // reset state, just incase we get run again
-    // it's up to the caller to clear input and output if required.
-    VecClear(is->_returnStack);
-    VecClear(is->_valueStack);
-    is->_position = 0;
-
-    return CompleteExecutionResult(evalResult);
-}
-
 // Add IPC messages to an InterpreterState (only when it's not running)
 void InterpAddIPC(InterpreterState*is, Vector* ipcMessages) {
 
@@ -800,13 +717,10 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
         auto code = CastString(is, param[0]);
         auto compilableSyntaxTree = ParseSourceCode(code, false); 
-        auto tagCode = CompileRoot(compilableSyntaxTree, false); // TODO: a variant that "returns" instead of 'EndOfProgram'
+        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that "returns" instead of 'EndOfProgram'
 
 
-        // NOTE: ############################
-        // This append is trying to write to a byte vector
-        // need to change to a TagCode vector
-        auto nextPos = TCW_AppendToStream(tagCode, is->_program); // TODO: some way of removing this once it's done. New opcode?
+        auto nextPos = TCW_AppendToVector(tagCode, is->_program); // TODO: some way of removing this once it's done. New opcode?
 
         StringDeallocate(code);
         DeallocateAST(compilableSyntaxTree);
@@ -1048,3 +962,91 @@ String* ReadStaticString(InterpreterState* is, int position, int length) {
     return DecodeString(is->_program, position, length);
 }
 
+
+// Run the interpreter until end or cycle count (whichever comes first)
+// Remember to check execution state afterward
+ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycles) {
+    if (is == NULL) {
+        return FailureResult(0);
+    }
+    DataTag evalResult = {};
+    is->_runningVerbose = traceExecution;
+    auto programEnd = VectorLength(is->_program);
+    int localSteps = 0;
+
+    while (is->_position < programEnd) {
+        if (localSteps >= maxCycles) {
+            return PausedExecutionResult();
+        }
+        if (is->ErrorFlag) {
+            return FailureResult(0);
+        }
+
+        is->_stepsTaken++;
+        localSteps++;
+
+        // Prevent stackoverflow.
+        // Ex: if(true 1 10 20)
+        if ((is->_stepsTaken & 127) == 0 && VecLength(is->_valueStack) > 100) { // TODO: improve this mess. Might be able to use void returns (and add them to loops?)
+            for (int i = 0; i < 100; i++) {
+                VectorDequeue(is->_valueStack, NULL); // knock values off the far side of the stack.
+            }
+        }
+
+        DataTag word = *VecGet_DataTag(is->_program, is->_position);
+
+        if (traceExecution) {/* TODO: this stuff, when diagnostic string is done
+            _output.WriteLine("          stack :" + string.Join(", ", _valueStack.ToArray().Select(t = > _memory.DiagnosticString(t, DebugSymbols))));
+            _output.WriteLine("          #" + _stepsTaken + "; p=" + _position
+                + "; w=" + _memory.DiagnosticString(word, DebugSymbols));*/
+        }
+
+        switch (word.type) {
+        case (int)DataType::Invalid:
+        {
+            StringAppendFormat(is->_output, "Unknown code point at position \x02\n", is->_position);
+        }
+
+        case (int)DataType::Opcode:
+            // decode opcode and do stuff
+            char codeClass, codeAction;
+            uint16_t p1, p2;
+            DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2);
+            if (!ProcessOpCode(codeClass, codeAction, p1, p2, &(is->_position), word, is)) {
+                return FailureResult(is->_position);
+            }
+            programEnd = VectorLength(is->_program); // In case 'eval' changed it
+            break;
+
+        case (int)DataType::EndOfProgram:
+            goto GOOD_EXIT;
+
+        default:
+            VecPush_DataTag(is->_valueStack, word); // these could be raw doubles, encoded real values, or references/pointers
+            break;
+        }
+
+        is->_position++;
+    }
+
+    // dropped out of the loop without hitting an end-of-program marker.
+    // make a note of it:
+    StringAppend(is->_output, "Program went out of bounds. Check compiler.");
+
+GOOD_EXIT:
+    // Exited the program. Cleanup and return value
+
+    if (VecLength(is->_valueStack) != 0) {
+        VecPop_DataTag(is->_valueStack, &evalResult);
+    } else {
+        evalResult = VoidReturn();
+    }
+
+    // reset state, just incase we get run again
+    // it's up to the caller to clear input and output if required.
+    VecClear(is->_returnStack);
+    VecClear(is->_valueStack);
+    is->_position = 0;
+
+    return CompleteExecutionResult(evalResult);
+}

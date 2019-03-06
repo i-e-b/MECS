@@ -11,9 +11,6 @@
     <Filter Include="Source Files\Math">
       <UniqueIdentifier>{7c49d92d-4736-4059-8201-932e18832803}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Encoding">
-      <UniqueIdentifier>{3181dd68-1be0-45bd-bcad-52f9fc72cf89}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\System">
       <UniqueIdentifier>{6d8f58e2-788a-4038-84fc-2768a24fdc1d}</UniqueIdentifier>
     </Filter>
@@ -25,6 +22,9 @@
     </Filter>
     <Filter Include="Source Files\Runtime">
       <UniqueIdentifier>{ffe795e0-da81-4a99-9112-d903a12e249a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Encoding">
+      <UniqueIdentifier>{3181dd68-1be0-45bd-bcad-52f9fc72cf89}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

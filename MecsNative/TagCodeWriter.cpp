@@ -220,17 +220,38 @@ void WriteCodeIndex(Vector* output, DataTag tag, int index) {
 
 // Append a string data to the output vector, consuming the string
 void WriteString(Vector* output, String* staticStr, int expectedLength) {
-
-    auto cstr = StringToCStr(staticStr); // for debug
-
-    int l = StringLength(staticStr);
-
     // While we use a 1-byte encoding, then this is byte-order safe
     char c = StringDequeue(staticStr);
 
     while (c != '\0') {
         VecPush_char(output, c);
         c = StringDequeue(staticStr);
+    }
+}
+
+
+void WriteStringToDataTags(Vector* output, String* staticStr, int expectedLength) {
+    // While we use a 1-byte encoding, then this is byte-order safe
+
+    DataTag buf = {};
+    char* cbuf = (char*)(&buf);
+    int idx = 0;
+
+    while (true) {
+        char c = StringDequeue(staticStr);
+        if (c == '\0') {
+            VecPush_DataTag(output, buf);
+            return;
+        }
+        cbuf[idx] = c;
+        idx++;
+        if (idx >= 8) {
+            VecPush_DataTag(output, buf);
+            idx = 0;
+            buf.data = 0;
+            buf.params = 0;
+            buf.type = 0;
+        }
     }
 }
 
@@ -317,6 +338,83 @@ int TCW_AppendToStream(TagCodeCache* tcc, Vector* output) {
 
         default:
             WriteCode(output, code);
+            break;
+        }
+    }
+    MapDeallocate(mapping);
+    return baseLocation;
+}
+
+int TCW_AppendToVector(TagCodeCache* tcc, Vector* output) {
+
+    // a string is [Integer Tag: byte length] [string bytes, padded to 8 byte chunks]
+
+    // 1) Write a jump command to skip the table (we will update this later)
+    int baseLocation = VecLength(output);
+    auto jumpCode = EncodeLongOpcode('c', 's', 0);
+    VecPush_DataTag(output, jumpCode);
+
+    // 2) Write the strings, with a mapping dictionary
+    long location = VecLength(output); // counting initial jump as 0
+    int stringTableCount = VecLength(tcc->_stringTable);
+    auto mapping = MapAllocate_int_int(1024);
+    for (int index = 0; index < stringTableCount; index++) {
+        String* staticStr = NULL;
+        VecDequeue_StringPtr(tcc->_stringTable, &staticStr);
+
+        if (!StringIsValid(staticStr)) {
+            return NULL; // something went very wrong
+        }
+
+        auto bytes = StringLength(staticStr);
+
+        location = VecLength(output);
+        MapPut_int_int(mapping, index, location, true); // note: no division unlike the byte stream version
+
+        auto headerOpCode = EncodeInt32(bytes);
+        VecPush_DataTag(output, headerOpCode);
+
+        // TODO !!!!
+        WriteStringToDataTags(output, staticStr, bytes);
+        //VecPush_DataTag
+        // ^ this needs to chunk into 64-bit blocks
+        StringDeallocate(staticStr);
+    }
+
+    // 3) update jump table with final location
+    int jumpDist = (VecLength(output) / 8) - 1;
+    jumpCode = EncodeLongOpcode('c', 's', jumpDist);
+    VecSet_DataTag(output, baseLocation, jumpCode, NULL);
+
+    // 4) Write the op-codes
+    int opCodeCount = VecLength(tcc->_opcodes);
+    for (int index = 0; index < opCodeCount; index++) { // TODO: change from `for` to dequeue?
+        DataTag code = {};
+        VecDequeue_DataTag(tcc->_opcodes, &code);
+
+        switch ((DataType)(code.type)) {
+        case DataType::DebugStringPtr:
+        case DataType::StringPtr:
+        case DataType::StaticStringPtr:
+        {
+            // Re-write to new location
+            auto original = code.data;
+            int* final = NULL;
+            if (MapGet_int_int(mapping, original, &final)) { // need to map from old offset
+                VecPush_DataTag(output, EncodePointer(*final, DataType::StaticStringPtr));
+            } else {
+                // String mapping went totally wrong
+                return NULL;
+            }
+            break;
+        }
+
+        case DataType::Invalid:
+            // Total failure!
+            return NULL;
+
+        default:
+            VecPush_DataTag(output, code);
             break;
         }
     }

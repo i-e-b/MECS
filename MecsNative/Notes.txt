@@ -26,6 +26,7 @@ Input handling:
 
 * [x] File system abstraction
 * [x] Improve filesystem to allow non-byte sized vectors?
+* [ ] Hunt down and fix compiler and parser leaks (relatively low priority)
 * [x] Convert parser
 * [ ] Convert compiler
   * [x] tag code write

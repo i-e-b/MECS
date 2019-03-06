@@ -19,7 +19,7 @@ RegisterVectorFor(char, Vec)
 RegisterVectorFor(StringPtr, Vec)
 
 // Compile source code from a syntax tree into a tag code cache
-TagCodeCache* CompileRoot(TreeNode* root, bool debug) {
+TagCodeCache* CompileRoot(TreeNode* root, bool debug, bool isSubprogram) {
     if (root == NULL) return NULL;
     auto wr = TCW_Allocate();
 
@@ -38,7 +38,11 @@ TagCodeCache* CompileRoot(TreeNode* root, bool debug) {
     // The implementation of `Compile` is way down at the bottom
     TCW_Merge(wr, Compile(root, 0, debug, parameterNames, includedFiles, Context::Default));
 
-    TCW_RawToken(wr, MarkEndOfProgram());
+    if (isSubprogram) {
+        TCW_RawToken(wr, EncodeLongOpcode('c','r', 0));// TODO: stack marker and clean?
+    } else {
+        TCW_RawToken(wr, MarkEndOfProgram());
+    }
     return wr;
 }
 

@@ -2,47 +2,6 @@
 Compiler, Interpreter, and Runtime engine for a simple language.
 Intended to contain a complete memory model, for embedding onto a SBC.
 
-## C# features:
-
-* [x] Add custom subroutines
-* [x] Add value returns (I want to catch failure to return early, without having to define too much)
-* [x] More inequality/comparisons (`<`, `>` `<>` etc)
-* [x] Add rough language specs to readme
-* [x] Import files (in compiler, compile and include generated, like functions. Have an include chain, warn and skip if file has been seen before)
-* [x] Uniary minus (negation), list math.
-* [x] List inequality (like `<(0 get(x) 10)` for 'x is between 1 and 9')
-* [x] Assert function
-* [x] Switch-like statement (for if-else chains)
-* [x] Treat `variableName` as `get(variableName)`
-
-* [x] Split into library and apps
-* [x] Add a REPL.
-
-* [x] Change assm definition to be less stringy
-      - Tagged basic type (NaN-tagging)
-      - All non-numbers are pointers to type
-* [x] Basic types
-
-* [x] Change list-equals to compare all to *first* item, so you can do like `equals(0 a b c d)` to check if *any* equal zero. Same for not-equal.
-
-* [x] Underscores in numbers
-* [x] String interning / deduplication (compiler)
-* [x] Optimise get/set memory instructions
-* [x] Compiler & runtime optimise for increment and decrement
-* [x] Iteration of strings (maybe `get(str idx)`?)
-
-* [x] Circular buffer in the repl console
-* [x] Automatic formatter/prettifier (indent if more opens than closes, unindent on match)
-* [x] Highlighting for current parenthesis scope
-
-* [x] Short-string stack value to reduce GC gunk
-* [x] Optimised compare&jump instructions? (like, `[C][>][argCount][opCodeCount]` -- packs 3 ops into 1 when opCodeCount is less than ~32K)
-* [x] Runtime interpreter exceptions to give position
-* [x] Move static strings outside of GC
-
-* [ ] Stack clean-up behaviour
-* [ ] Macros (functions that run at compile time)
-
 ## Move to C for embedding
 
 * [x] Re-implement container types in C
@@ -53,9 +12,8 @@ Intended to contain a complete memory model, for embedding onto a SBC.
 * [ ] Make sure (de)serialisation is available
 * [ ] Messaging / Mailboxes
 
-## Future work
+## Possible Future work
 
-* [ ] String builder in memory model (array concat?)
 * [ ] Experiment with NAR propagation and a test function.
 * [ ] Map files for byte code, to help with error messages and diagnosis.
 * [ ] Syntax for defining variadic functions ( `...{array name}` or something? Look at https://blog.taylorwood.io/2017/09/15/year-behind.html )
