@@ -31,7 +31,9 @@ enum class Context {
     // A loop block
     Loop,
     // A condition block
-    Condition
+    Condition,
+    // An `eval` statement at run-time
+    RuntimeEval
 };
 
 

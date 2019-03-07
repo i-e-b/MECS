@@ -400,7 +400,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
                 PrepareWhitespaceContainer(&wsNode);
                 i = SkipWhitespace(source, i, wsNode);
-                if (i >= length) {
+                if (i > length) {
                     // Unexpected end of input
                     // To help formatting and diagnosis, write the last bits.
                     TAddSibling_Node(current, &newNodeAtom(startLoc, word));

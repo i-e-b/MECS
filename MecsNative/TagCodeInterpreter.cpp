@@ -166,11 +166,15 @@ void RollBackSubProgram(InterpreterState* is) {
     // sanity check:
     if (!found || tag.type != (int)DataType::EndOfSubProgram) return;
 
+    StringAppend(is->_output, "   /\\ "); // reverse order!!!
+    DescribeTag(tag, is->_output, NULL);
+    StringAppend(is->_output, "\r\n");
+
     while (true) {
         VecPop_DataTag(is->_program, NULL);
         found = VecPeek_DataTag(is->_program, &tag);
 
-        StringAppend(is->_output, "    R: "); // reverse order!!!
+        StringAppend(is->_output, "   /\\ "); // reverse order!!!
         DescribeTag(tag, is->_output, NULL);
         StringAppend(is->_output, "\r\n");
 
@@ -905,9 +909,19 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         auto code = CastString(is, param[0]);
         auto compilableSyntaxTree = ParseSourceCode(code, false);
 
+        /*auto reren = RenderAstToSource(compilableSyntaxTree);
+        StringAppend(is->_output, reren);
+        StringDeallocate(reren);*/
+
         // TODO:  The compiler is NOT doing 'bare-get' properly here
         // i.e. the program "x" should be the same as "get(x)", but it's not 
-        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
+        //auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
+
+        // This includes the variable scope, but still doesn't get the correct code:
+        // The root element is coming back as not valid.
+        // Emitting value rather than name?
+        auto tagCode = Compile(compilableSyntaxTree, 0, false, is->_variables, NULL, Context::RuntimeEval);
+        TCW_RawToken(tagCode, MarkEndOfSubProgram()); // Interpreter uses this to clean up eval opcodes
 
         auto nextPos = TCW_AppendToVector(tagCode, is->_program); // These opcodes should be removed when 'EndOfSubProgram' is reached
         // NOTE: If `eval` code uses `return` to exit, we will probably leak. TODO: compiler could replace root-level `return` with 'EndOfSubProgram'?

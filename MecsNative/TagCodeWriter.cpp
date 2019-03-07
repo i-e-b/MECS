@@ -384,7 +384,7 @@ int TCW_AppendToVector(TagCodeCache* tcc, Vector* output) {
     }
 
     // 3) update jump table with final location
-    int jumpDist = (VecLength(output)) - 1;
+    int jumpDist = (VecLength(output)) - baseLocation - 1;
     if (jumpDist > 0) {
         jumpCode = EncodeLongOpcode('c', 's', jumpDist);
         VecSet_DataTag(output, baseLocation, jumpCode, NULL);

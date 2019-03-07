@@ -205,6 +205,16 @@ void DescribeTag(DataTag token, String* target, HashMap* symbols) {
         StringAppendFormat(target, "[\x03]", token.data);
         return;
 
+    case DataType::EndOfProgram:
+        StringAppend(target, "End Of Program");
+        return;
+    case DataType::EndOfSubProgram:
+        StringAppend(target, "End Of Subprogram");
+        return;
+    case DataType::Flag:
+        StringAppend(target, "Internal testing flag");
+        return;
+
     case DataType::VariableRef:
         StringAppend(target, "VariableNameRef");
         if (symbols != NULL && MapGet_int_StringPtr(symbols, token.data, &str)) {
