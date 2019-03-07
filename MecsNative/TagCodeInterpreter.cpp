@@ -169,6 +169,11 @@ void RollBackSubProgram(InterpreterState* is) {
     while (true) {
         VecPop_DataTag(is->_program, NULL);
         found = VecPeek_DataTag(is->_program, &tag);
+
+        StringAppend(is->_output, "    R: "); // reverse order!!!
+        DescribeTag(tag, is->_output, NULL);
+        StringAppend(is->_output, "\r\n");
+
         if (!found
             || tag.type == (int)DataType::EndOfSubProgram
             || tag.type == (int)DataType::EndOfProgram) return;
@@ -732,46 +737,6 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         if (nbParams < 2) return EncodeInt32(random_at_most(is->_stepsTaken, param[0].data)); // 1 param  - max size
         return EncodeInt32(ranged_random(is->_stepsTaken, param[0].data, param[1].data)); // 2 params - range
 
-    case FuncDef::Eval:
-    {
-        // Add a new block to our code base and jump to it.
-        // that keeps our stepping mechanism working.
-        // Static string pointers need an offset mechanism,
-        // handled by the tag code writer.
-
-        MMPush(1 MEGABYTE);
-
-        auto code = CastString(is, param[0]);
-        auto compilableSyntaxTree = ParseSourceCode(code, false); 
-        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
-
-        auto nextPos = TCW_AppendToVector(tagCode, is->_program); // These opcodes should be removed when 'EndOfSubProgram' is reached
-        // NOTE: If `eval` code uses `return` to exit, we will probably leak. TODO: compiler could replace root-level `return` with 'EndOfSubProgram'?
-        // Because `eval` is greedy, it should be ok to nest evals inside other evals. Not a good idea, but possible.
-
-        StringDeallocate(code);
-        DeallocateAST(compilableSyntaxTree);
-        TCW_Deallocate(tagCode);
-
-        MMPop();
-
-        ScopePush(is->_variables, param, nbParams); // write parameters into new scope
-        VecPush_int(is->_returnStack, *position); // set position for 'cret' call
-        *position = nextPos; // move pointer to start of function
-        return VoidReturn(); // return no value, continue execution elsewhere
-    }
-    case FuncDef::Call:
-    {
-        auto type = param[0].type;
-        if (type != (int)DataType::StringPtr && type != (int)DataType::StaticStringPtr)
-            return _Exception(is, "Tried to call a function by name, but was not a string", StringNewFormat("passed a '\x02' at \x02\n", type, position));
-
-        // this should be a string, but we need a function name hash -- so calculate it:
-        auto strName = CastString(is, param[0]);
-        auto functionNameHash = GetCrushedName(strName);
-        StringDeallocate(strName);
-        return EvaluateFunctionCall(position, functionNameHash, nbParams - 1, param + 1, is);
-    }
     case FuncDef::LogicNot:
     {
         if (nbParams != 1) return _Exception(is, "'not' should be called with one argument");
@@ -928,6 +893,50 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         if (nbParams == 1) return EncodeInt32(-CastInt(is, param[0]) % 2);
         return ChainRemainder(is, nbParams, param);
 
+    case FuncDef::Eval:
+    {
+        // Add a new block to our code base and jump to it.
+        // that keeps our stepping mechanism working.
+        // Static string pointers need an offset mechanism,
+        // handled by the tag code writer.
+
+        MMPush(1 MEGABYTE);
+
+        auto code = CastString(is, param[0]);
+        auto compilableSyntaxTree = ParseSourceCode(code, false);
+
+        // TODO:  The compiler is NOT doing 'bare-get' properly here
+        // i.e. the program "x" should be the same as "get(x)", but it's not 
+        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
+
+        auto nextPos = TCW_AppendToVector(tagCode, is->_program); // These opcodes should be removed when 'EndOfSubProgram' is reached
+        // NOTE: If `eval` code uses `return` to exit, we will probably leak. TODO: compiler could replace root-level `return` with 'EndOfSubProgram'?
+        // Because `eval` is greedy, it should be ok to nest evals inside other evals. Not a good idea, but possible.
+
+        StringDeallocate(code);
+        DeallocateAST(compilableSyntaxTree);
+        TCW_Deallocate(tagCode);
+
+        MMPop();
+
+        ScopePush(is->_variables, param, nbParams); // write parameters into new scope
+        VecPush_int(is->_returnStack, *position); // set position for 'cret' call
+        *position = nextPos; // move pointer to start of function, taking into account the interpreter's auto-advance
+        return VoidReturn(); // return no value, continue execution elsewhere
+    }
+    case FuncDef::Call:
+    {
+        auto type = param[0].type;
+        if (type != (int)DataType::StringPtr && type != (int)DataType::StaticStringPtr)
+            return _Exception(is, "Tried to call a function by name, but was not a string", StringNewFormat("passed a '\x02' at \x02\n", type, position));
+
+        // this should be a string, but we need a function name hash -- so calculate it:
+        auto strName = CastString(is, param[0]);
+        auto functionNameHash = GetCrushedName(strName);
+        StringDeallocate(strName);
+        return EvaluateFunctionCall(position, functionNameHash, nbParams - 1, param + 1, is);
+    }
+
     default:
         return _Exception(is, "Unrecognised built-in!", StringNewFormat(" Type = \x02\n", ((int)kind)));
     }
@@ -1037,6 +1046,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         }
 
         case (int)DataType::Opcode:
+        {
             // decode opcode and do stuff
             char codeClass, codeAction;
             uint16_t p1, p2;
@@ -1046,13 +1056,25 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             }
             programEnd = VectorLength(is->_program); // In case 'eval' changed it
             break;
-
+        }
         case (int)DataType::EndOfSubProgram:
+        {
             // Delete back to the 'EndOfProgram' marker
-            RollBackSubProgram(is);
             HandleReturn(&(is->_position), is);
-            break;
+            RollBackSubProgram(is);
 
+            // What is happening with value stack and scope here?
+            /*StringAppend(is->_output, "\r\nValue stack at end of eval:\r\n");
+            auto vals = is->_valueStack;
+            auto len = VecLength(vals);
+            for (int i = 0; i < len; i++) {
+                auto strVal = CastString(is, *VecGet_DataTag(vals, i));
+                StringAppend(is->_output, strVal);
+                StringAppend(is->_output, "\r\n");
+            }
+            StringAppend(is->_output, "###########################\r\n");*/
+            break;
+        }
         case (int)DataType::EndOfProgram:
             goto GOOD_EXIT;
 

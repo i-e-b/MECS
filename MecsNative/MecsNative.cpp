@@ -950,13 +950,13 @@ int TestProgramSuite() {
 
     int errs = 0;
 
-    errs += RunProgram("demo_program2.ecs");
-    errs += RunProgram("fib.ecs");
-    errs += RunProgram("Importer.ecs");
-    errs += RunProgram("getWithIndex.ecs");
-    errs += RunProgram("listMath.ecs");
-    errs += RunProgram("pick.ecs");
-    errs += RunProgram("pick2.ecs");
+    //errs += RunProgram("demo_program2.ecs");
+    //errs += RunProgram("fib.ecs");
+    //errs += RunProgram("Importer.ecs");
+    //errs += RunProgram("getWithIndex.ecs");
+    errs += RunProgram("listMath.ecs");     // TODO: this is NOT working
+    //errs += RunProgram("pick.ecs");
+    //errs += RunProgram("pick2.ecs");
 
     std::cout << "########## Error count = " << errs << " #########\n";
     return errs;
@@ -965,6 +965,7 @@ int TestProgramSuite() {
 int main() {
     StartManagedMemory();
 
+    /*
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1024,6 +1025,7 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
+    */
 
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
