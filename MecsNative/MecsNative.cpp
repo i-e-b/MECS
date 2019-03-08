@@ -888,7 +888,7 @@ int RunProgram(const char* filename) {
     // Load, compile and  run a program inside an arena
 
     std::cout << "########## Attempting program: " << filename << " #########\n";
-    MMPush(10 MEGABYTES);
+    MMPush(100 MEGABYTES);
 
     // Compile and load
     auto code = StringEmpty();
@@ -905,7 +905,7 @@ int RunProgram(const char* filename) {
 
     auto program = VecAllocate_DataTag();
     auto nextPos = TCW_AppendToVector(tagCode, program);
-    auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
+    auto is = InterpAllocate(program, 100 MEGABYTE, NULL);
 
     StringDeallocate(code);
     DeallocateAST(compilableSyntaxTree);

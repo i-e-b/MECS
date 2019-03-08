@@ -222,7 +222,8 @@ String* DiagnosticString(DataTag tag, InterpreterState* is) {
 }
 
 DataTag* ReadParams(int position, uint16_t nbParams, Vector* valueStack) {
-    DataTag* param = (DataTag*)mcalloc(nbParams, sizeof(DataTag)); //new double[nbParams];
+    DataTag* param = (DataTag*)mcalloc(nbParams, sizeof(DataTag));
+    if (param == NULL) return NULL;
     // Pop values from stack into a param cache
     for (int i = nbParams - 1; i >= 0; i--) {
         VecPop_DataTag(valueStack, &(param[i]));
@@ -435,6 +436,11 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
     auto functionNameHash = DecodeVariableRef(nameTag);
 
     auto param = ReadParams(is->_position, nbParams, is->_valueStack);
+    if (param == NULL) {
+        is->ErrorFlag = true;
+        VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
+        return;
+    }
 
     // Evaluate function.
     DataTag evalResult = EvaluateFunctionCall(position, functionNameHash, nbParams, param, is);
@@ -1050,6 +1056,10 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
                 VectorDequeue(is->_valueStack, NULL); // knock values off the far side of the stack.
             }
         }
+
+        // Keep scope clean.
+        // This *REALLY* needs to be improved
+        //ScopePurge(is->_variables); // this doesn't really work...
 
         auto wptr = VecGet_DataTag(is->_program, is->_position);
         if (wptr == NULL) break;

@@ -64,4 +64,8 @@ bool InScope(Scope* s, uint32_t crushedName);
 // Add an increment to a stored number
 void ScopeMutateNumber(Scope* s, uint32_t crushedName, int8_t increment);
 
+// Purge hashmaps of all scopes.
+// TODO: This *REALLY* needs to be improved!
+void ScopePurge(Scope* s);
+
 #endif

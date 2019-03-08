@@ -286,6 +286,7 @@ void * PtrOfElem(Vector *v, uint index) {
 
 Vector *VectorAllocate(int elementSize) {
     auto result = (Vector*)mcalloc(1, sizeof(Vector));
+    if (result == NULL) return NULL;
 
     result->_arena = MMCurrent();
     result->ElementByteSize = elementSize;

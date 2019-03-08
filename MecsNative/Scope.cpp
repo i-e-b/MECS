@@ -118,6 +118,16 @@ Vector* ScopeAllVisible(Scope* s) {
     return result;
 }
 
+void ScopePurge(Scope * s) {
+    if (s == NULL) return;
+
+    int currentScopeIdx = VecLength(s->_scopes) - 1;
+    for (int i = currentScopeIdx; i >= 0; i--) {
+        auto scope = VecGet_MapPtr(s->_scopes, i); //var scope = _scopes[i];
+        HashMapPurge(*scope);
+    }
+}
+
 void ScopePush(Scope* s, Vector* parameters) {
     if (s == NULL) return;
 

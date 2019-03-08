@@ -38,7 +38,7 @@ Arena* NewArena(size_t size) {
     int expectedZoneCount = (int)(size / ARENA_ZONE_SIZE) + 1;
     int overhead = sizeof(uint16_t) * expectedZoneCount * 2;
 
-    auto realMemory = calloc(1, size);
+    auto realMemory = calloc(1, size + ARENA_ZONE_SIZE);
     if (realMemory == NULL) return NULL;
 
     auto result = (Arena*)calloc(1, sizeof(Arena));
@@ -54,7 +54,7 @@ Arena* NewArena(size_t size) {
     // recording only heads and refs would take 64KB of management space
     // recording heads, refs and back-step (an optimisation for very short-lived items) would use 96KB of management space.
     // This seems pretty reasonable.
-    result->_zoneCount = expectedZoneCount;
+    result->_zoneCount = expectedZoneCount - 1;
     result->_currentZone = 0;
 
     // Allow space for arena tables, store adjusted base
