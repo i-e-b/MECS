@@ -140,11 +140,12 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
         if (debug) {
             TCW_Comment(wr, StringNewFormat("// treating '\x01' as an implicit get()", valueName));
         }
-        if (substitute) {
-            //TCW_Memory(wr, 'g', leafValue.data);
-            TCW_Memory(wr, 'g', nameHash);
+        if (substitute && leafValue.type == (int)DataType::VariableRef) {
+            TCW_Memory(wr, 'g', leafValue.data);
+            //TCW_Memory(wr, 'g', nameHash);
         } else {
-            TCW_Memory(wr, 'g', valueName, 0);
+            TCW_Memory(wr, 'g', nameHash);
+            //TCW_Memory(wr, 'g', valueName, 0);
         }
 
         return;

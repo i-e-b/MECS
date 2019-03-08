@@ -950,22 +950,35 @@ int TestProgramSuite() {
 
     int errs = 0;
 
-    //errs += RunProgram("demo_program2.ecs");
-    //errs += RunProgram("fib.ecs");
-    //errs += RunProgram("Importer.ecs");
-    //errs += RunProgram("getWithIndex.ecs");
-    errs += RunProgram("listMath.ecs");     // TODO: this is NOT working
-    //errs += RunProgram("pick.ecs");
-    //errs += RunProgram("pick2.ecs");
+    //errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
+
+    // These two are failing because the values array in HashMap is leaking like crazy.
+    // That *really* needs cleaning up for tight loops.
+    // We could probably have an optimised mod-in-place HashMap for scopes?
+    // For now, call HashMapPurge(h); at some reasonable point
+    //errs += RunProgram("stressTest.ecs"); // TODO: this one doesn't work
+    //errs += RunProgram("nestedLoops.ecs"); // TODO: this one doesn't work
+
+    errs += RunProgram("demo_program2.ecs");
+    errs += RunProgram("fib.ecs");
+    errs += RunProgram("Importer.ecs");
+    errs += RunProgram("getWithIndex.ecs");
+    errs += RunProgram("listMath.ecs");
+    errs += RunProgram("pick.ecs");
+    errs += RunProgram("pick2.ecs");
+    errs += RunProgram("stringSearch.ecs");
 
     std::cout << "########## Error count = " << errs << " #########\n";
     return errs;
 }
 
 int main() {
+
+    auto aares = TestArenaAllocator();
+    if (aares != 0) return aares;
+
     StartManagedMemory();
 
-    /*
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1011,11 +1024,6 @@ int main() {
     if (fsres != 0) return fsres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
-    auto aares = TestArenaAllocator();
-    if (aares != 0) return aares;
-    MMPop();
-
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
@@ -1025,7 +1033,6 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-    */
 
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;

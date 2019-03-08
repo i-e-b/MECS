@@ -267,18 +267,19 @@ void ArenaGetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes,
 uint32_t ArenaPtrToOffset(Arena* a, void* ptr) {
     if (!ArenaContainsPointer(a, ptr)) return 0;
 
-    size_t base = (size_t)a;
+    size_t base = (size_t)(a->_start);
     size_t actual = (size_t)ptr;
 
     if (base >= actual) return 0;
 
-    return actual - base;
+    return (actual - base) + 1; // zero is a failure case
 }
 
 // Get a raw memory pointer from an offset into an arena
 void* ArenaOffsetToPtr(Arena* a, uint32_t offset) {
-    void* actual = a + offset;
-    if (!ArenaContainsPointer(a, actual)) return NULL; // not a valid answer
-    return actual;
+    size_t base = (size_t)(a->_start);
+    size_t actual = base + (size_t)offset - 1;
+    if (!ArenaContainsPointer(a, (void*)actual)) return NULL; // not a valid answer
+    return (void*)actual;
 }
 

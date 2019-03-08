@@ -166,17 +166,17 @@ void RollBackSubProgram(InterpreterState* is) {
     // sanity check:
     if (!found || tag.type != (int)DataType::EndOfSubProgram) return;
 
-    StringAppend(is->_output, "   /\\ "); // reverse order!!!
+    /*StringAppend(is->_output, "   /\\ "); // reverse order!!!
     DescribeTag(tag, is->_output, NULL);
-    StringAppend(is->_output, "\r\n");
+    StringAppend(is->_output, "\r\n");*/
 
     while (true) {
         VecPop_DataTag(is->_program, NULL);
         found = VecPeek_DataTag(is->_program, &tag);
 
-        StringAppend(is->_output, "   /\\ "); // reverse order!!!
+        /*StringAppend(is->_output, "   /\\ "); // reverse order!!!
         DescribeTag(tag, is->_output, NULL);
-        StringAppend(is->_output, "\r\n");
+        StringAppend(is->_output, "\r\n");*/
 
         if (!found
             || tag.type == (int)DataType::EndOfSubProgram
@@ -439,6 +439,12 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
     // Evaluate function.
     DataTag evalResult = EvaluateFunctionCall(position, functionNameHash, nbParams, param, is);
 
+    if (evalResult.type == (int)DataType::Exception) {
+        is->ErrorFlag = true;
+        VecPush_DataTag(is->_valueStack, evalResult);
+        return;
+    }
+
     // Add result on stack as a value.
     if (evalResult.type != (int)DataType::Not_a_Result
         && evalResult.type != (int)DataType::Void) {
@@ -476,6 +482,19 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
 
 void HandleReturn(int* position, InterpreterState* is) {
     if (is == NULL) return;
+
+
+    /*StringAppend(is->_output, "\r\nValue stack at end of program:\r\n");
+    auto vals = is->_valueStack;
+    auto len = VecLength(vals);
+    for (int i = 0; i < len; i++) {
+        auto strVal = CastString(is, *VecGet_DataTag(vals, i));
+        StringAppend(is->_output, strVal);
+        StringAppend(is->_output, "\r\n");
+    }
+    StringAppend(is->_output, "###########################\r\n");*/
+
+
     int result;
     if (!VecPop_int(is->_returnStack, &result)) {
         is->ErrorFlag = true;
@@ -894,7 +913,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         return ChainDivide(is, nbParams, param);
 
     case FuncDef::MathMod:
-        if (nbParams == 1) return EncodeInt32(-CastInt(is, param[0]) % 2);
+        if (nbParams == 1) return EncodeInt32(CastInt(is, param[0]) % 2);
         return ChainRemainder(is, nbParams, param);
 
     case FuncDef::Eval:
@@ -909,22 +928,10 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         auto code = CastString(is, param[0]);
         auto compilableSyntaxTree = ParseSourceCode(code, false);
 
-        /*auto reren = RenderAstToSource(compilableSyntaxTree);
-        StringAppend(is->_output, reren);
-        StringDeallocate(reren);*/
-
-        // TODO:  The compiler is NOT doing 'bare-get' properly here
-        // i.e. the program "x" should be the same as "get(x)", but it's not 
-        //auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
-
-        // This includes the variable scope, but still doesn't get the correct code:
-        // The root element is coming back as not valid.
-        // Emitting value rather than name?
-        auto tagCode = Compile(compilableSyntaxTree, 0, false, is->_variables, NULL, Context::RuntimeEval);
-        TCW_RawToken(tagCode, MarkEndOfSubProgram()); // Interpreter uses this to clean up eval opcodes
+        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
 
         auto nextPos = TCW_AppendToVector(tagCode, is->_program); // These opcodes should be removed when 'EndOfSubProgram' is reached
-        // NOTE: If `eval` code uses `return` to exit, we will probably leak. TODO: compiler could replace root-level `return` with 'EndOfSubProgram'?
+        // NOTE: If `eval` code uses `return` to exit, we will probably leak.
         // Because `eval` is greedy, it should be ok to nest evals inside other evals. Not a good idea, but possible.
 
         StringDeallocate(code);
@@ -1000,10 +1007,11 @@ DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
     StringDeallocate(str);
     
     uint32_t encPtr = ArenaPtrToOffset(is->_memory, result); // allows us to place a 32-bit ptr in 64-bit space
+    if (encPtr < 1) {
+        return RuntimeError(is->_position); // nonsense result from arena allocation
+    }
 
     return EncodePointer(encPtr, DataType::StringPtr);
-
-    return DataTag{};
 }
 
 

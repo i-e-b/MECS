@@ -245,9 +245,9 @@ void RebuildSkipTable(Vector *v)
             return;
         }
 
-        var iptr = byteOffset(newTablePtr, (SKIP_ELEM_SIZE * i));
+        var iptr = byteOffset(newTablePtr, (SKIP_ELEM_SIZE * i)); // 443
         writeUint(iptr, 0, chunkIndex);
-        writePtr(iptr, INDEX_SIZE, chunkPtr);
+        writePtr(iptr, INDEX_SIZE, chunkPtr); // TODO: !!! This fails at large sizes!
         newSkipEntries++;
         target += stride;
     }
