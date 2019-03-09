@@ -188,6 +188,7 @@ void ScopeDrop(Scope* s) {
         }
     }
     VecDeallocate(refs);
+    MapDeallocate(last);
 }
 
 DataTag ScopeResolve(Scope* s, uint32_t crushedName) {

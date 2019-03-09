@@ -67,14 +67,19 @@ void* ValuePtr(HashMap* h, HashMap_Entry* e) {
     return byteOffset(e, sizeof(HashMap_Entry) + h->KeyByteSize);
 }
 
-bool Swap(Vector* vec, uint32_t idx, HashMap_Entry* newEntry) {
+bool SwapOut(Vector* vec, uint32_t idx, HashMap_Entry* newEntry) {
     if (vec == NULL) return false;
 
-    HashMap_Entry temp;
-    if (!VectorCopy(vec, idx, &temp)) return false;
+    auto size = VectorElementSize(vec);
 
-    VectorSet(vec, idx, newEntry, NULL);
-    *newEntry = temp;
+    auto temp = (HashMap_Entry*)mmalloc(size);
+    //if (!VectorCopy(vec, idx, &temp)) return false;
+    if (!VectorSet(vec, idx, newEntry, temp)) {
+        mfree(temp);
+        return false;
+    }
+    writeValue(newEntry, 0, temp, size);
+    mfree(temp);
     return true;
 }
 
@@ -111,7 +116,7 @@ bool PutInternal(HashMap * h, HashMap_Entry* entry, bool canReplace, bool checkD
         auto probeDistance = DistanceToInitIndex(h, indexCurrent);
         if (probeCurrent > probeDistance) {
             probeCurrent = probeDistance;
-            if (!Swap(h->buckets, indexCurrent, entry))
+            if (!SwapOut(h->buckets, indexCurrent, entry))
                 return false;
         }
         probeCurrent++;
@@ -179,15 +184,16 @@ void HashMapPurge(HashMap *h) {
 }
 
 bool ResizeNext(HashMap * h) {
-    // mild scaling can save memory, but resizing is very expensive -- so the default is an aggressive algorithm
+    // mild scaling can save memory, but resizing is very expensive
+
     // Mild scaling
-    //return Resize(count == 0 ? 32 : count*2);
+    return Resize(h, h->count == 0 ? 32 : h->count * 2, true);
 
     // Aggressive scaling
-    unsigned long size = (unsigned long)h->count * 2;
+    /*unsigned long size = (unsigned long)h->count * 2;
     if (h->count < 8192) size = (unsigned long)h->count * h->count;
     if (size < MIN_BUCKET_SIZE) size = MIN_BUCKET_SIZE;
-    return Resize(h, (uint32_t)size, true);
+    return Resize(h, (uint32_t)size, true);*/
 }
 
 HashMap* HashMapAllocate(uint32_t size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void *key_A, void *key_B), unsigned int(*getHashFunc)(void *key)) {

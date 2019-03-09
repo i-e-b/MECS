@@ -67,9 +67,6 @@
     <ClCompile Include="TagCodeWriter.cpp">
       <Filter>Source Files\InputOutput</Filter>
     </ClCompile>
-    <ClCompile Include="Scope.cpp">
-      <Filter>Source Files\InputOutput</Filter>
-    </ClCompile>
     <ClCompile Include="CompilerCore.cpp">
       <Filter>Source Files\Compiler</Filter>
     </ClCompile>
@@ -93,6 +90,9 @@
     </ClCompile>
     <ClCompile Include="TagCodeFunctionTypes.cpp">
       <Filter>Source Files\Encoding</Filter>
+    </ClCompile>
+    <ClCompile Include="Scope.cpp">
+      <Filter>Source Files\Containers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -135,9 +135,6 @@
     <ClInclude Include="CompilerCore.h">
       <Filter>Source Files\Compiler</Filter>
     </ClInclude>
-    <ClInclude Include="Scope.h">
-      <Filter>Source Files\InputOutput</Filter>
-    </ClInclude>
     <ClInclude Include="TimingSys.h">
       <Filter>Source Files\System</Filter>
     </ClInclude>
@@ -164,6 +161,9 @@
     </ClInclude>
     <ClInclude Include="TagCodeFunctionTypes.h">
       <Filter>Source Files\Encoding</Filter>
+    </ClInclude>
+    <ClInclude Include="Scope.h">
+      <Filter>Source Files\Containers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

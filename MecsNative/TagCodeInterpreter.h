@@ -33,6 +33,7 @@ typedef struct InterpreterState InterpreterState;
 
 // Start up an interpreter.
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.
+// memory size must be enough for value and return stack, but does not include tagCode size
 InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* debugSymbols);
 
 // Close down an interpreter and free all memory

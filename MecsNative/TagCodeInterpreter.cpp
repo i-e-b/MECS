@@ -89,7 +89,7 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     auto result = (InterpreterState*)mmalloc(sizeof(InterpreterState));
     if (result == NULL) return NULL;
 
-    result->Functions = MapAllocate_Name_FunctionDefinition(256);
+    result->Functions = MapAllocate_Name_FunctionDefinition(100);
     result->DebugSymbols = debugSymbols; // ok if NULL
     result->ErrorFlag = false;
 
@@ -101,8 +101,8 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     result->_stepsTaken = 0;
     result->_runningVerbose = false;
 
-    result->_returnStack = VecAllocate_int();
-    result->_valueStack = VecAllocate_DataTag();
+    result->_returnStack = VecAllocateArena_int(result->_memory);
+    result->_valueStack = VecAllocateArena_DataTag(result->_memory);
 
     result->_input = StringEmpty();
     result->_output = StringEmpty();
@@ -132,8 +132,8 @@ void InterpDeallocate(InterpreterState* is) {
     if (is->_input != NULL) StringDeallocate(is->_input);
     if (is->_output != NULL) StringDeallocate(is->_output);
     if (is->Functions != NULL) MapDeallocate(is->Functions);
-    if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
-    if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
+    //if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
+    //if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
     if (is->_variables != NULL) ScopeDeallocate(is->_variables);
     if (is->_memory != NULL) DropArena(&(is->_memory));
 

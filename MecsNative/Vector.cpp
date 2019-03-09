@@ -272,6 +272,7 @@ void MaybeRebuildSkipTable(Vector *v) {
 }
 
 void * PtrOfElem(Vector *v, uint index) {
+    if (v == NULL) return NULL;
     if (index >= v->_elementCount) return NULL;
 
     var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
