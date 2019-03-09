@@ -93,6 +93,20 @@ int TestHashMap() {
     MapClear(hmap);
     std::cout << "Count after clear = " << (MapCount(hmap)) << "\n";
 
+
+    // Check we can replace one entry an unlimited number of times:
+    std::cout << "Row hammering...";
+    for (int i = 0; i < 1000000; i++) {
+        int key = 20;
+        int value = 20;
+        if(!MapPut_int_int(hmap, key, value, true)) {
+            std::cout << "FAILED at " << i << "\n";
+            break;
+        }
+    }
+    std::cout << "done\n";
+
+
     std::cout << "Deallocating map\n";
     MapDeallocate(hmap);
     return 0;
@@ -973,7 +987,7 @@ int TestProgramSuite() {
 }
 
 int main() {
-
+    
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
 
@@ -993,7 +1007,7 @@ int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
     MMPop();
-
+    /*
     MMPush(1 MEGABYTE);
     auto tres = TestTree();
     if (tres != 0) return tres;
@@ -1036,6 +1050,6 @@ int main() {
 
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
-
+    */
     ShutdownManagedMemory();
 }
