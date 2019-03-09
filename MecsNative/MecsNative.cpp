@@ -902,7 +902,8 @@ int RunProgram(const char* filename) {
     // Load, compile and  run a program inside an arena
 
     std::cout << "########## Attempting program: " << filename << " #########\n";
-    MMPush(100 MEGABYTES);
+
+    MMPush(10 MEGABYTES);
 
     // Compile and load
     auto code = StringEmpty();
@@ -919,16 +920,17 @@ int RunProgram(const char* filename) {
 
     auto program = VecAllocate_DataTag();
     auto nextPos = TCW_AppendToVector(tagCode, program);
-    auto is = InterpAllocate(program, 100 MEGABYTE, NULL);
+    auto is = InterpAllocate(program, 10 MEGABYTE, NULL);
 
     StringDeallocate(code);
     DeallocateAST(compilableSyntaxTree);
     TCW_Deallocate(tagCode);
 
     // run
-    auto result = InterpRun(is, true, 0x7FFFFFFF);
-    auto str = StringEmpty();
+    auto result = InterpRun(is, true, 0xFFFFFF);
 
+    MMPush(10 MEGABYTES);
+    auto str = StringEmpty();
     int errState = 0;
     switch (result.State) {
     case ExecutionState::Complete:
@@ -948,10 +950,28 @@ int RunProgram(const char* filename) {
         errState = 1;
         StringAppend(str, "\r\nProgram still running?\r\n");
         break;
+    default:
+        errState = 1;
+        StringAppend(str, "\r\nUnknown State!\r\n");
+        break;
+        break;
     }
+
     ReadOutput(is, str);
     WriteStr(str);
     StringDeallocate(str);
+    MMPop();
+
+
+
+    // Check memory state
+    size_t alloc, unalloc;
+    int objects;
+    ArenaGetState(InterpInternalMemory(is), &alloc, &unalloc, NULL, NULL, &objects, NULL);
+    std::cout << "Runtime used in internal memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+    ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
+    std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+
     InterpDeallocate(is);
 
     MMPop();
@@ -966,12 +986,8 @@ int TestProgramSuite() {
 
     //errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
 
-    // These two are failing because the values array in HashMap is leaking like crazy.
-    // That *really* needs cleaning up for tight loops.
-    // We could probably have an optimised mod-in-place HashMap for scopes?
-    // For now, call HashMapPurge(h); at some reasonable point
-    errs += RunProgram("stressTest.ecs"); // TODO: this one doesn't work
-    errs += RunProgram("nestedLoops.ecs"); // TODO: this one doesn't work
+    //errs += RunProgram("stressTest.ecs"); // TODO: this one doesn't work
+    errs += RunProgram("nestedLoops.ecs"); // TODO: this one runs out of memory. Interpreter leaking?
 
     errs += RunProgram("demo_program2.ecs");
     errs += RunProgram("fib.ecs");

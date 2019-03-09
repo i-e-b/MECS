@@ -29,7 +29,7 @@ Input handling:
 * [x] Improve filesystem to allow non-byte sized vectors?
 * [ ] Hunt down and fix compiler and parser leaks (relatively low priority)
 * [x] Convert parser
-* [ ] Convert compiler
+* [x] Convert compiler
   * [x] tag code write
   * [x] scope (vector of hashmaps)
   * [x] context
