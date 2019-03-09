@@ -198,6 +198,7 @@ bool ResizeNext(HashMap * h) {
 
 HashMap* HashMapAllocate(uint32_t size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void *key_A, void *key_B), unsigned int(*getHashFunc)(void *key)) {
     auto result = (HashMap*)mcalloc(1, sizeof(HashMap)); // need to ensure values are zeroed
+    if (result == NULL) return NULL;
     result->KeyByteSize = keyByteSize;
     result->ValueByteSize = valueByteSize;
     result->KeyComparer = keyComparerFunc;
@@ -215,6 +216,7 @@ void HashMapDeallocate(HashMap * h) {
 
 bool Find(HashMap* h, void* key, uint32_t* index) {
     *index = 0;
+    if (h == NULL) return false;
     if (h->countUsed <= 0) return false;
     if (!VectorIsValid(h->buckets)) return false;
 
@@ -242,6 +244,7 @@ bool Find(HashMap* h, void* key, uint32_t* index) {
 }
 
 bool HashMapGet(HashMap* h, void* key, void** outValue) {
+    if (h == NULL) return false;
     // Find the entry index
     uint32_t index = 0;
     if (!Find(h, key, &index)) return false;
@@ -258,6 +261,7 @@ bool HashMapGet(HashMap* h, void* key, void** outValue) {
 }
 
 bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
+    if (h == NULL) return false;
     // Check to see if we need to grow
     if (h->countUsed >= h->growAt) {
         if (!ResizeNext(h)) return false;

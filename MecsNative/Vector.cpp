@@ -446,6 +446,7 @@ int VectorLength(Vector *v) {
 }
 
 bool VectorPush(Vector *v, void* value) {
+    if (v == NULL) return false;
     var entryIdx = (v->_elementCount + v->_baseOffset) % v->ElemsPerChunk;
 
     bool found;
@@ -537,7 +538,7 @@ bool VectorDequeue(Vector * v, void * outValue) {
 }
 
 bool VectorPop(Vector *v, void *target) {
-    if (v->_elementCount == 0) return false;
+    if (v == NULL || v->_elementCount == 0) return false;
 
     var index = v->_elementCount - 1;
     var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;

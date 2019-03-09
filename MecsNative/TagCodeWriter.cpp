@@ -359,13 +359,14 @@ int TCW_AppendToVector(TagCodeCache* tcc, Vector* output) {
     // 2) Write the strings, with a mapping dictionary
     long location = VecLength(output); // counting initial jump as 0
     int stringTableCount = VecLength(tcc->_stringTable);
-    auto mapping = MapAllocate_int_int(1024);
+    auto mapping = MapAllocate_int_int(128);
+    if (mapping == NULL) return -1;
     for (int index = 0; index < stringTableCount; index++) {
         String* staticStr = NULL;
         VecDequeue_StringPtr(tcc->_stringTable, &staticStr);
 
         if (!StringIsValid(staticStr)) {
-            return NULL; // something went very wrong
+            return -1; // something went very wrong
         }
 
         auto bytes = StringLength(staticStr);
@@ -408,14 +409,14 @@ int TCW_AppendToVector(TagCodeCache* tcc, Vector* output) {
                 VecPush_DataTag(output, EncodePointer(*final, DataType::StaticStringPtr));
             } else {
                 // String mapping went totally wrong
-                return NULL;
+                return -1;
             }
             break;
         }
 
         case DataType::Invalid:
             // Total failure!
-            return NULL;
+            return -1;
 
         default:
             VecPush_DataTag(output, code);

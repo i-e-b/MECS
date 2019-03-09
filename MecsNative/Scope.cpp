@@ -38,7 +38,7 @@ Scope* ScopeAllocate() {
     auto result = (Scope*)mmalloc(sizeof(Scope));
     if (result == NULL) return NULL;
 
-    auto firstMap = (MapPtr)MapAllocate_Name_DataTag(127);
+    auto firstMap = (MapPtr)MapAllocate_Name_DataTag(64);
     if (firstMap == NULL) { mfree(result); return NULL; }
 
     result->PotentialGarbage = MapAllocate_Name_DataTag(1024);
@@ -100,7 +100,7 @@ Vector* ScopeAllVisible(Scope* s) {
     int currentScopeIdx = VecLength(s->_scopes) - 1;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scope = VecGet_MapPtr(s->_scopes, i); //var scope = _scopes[i];
-        auto values = MapAllEntries(*VecGet_MapPtr(s->_scopes, i));
+        auto values = MapAllEntries(*scope);
 
         Map_KVP_Name_DataTag entry; 
         while (VecPop_Map_KVP_Name_DataTag(values, &entry)) {

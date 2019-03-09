@@ -221,12 +221,12 @@ String* DiagnosticString(DataTag tag, InterpreterState* is) {
     return StringEmpty();
 }
 
-DataTag* ReadParams(int position, uint16_t nbParams, Vector* valueStack) {
-    DataTag* param = (DataTag*)mcalloc(nbParams, sizeof(DataTag));
+DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){//int position, uint16_t nbParams, Vector* valueStack) {
+    DataTag* param = (DataTag*)ArenaAllocate(is->_memory, nbParams * sizeof(DataTag));//mcalloc(nbParams, sizeof(DataTag));
     if (param == NULL) return NULL;
     // Pop values from stack into a param cache
     for (int i = nbParams - 1; i >= 0; i--) {
-        VecPop_DataTag(valueStack, &(param[i]));
+        VecPop_DataTag(is->_valueStack, &(param[i]));
     }
 
     return param;
@@ -435,7 +435,7 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
     VecPop_DataTag(is->_valueStack, &nameTag);
     auto functionNameHash = DecodeVariableRef(nameTag);
 
-    auto param = ReadParams(is->_position, nbParams, is->_valueStack);
+    auto param = ReadParams(is, nbParams);
     if (param == NULL) {
         is->ErrorFlag = true;
         VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
@@ -448,6 +448,7 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
     if (evalResult.type == (int)DataType::Exception) {
         is->ErrorFlag = true;
         VecPush_DataTag(is->_valueStack, evalResult);
+        ArenaDereference(is->_memory, param);
         return;
     }
 
@@ -456,6 +457,7 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
         && evalResult.type != (int)DataType::Void) {
         VecPush_DataTag(is->_valueStack, evalResult);
     }
+    ArenaDereference(is->_memory, param);
 }
 
 void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCount, InterpreterState* is) {
@@ -559,24 +561,34 @@ void HandleControlSignal(int* position, char codeAction, int opCodeCount, Interp
 }
 
 int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint16_t opCodeCount, InterpreterState* is) {
-    auto param = ReadParams(position, argCount, is->_valueStack);
+    auto param = ReadParams(is, argCount);
+
+    int result;
     auto cmp = (CmpOp)codeAction;
     switch (cmp) {
     case CmpOp::Equal:
-        return ListEquals(argCount, param, is) ? position : position + opCodeCount;
+        result = ListEquals(argCount, param, is) ? position : position + opCodeCount;
+        break;
     case CmpOp::NotEqual:
-        return ListEquals(argCount, param, is) ? position + opCodeCount : position;
+        result = ListEquals(argCount, param, is) ? position + opCodeCount : position;
+        break;
     case CmpOp::Less:
-        return FoldLessThan(argCount, param, is) ? position : position + opCodeCount;
+        result = FoldLessThan(argCount, param, is) ? position : position + opCodeCount;
+        break;
     case CmpOp::Greater:
-        return FoldGreaterThan(argCount, param, is) ? position : position + opCodeCount;
+        result = FoldGreaterThan(argCount, param, is) ? position : position + opCodeCount;
+        break;
     default:
     {
         is->ErrorFlag = true;
         StringAppendFormat(is->_output, "Unknown compound compare at position \x02", position);
-        return -1;
+        result = -1;
+        break;
     }
     }
+
+    ArenaDereference(is->_memory, param);
+    return result;
 }
 
 void HandleMemoryAccess(int* position, char action, int varRef, uint16_t paramCount, InterpreterState* is) {
@@ -937,6 +949,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
 
         auto nextPos = TCW_AppendToVector(tagCode, is->_program); // These opcodes should be removed when 'EndOfSubProgram' is reached
+        if (nextPos < 0) return RuntimeError(is->_position);
         // NOTE: If `eval` code uses `return` to exit, we will probably leak.
         // Because `eval` is greedy, it should be ok to nest evals inside other evals. Not a good idea, but possible.
 

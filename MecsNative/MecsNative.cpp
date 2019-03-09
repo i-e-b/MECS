@@ -920,14 +920,14 @@ int RunProgram(const char* filename) {
 
     auto program = VecAllocate_DataTag();
     auto nextPos = TCW_AppendToVector(tagCode, program);
-    auto is = InterpAllocate(program, 10 MEGABYTE, NULL);
+    auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
 
     StringDeallocate(code);
     DeallocateAST(compilableSyntaxTree);
     TCW_Deallocate(tagCode);
 
     // run
-    auto result = InterpRun(is, true, 0xFFFFFF);
+    auto result = InterpRun(is, true, 0x7fFFFFFF);
 
     MMPush(10 MEGABYTES);
     auto str = StringEmpty();
@@ -986,8 +986,8 @@ int TestProgramSuite() {
 
     //errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
 
-    //errs += RunProgram("stressTest.ecs"); // TODO: this one doesn't work
-    errs += RunProgram("nestedLoops.ecs"); // TODO: this one runs out of memory. Interpreter leaking?
+    //errs += RunProgram("stressTest.ecs"); // hellishly slow!
+    errs += RunProgram("nestedLoops.ecs");
 
     errs += RunProgram("demo_program2.ecs");
     errs += RunProgram("fib.ecs");
