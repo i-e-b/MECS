@@ -95,7 +95,7 @@ int TestHashMap() {
 
 
     // Check we can replace one entry an unlimited number of times:
-    std::cout << "Row hammering...";
+    /*std::cout << "Row hammering...";
     for (int i = 0; i < 1000000; i++) {
         int key = 20;
         int value = 20;
@@ -104,7 +104,7 @@ int TestHashMap() {
             break;
         }
     }
-    std::cout << "done\n";
+    std::cout << "done\n";*/
 
 
     std::cout << "Deallocating map\n";
@@ -926,7 +926,7 @@ int RunProgram(const char* filename) {
     TCW_Deallocate(tagCode);
 
     // run
-    auto result = InterpRun(is, true, 0xFFFFFF);
+    auto result = InterpRun(is, true, 0x7FFFFFFF);
     auto str = StringEmpty();
 
     int errState = 0;
@@ -970,8 +970,8 @@ int TestProgramSuite() {
     // That *really* needs cleaning up for tight loops.
     // We could probably have an optimised mod-in-place HashMap for scopes?
     // For now, call HashMapPurge(h); at some reasonable point
-    //errs += RunProgram("stressTest.ecs"); // TODO: this one doesn't work
-    //errs += RunProgram("nestedLoops.ecs"); // TODO: this one doesn't work
+    errs += RunProgram("stressTest.ecs"); // TODO: this one doesn't work
+    errs += RunProgram("nestedLoops.ecs"); // TODO: this one doesn't work
 
     errs += RunProgram("demo_program2.ecs");
     errs += RunProgram("fib.ecs");
@@ -1007,7 +1007,7 @@ int main() {
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
     MMPop();
-    /*
+
     MMPush(1 MEGABYTE);
     auto tres = TestTree();
     if (tres != 0) return tres;
@@ -1050,6 +1050,6 @@ int main() {
 
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
-    */
+
     ShutdownManagedMemory();
 }

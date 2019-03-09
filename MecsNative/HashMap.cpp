@@ -262,6 +262,8 @@ bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
     
     // Write the entry into the hashmap
     auto entry = (HashMap_Entry*)mmalloc(sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
+    if (entry == NULL) return false;
+
     entry->hash = safeHash;
     writeValue(KeyPtr(entry), 0, key, h->KeyByteSize);
     writeValue(ValuePtr(h, entry), 0, value, h->ValueByteSize);
