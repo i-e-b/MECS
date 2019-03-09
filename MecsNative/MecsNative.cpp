@@ -903,9 +903,11 @@ int RunProgram(const char* filename) {
 
     std::cout << "########## Attempting program: " << filename << " #########\n";
 
-    MMPush(10 MEGABYTES);
+    MMPush(1 MEGABYTES);
+    auto program = VecAllocate_DataTag();
 
     // Compile and load
+    MMPush(10 MEGABYTES);
     auto code = StringEmpty();
     auto fileName = StringNew(filename);
     auto vec = StringGetByteVector(code);
@@ -918,18 +920,17 @@ int RunProgram(const char* filename) {
     auto compilableSyntaxTree = ParseSourceCode(code, false);
     auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
 
-    auto program = VecAllocate_DataTag();
     auto nextPos = TCW_AppendToVector(tagCode, program);
-    auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
 
     StringDeallocate(code);
     DeallocateAST(compilableSyntaxTree);
     TCW_Deallocate(tagCode);
+    MMPop();
 
     // run
+    auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
     auto result = InterpRun(is, true, 0x7fFFFFFF);
 
-    MMPush(10 MEGABYTES);
     auto str = StringEmpty();
     int errState = 0;
     switch (result.State) {
@@ -960,8 +961,6 @@ int RunProgram(const char* filename) {
     ReadOutput(is, str);
     WriteStr(str);
     StringDeallocate(str);
-    MMPop();
-
 
 
     // Check memory state
