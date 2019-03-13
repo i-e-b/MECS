@@ -840,7 +840,7 @@ int TestRuntimeExec() {
     auto path = StringNew("tagcode.dat");
     uint64_t actual;
     bool ok = FileLoadChunk(path, tagCode, 0, FILE_LOAD_ALL, &actual);
-    if (!ok || actual < 100) { std::cout << "Failed to read tagcode file\n"; return -1; }
+    if (!ok || actual < 10) { std::cout << "Failed to read tagcode file\n"; return -1; }
 
     std::cout << "Read file OK. Loaded " << VecLength(tagCode) << " elements\n";
 
@@ -988,6 +988,7 @@ int TestProgramSuite() {
     //errs += RunProgram("stressTest.ecs"); // hellishly slow!
     errs += RunProgram("nestedLoops.ecs");
 
+    errs += RunProgram("demo_program1.ecs");
     errs += RunProgram("demo_program2.ecs");
     errs += RunProgram("fib.ecs");
     errs += RunProgram("Importer.ecs");
@@ -1062,9 +1063,9 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-
+    /*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
-
+    */
     ShutdownManagedMemory();
 }

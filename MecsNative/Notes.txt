@@ -41,6 +41,7 @@ Input handling:
 The machine:
 ------------
 
+* [ ] Performance optimise
 * [ ] Try introducing C++ namespacing?
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
@@ -67,3 +68,4 @@ Garbage collector:
 * [ ] extend 'potential garbage' to hold a list instead of single refs
 * [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
 * [ ] maybe have 'destroy&recreate' for actors?
+* [ ] improve / re-write the tree container (2-list generalised graph?)

@@ -1,183 +1,67 @@
-This is what the first test program should output
 
+With small increment optimisation:
 
-x is 1
-Complex names are "fine"
-string quoting?
-Counter: 0
-Counter: 1
-Counter: 2
-Counter: 3
-this is 3.
-this is a custom subroutine.
-one, two, one
-two
-The local variable is defined as 1
-Counter: 4
-Counter: 5
-Counter: 6
-Counter: 7
-Counter: 8
-Counter: 9
-Calling with 'true': You said 'true', I will return 10
-Calling with 'false': You said 'false', I will return 20
-'i' is now 10
-The local variable from the custom function is gone. That's correct!
-
-
-
-This is what the tag code should look like:  (this has the optimisations active)
-
-Data table: 74 tokens (592 bytes)
-    1: (5) [x is ]
-    3: (28) [this is a custom subroutine.]
-    8: (2) [, ]
-    10: (5) [done!]
-    12: (33) [The local variable is defined as ]
-    18: (33) [You said 'true', I will return 10]
-    24: (34) [You said 'false', I will return 20]
-    30: (24) [Complex names are "fine"]
-    34: (15) [string quoting?]
-    37: (9) [Counter: ]
-    40: (10) [this is 3.]
-    43: (3) [one]
-    45: (3) [two]
-    47: (21) [Calling with 'true': ]
-    51: (22) [Calling with 'false': ]
-    55: (11) ['i' is now ]
-    58: (46) [The local variable is still set. That's wrong!]
-    65: (68) [The local variable from the custom function is gone. That's correct!]
+======= BYTE CODE SUMMARY ==========
+Data table: 0 tokens (0 bytes)
 End of data table
-75 Number: 0
-76 Opcode: ms 'i' (E126B026)
-77 Number: 1
-78 Opcode: mg 'i' (E126B026)
-79 VariableRef: '+' (F0A26DE1)
-80 Opcode: fc (2, 0)
-81 Opcode: ms 'x' (D9374B57)
-82 PtrStaticString:  -> 1
-83 Opcode: mg 'x' (D9374B57)
-84 VariableRef: 'print' (B168405A)
-85 Opcode: fc (2, 0)
-86 VariableRef: 'CustomSubroutine' (FEB8B77)
-87 Opcode: fd (2, 31)
-88 Number: 1
-89 Opcode: ms 'localVar' (A0512E32)
-90 PtrStaticString:  -> 3
-91 VariableRef: 'print' (B168405A)
-92 Opcode: fc (1, 0)
-93 Opcode: mg 'param[0]' (80000001)
-94 PtrStaticString:  -> 8
-95 VariableRef: '()' (1BFBBF60)
-96 Opcode: fc (0, 0)
-97 VariableRef: 'print' (B168405A)
-98 Opcode: fc (3, 0)
-99 Opcode: mg 'param[1]' (80010001)
-100 PtrStaticString:  -> 8
-101 VariableRef: '()' (1BFBBF60)
-102 Opcode: fc (0, 0)
-103 VariableRef: 'print' (B168405A)
-104 Opcode: fc (3, 0)
-105 Opcode: mg 'param[0]' (80000001)
-106 VariableRef: 'print' (B168405A)
-107 Opcode: fc (1, 0)
-108 PtrStaticString:  -> 10
-109 Opcode: ms 'param2' (9CAD4BA6)
-110 Opcode: mg 'param[1]' (80010001)
-111 VariableRef: 'print' (B168405A)
-112 Opcode: fc (1, 0)
-113 Opcode: mi 'localVar' (A0512E32)
-114 Opcode: cc (0, 4)
-115 PtrStaticString:  -> 12
-116 Opcode: mg 'localVar' (A0512E32)
-117 VariableRef: 'print' (B168405A)
-118 Opcode: fc (2, 0)
-119 Opcode: cr (0, 0)
-120 VariableRef: 'FunctionThatReturns' (23C20346)
-121 Opcode: fd (1, 12)
-122 Opcode: mg 'param[0]' (80000001)
-123 Opcode: cc (0, 5)
-124 PtrStaticString:  -> 18
-125 VariableRef: 'print' (B168405A)
-126 Opcode: fc (1, 0)
-127 Number: 10
-128 Opcode: cr (0, 1)
-129 PtrStaticString:  -> 24
-130 VariableRef: 'print' (B168405A)
-131 Opcode: fc (1, 0)
-132 Number: 20
-133 Opcode: cr (0, 1)
-134 Opcode: ct (0, 0)
-135 VariableRef: 'weird-names-are-ok?' (78DE3B38)
-136 Opcode: fd (0, 6)
-137 PtrStaticString:  -> 30
-138 VariableRef: 'print' (B168405A)
-139 Opcode: fc (1, 0)
-140 PtrStaticString:  -> 34
-141 VariableRef: 'print' (B168405A)
-142 Opcode: fc (1, 0)
-143 Opcode: cr (0, 0)
-144 VariableRef: 'weird-names-are-ok?' (78DE3B38)
-145 Opcode: fc (0, 0)
-146 Number: 10
-147 Opcode: mg 'i' (E126B026)
-148 VariableRef: '=' (3D0DD9A0)
-149 Opcode: fc (2, 0)
-150 VariableRef: 'not' (A5222867)
-151 Opcode: fc (1, 0)
-152 Opcode: cc (0, 16)
-153 PtrStaticString:  -> 37
-154 Opcode: mg 'i' (E126B026)
-155 VariableRef: 'print' (B168405A)
-156 Opcode: fc (2, 0)
-157 Opcode: mg 'i' (E126B026)
-158 Number: 3
-159 Opcode: C= (2, 7)
-160 PtrStaticString:  -> 40
-161 VariableRef: 'print' (B168405A)
-162 Opcode: fc (1, 0)
-163 PtrStaticString:  -> 43
-164 PtrStaticString:  -> 45
-165 VariableRef: 'CustomSubroutine' (FEB8B77)
-166 Opcode: fc (2, 0)
-167 Opcode: Incr 1 'i' (E126B026)
-168 Opcode: cj (0, 23)
-169 PtrStaticString:  -> 47
-170 VariableRef: '()' (1BFBBF60)
-171 Opcode: fc (0, 0)
-172 VariableRef: 'print' (B168405A)
-173 Opcode: fc (2, 0)
-174 ValInt32: -1
-175 VariableRef: 'FunctionThatReturns' (23C20346)
-176 Opcode: fc (1, 0)
-177 Opcode: ms 'i' (E126B026)
-178 PtrStaticString:  -> 51
-179 VariableRef: '()' (1BFBBF60)
-180 Opcode: fc (0, 0)
-181 VariableRef: 'print' (B168405A)
-182 Opcode: fc (2, 0)
-183 ValInt32: 0
-184 VariableRef: 'FunctionThatReturns' (23C20346)
-185 Opcode: fc (1, 0)
-186 PtrStaticString:  -> 55
-187 Opcode: mg 'i' (E126B026)
-188 VariableRef: 'print' (B168405A)
-189 Opcode: fc (2, 0)
-190 VariableRef: '__pick_s1' (7E9521DD)
-191 Opcode: fd (0, 12)
-192 Opcode: mi 'localVar' (A0512E32)
-193 Opcode: cc (0, 4)
-194 PtrStaticString:  -> 58
-195 VariableRef: 'print' (B168405A)
-196 Opcode: fc (1, 0)
-197 Opcode: cr (0, 0)
-198 ValInt32: -1
-199 Opcode: cc (0, 4)
-200 PtrStaticString:  -> 65
-201 VariableRef: 'print' (B168405A)
-202 Opcode: fc (1, 0)
-203 Opcode: cr (0, 0)
-204 Opcode: cr (0, 0)
-205 VariableRef: '__pick_s1' (7E9521DD)
-206 Opcode: fc (0, 0)
-207 Opcode: mu 'i' (E126B026)
+1 Number: 0
+2 Opcode: ms 'x' (D9374B57)
+3 Opcode: Incr 1 'x' (D9374B57)
+4 Opcode: Incr 1 'x' (D9374B57)
+5 Opcode: Incr 1 'x' (D9374B57)
+6 Opcode: Incr 1 'x' (D9374B57)
+7 Opcode: Incr -1 'x' (D9374B57)
+8 Opcode: Incr -1 'x' (D9374B57)
+
+====================================
+
+
+Integer number [0]
+Opcode ms 'x' [D9374B57]
+Opcode i 'x' [D9374B57]
+Opcode i 'x' [D9374B57]
+Opcode i 'x' [D9374B57]
+Opcode i 'x' [D9374B57]
+Opcode    'x' [D9374B57]
+Opcode    'x' [D9374B57]
+End Of Program
+
+
+Without small increment:
+
+1  Integer number [0]
+2  Opcode ms[D9374B57]
+3  Opcode mg[D9374B57]
+4  Integer number [1]
+5  VariableNameRef[F0A26DE1]
+6  Opcode fc[00020000]
+7  Opcode ms[D9374B57]
+8  VariableNameRef[D9374B57]
+9  Opcode mg[D9374B57]
+10  Integer number [1]
+11  VariableNameRef[F0A26DE1]
+12  Opcode fc[00020000]
+13  Opcode ms[D9374B57]
+14  Integer number [1]
+15  Opcode mg[D9374B57]
+16  VariableNameRef[F0A26DE1]
+17  Opcode fc[00020000]
+18  Opcode ms[D9374B57]
+19  Integer number [1]
+20  VariableNameRef[D9374B57]
+21  Opcode mg[D9374B57]
+22  VariableNameRef[F0A26DE1]
+23  Opcode fc[00020000]
+24  Opcode ms[D9374B57]
+25  Opcode mg[D9374B57]
+26  Integer number [1]
+27  VariableNameRef[C88D474D]
+28  Opcode fc[00020000]
+29  Opcode ms[D9374B57]
+30  VariableNameRef[D9374B57]
+31  Opcode mg[D9374B57]
+32  Integer number [1]
+33  VariableNameRef[C88D474D]
+34  Opcode fc[00020000]
+35  Opcode ms[D9374B57]
+36  End Of Program

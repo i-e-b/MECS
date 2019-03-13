@@ -58,7 +58,7 @@ DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2) 
 DataTag EncodeLongOpcode(char codeClass, char codeAction, uint32_t p1) {
     return DataTag{
         (int)DataType::Opcode,
-        ((uint32_t)codeClass << 8) | (codeAction),
+        ((uint32_t)(codeClass & 0xFF) << 8) | (codeAction & 0xFF),
         p1
     };
 }
@@ -197,8 +197,12 @@ void DescribeTag(DataTag token, String* target, HashMap* symbols) {
     case DataType::Opcode:
         StringAppend(target, "Opcode ");
         DecodeLongOpcode(token, &c1, &c2, NULL);
-        StringAppendChar(target, c1);
-        StringAppendChar(target, c2);
+        if (c1 == 'i') { // increment mode
+            StringAppendFormat(target, "i (\x02) ", (char)c2);
+        } else {
+            StringAppendChar(target, c1);
+            StringAppendChar(target, c2);
+        }
         if (symbols != NULL && MapGet_int_StringPtr(symbols, token.data, &str)) {
             StringAppendFormat(target, " '\x01' ", *str);
         }
