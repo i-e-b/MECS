@@ -272,11 +272,13 @@ void * PtrOfElem(Vector *v, uint index) {
     return byteOffset(chunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
 }
 
-Vector *VectorAllocate(int elementSize) {
-    auto result = (Vector*)mcalloc(1, sizeof(Vector));
+// Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
+Vector *VectorAllocateArena(Arena* a, int elementSize) {
+    auto result = (Vector*)ArenaAllocateAndClear(a, sizeof(Vector));
+    if (result == NULL) result = (Vector*)mcalloc(1, sizeof(Vector));
     if (result == NULL) return NULL;
 
-    result->_arena = MMCurrent();
+    result->_arena = a;
     result->ElementByteSize = elementSize;
 
     // Work out how many elements can fit in an arena
@@ -284,6 +286,7 @@ Vector *VectorAllocate(int elementSize) {
     auto spaceForElements = ARENA_SIZE - result->ChunkHeaderSize; // need pointer space
     result->ElemsPerChunk = (int)(spaceForElements / result->ElementByteSize);
 
+    // TODO: here, force to a power-of-two, and store the log2 of that (to use as a bit-shift parameter)
     if (result->ElemsPerChunk <= 1) {
         result->IsValid = false;
         return result;
@@ -317,50 +320,8 @@ Vector *VectorAllocate(int elementSize) {
     return result;
 }
 
-// Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
-Vector *VectorAllocateArena(Arena* a, int elementSize) {
-    if (a == NULL) return NULL;
-    auto result = (Vector*)ArenaAllocateAndClear(a, sizeof(Vector));//(Vector*)mcalloc(1, sizeof(Vector));
-
-    result->_arena = a;
-    result->ElementByteSize = elementSize;
-
-    // Work out how many elements can fit in an arena
-    result->ChunkHeaderSize = PTR_SIZE;
-    auto spaceForElements = ARENA_SIZE - result->ChunkHeaderSize; // need pointer space
-    result->ElemsPerChunk = (int)(spaceForElements / result->ElementByteSize);
-
-    if (result->ElemsPerChunk <= 1) {
-        result->IsValid = false;
-        return result;
-    }
-
-    if (result->ElemsPerChunk > TARGET_ELEMS_PER_CHUNK)
-        result->ElemsPerChunk = TARGET_ELEMS_PER_CHUNK; // no need to go crazy with small items.
-
-    result->ChunkBytes = (unsigned short)(result->ChunkHeaderSize + (result->ElemsPerChunk * result->ElementByteSize));
-
-    // Make a table, which can store a few chunks, and can have a next-chunk-table pointer
-    // Each chunk can hold a few elements.
-    result->_skipEntries = NULL;
-    result->_skipTable = NULL;
-    result->_endChunkPtr = NULL;
-    result->_baseChunkTable = NULL;
-
-    auto baseTable = NewChunk(result);
-
-    if (baseTable == NULL) {
-        result->IsValid = false;
-        return result;
-    }
-    result->_baseChunkTable = baseTable;
-    result->_elementCount = 0;
-    result->_baseOffset = 0;
-    RebuildSkipTable(result);
-
-    // All done
-    result->IsValid = true;
-    return result;
+Vector *VectorAllocate(int elementSize) {
+    return VectorAllocateArena(MMCurrent(), elementSize);
 }
 
 bool VectorIsValid(Vector *v) {
