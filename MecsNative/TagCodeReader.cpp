@@ -122,11 +122,11 @@ String* TCR_Describe(Vector* data) {
 
         if (step > 0) {
             auto str = DecodeString(data, i, len);
-            StringAppendFormat(tagStr, "    \x02: (\x02) [[\x01]]\n", i, len, str);
+            StringAppendFormat(tagStr, "    \x02: (\x02) [[\x01]]\n", i-1, len, str);
             StringDeallocate(str);
             i += step;
         } else {
-            StringAppendFormat(tagStr, "    \x02: (\x02) <empty>\n", i, len);
+            StringAppendFormat(tagStr, "    \x02: (\x02) <empty>\n", i-1, len);
         }
     }
 

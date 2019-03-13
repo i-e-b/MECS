@@ -135,7 +135,7 @@ bool CO_IsSmallIncrement(TreeNode * node, int8_t * outIncr, String ** outVarName
 
 // Is this a single comparison between two values?
 // opCodeCount is the jump length of the condition
-bool CO_IsSimpleComparion(TreeNode* condition, int opCodeCount) {
+bool CO_IsSimpleComparsion(TreeNode* condition, int opCodeCount) {
     if (opCodeCount >= 32767) return false; // can't be encoded
 
     auto target = TChild(condition);

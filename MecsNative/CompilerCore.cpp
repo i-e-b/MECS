@@ -142,10 +142,8 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
         }
         if (substitute && leafValue.type == (int)DataType::VariableRef) {
             TCW_Memory(wr, 'g', leafValue.data);
-            //TCW_Memory(wr, 'g', nameHash);
         } else {
             TCW_Memory(wr, 'g', nameHash);
-            //TCW_Memory(wr, 'g', valueName, 0);
         }
 
         return;
@@ -213,7 +211,10 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
     int paramCount = TreeCountChildren(child);
     auto childData = TreeReadBody_SourceNode(child);
 
-    TCW_Merge(wr, Compile(child, level + 1, debug, parameterNames, NULL, Context::MemoryAccess));
+    // this special case around `get` is probably an artefact of `TreePivot`
+    if (!StringAreEqual(nodeData->Text, "get") || paramCount > 1) {
+        TCW_Merge(wr, Compile(child, level + 1, debug, parameterNames, NULL, Context::MemoryAccess));
+    }
 
     if (debug) { TCW_Comment(wr, StringNewFormat("// Memory function : '\x01'", nodeData->Text)); }
 
@@ -315,7 +316,7 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
         TCW_Comment(wr, StringNewFormat( "// Compare condition for : '\x01', If false, skip \x02 element(s)", nodeData->Text, opCodeCount ));
     }
 
-    if (CO_IsSimpleComparion(condition, opCodeCount)) {
+    if (CO_IsSimpleComparsion(condition, opCodeCount)) {
         // output just the arguments
         CmpOp cmpOp;
         uint16_t argCount;
