@@ -29,6 +29,40 @@ bool IsGet(TreeNode* node) {
     return false;
 }
 
+bool IsSimpleType(TreeNode* node) {
+    auto data = TReadBody_Node(node);
+    switch (data->NodeType) {
+    case NodeType::StringLiteral:
+    case NodeType::Numeric:
+    case NodeType::Atom:
+        return true;
+    default:
+        return false;
+    }
+}
+
+TreeNode* Repack(TreeNode* parent) {
+    auto root = Node();
+    root.NodeType = NodeType::Root;
+    root.SourceLocation = 0;
+    root.IsValid = true;
+    root.Text = StringEmpty();
+    root.Unescaped = NULL;
+    root.FormattedLocation = 0;
+
+    auto tree = TAllocate_Node();
+    TSetValue_Node(tree, &root);
+
+    auto child = TChild(parent);
+    while (child != NULL) {
+        auto data = TReadBody_Node(child);
+        TAddChild_Node(tree, data);
+        child = TSibling(child);
+    }
+
+    return tree;
+}
+
 bool CO_IsSmallIncrement(TreeNode * node, int8_t * outIncr, String ** outVarName) {
     if (node == NULL || outIncr == NULL || outVarName == NULL) return false;
 
@@ -100,13 +134,54 @@ bool CO_IsSmallIncrement(TreeNode * node, int8_t * outIncr, String ** outVarName
 }
 
 // Is this a single comparison between two values?
+// opCodeCount is the jump length of the condition
 bool CO_IsSimpleComparion(TreeNode* condition, int opCodeCount) {
-    // TODO
+    if (opCodeCount >= 32767) return false; // can't be encoded
+
+    auto target = TChild(condition);
+    if (TCountChildren(target) != 2) return false;
+
+    auto left = TChild(target);
+    auto right = TSibling(left);
+
+    auto leftIsSimple = IsGet(left) || IsSimpleType(left);
+    auto rightIsSimple = IsGet(right) || IsSimpleType(right);
+
+    if (!leftIsSimple || !rightIsSimple) return false;
+
+    auto targetData = TReadBody_Node(target);
+    auto txt = targetData->Text;
+
+    if (StringAreEqual(txt, "=")) return true;
+    if (StringAreEqual(txt, "equals")) return true;
+
+    if (StringAreEqual(txt, "<>")) return true;
+    if (StringAreEqual(txt, "not-equals")) return true;
+
+    if (StringAreEqual(txt, "<")) return true;
+    if (StringAreEqual(txt, ">")) return true;
+
     return false;
 }
 
 // Pack a comparison between two simple values into a single op-code. Reduces loop condition complexity
 TreeNode* CO_ReadSimpleComparison(TreeNode* condition, CmpOp *outCmpOp, uint16_t* outArgCount) {
-    // TODO
-    return NULL;
+    auto target = TChild(condition);
+    *outArgCount = TCountChildren(target);
+
+
+    auto targetData = TReadBody_Node(target);
+    auto txt = targetData->Text;
+    if (StringAreEqual(txt, "=")) *outCmpOp = CmpOp::Equal;
+    else if (StringAreEqual(txt, "equals")) *outCmpOp = CmpOp::Equal;
+
+    else if (StringAreEqual(txt, "<>")) *outCmpOp = CmpOp::NotEqual;
+    else if (StringAreEqual(txt, "not-equals")) *outCmpOp = CmpOp::NotEqual;
+
+    else if (StringAreEqual(txt, "<")) *outCmpOp = CmpOp::Less;
+    else if (StringAreEqual(txt, ">")) *outCmpOp = CmpOp::Greater;
+
+    else return NULL;
+
+    return Repack(target);
 }

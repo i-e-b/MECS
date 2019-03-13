@@ -19,6 +19,7 @@
 
 // System abstractions
 #include "FileSys.h"
+#include "TimingSys.h"
 
 // The MECS compiler and runtime
 #include "SourceCodeTokeniser.h"
@@ -56,6 +57,11 @@ RegisterHeapFor(char, H)
 void WriteStr(String *str) {
     auto cstr = StringToCStr(str);
     std::cout << cstr << "\n";
+    mfree(cstr);
+}
+void WriteStrInline(String *str) {
+    auto cstr = StringToCStr(str);
+    std::cout << cstr;
     mfree(cstr);
 }
 
@@ -858,7 +864,18 @@ int TestRuntimeExec() {
     auto interp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
 
     // run a few cycles and print any output
-    auto result = InterpRun(interp, true, 500);
+    std::cout << "Executing...\n";
+    auto startTime = SystemTime();
+    auto result = InterpRun(interp, true, 5000);
+    while (result.State == ExecutionState::Paused) {
+        //std::cout << ".";
+        str = StringEmpty();
+        ReadOutput(interp, str);
+        WriteStrInline(str);
+        StringDeallocate(str);
+        result = InterpRun(interp, true, 5000);
+    }
+    auto endTime = SystemTime();
     str = StringEmpty();
     ReadOutput(interp, str);
     switch (result.State) {
@@ -880,6 +897,8 @@ int TestRuntimeExec() {
     }
     WriteStr(str);
     StringDeallocate(str);
+
+    std::cout << "Execution took " << (endTime - startTime) << " seconds\n";
     size_t alloc;
     size_t unalloc;
     int objects;
@@ -929,7 +948,17 @@ int RunProgram(const char* filename) {
 
     // run
     auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
-    auto result = InterpRun(is, true, 0x7fFFFFFF);
+    auto startTime = SystemTime();
+    auto result = InterpRun(is, true, 5000);
+    while (result.State == ExecutionState::Paused) {
+        //std::cout << ".";
+        auto str = StringEmpty();
+        ReadOutput(is, str);
+        WriteStrInline(str);
+        StringDeallocate(str);
+        result = InterpRun(is, true, 5000);
+    }
+    auto endTime = SystemTime();
 
     auto str = StringEmpty();
     int errState = 0;
@@ -961,6 +990,7 @@ int RunProgram(const char* filename) {
     ReadOutput(is, str);
     WriteStr(str);
     StringDeallocate(str);
+    std::cout << "Execution took " << (endTime - startTime) << " seconds\n";
 
 
     // Check memory state
@@ -985,7 +1015,7 @@ int TestProgramSuite() {
 
     //errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
 
-    //errs += RunProgram("stressTest.ecs"); // hellishly slow!
+    errs += RunProgram("stressTest.ecs");
     errs += RunProgram("nestedLoops.ecs");
 
     errs += RunProgram("demo_program1.ecs");
@@ -1003,7 +1033,6 @@ int TestProgramSuite() {
 }
 
 int main() {
-    
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
 
@@ -1063,9 +1092,9 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-    /*
+
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
-    */
+    
     ShutdownManagedMemory();
 }

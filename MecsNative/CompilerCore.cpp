@@ -320,6 +320,10 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
         CmpOp cmpOp;
         uint16_t argCount;
         auto argNodes = CO_ReadSimpleComparison(condition, &cmpOp, &argCount);
+        if (argNodes == NULL) {
+            TCW_AddError(wr, StringNew("Simple comparison optimisation is faulty. Inspect pre-check."));
+            return false;
+        }
         auto conditionArgs = Compile(argNodes, level + 1, debug, parameterNames, NULL, context);
         TCW_Merge(wr, conditionArgs);
         TCW_CompoundCompareJump(wr, cmpOp, argCount, opCodeCount);

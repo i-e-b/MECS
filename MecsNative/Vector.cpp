@@ -55,7 +55,7 @@ const int ARENA_SIZE = 65535; // number of bytes for each chunk (limit -- should
 
 // Desired maximum elements per chunk. This will be reduced if element is large (to fit in Arena limit)
 // Larger values are significantly faster for big arrays, but more memory-wasteful on small arrays
-const int TARGET_ELEMS_PER_CHUNK = 64;
+const int TARGET_ELEMS_PER_CHUNK = 128;
 
 // Maximum size of the skip table.
 // This is dynamically sizes, so large values won't use extra memory for small arrays.
@@ -117,25 +117,26 @@ void *NewChunk(Vector *v) {
 
 void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **chunkPtr, unsigned int *chunkIndex) {
     // 0. Apply offsets
+    uint elemPerChunk = v->ElemsPerChunk;
     uint realIndex = targetIndex + v->_baseOffset;
     uint realElemCount = v->_elementCount + v->_baseOffset;
 
     // 1. Calculate desired chunk index
-    uint targetChunkIdx = (uint)(realIndex / v->ElemsPerChunk);
-    uint endChunkIdx = (uint)((realElemCount - 1) / v->ElemsPerChunk);
+    uint targetChunkIdx = realIndex / elemPerChunk;         // TODO: ? Could force these to a power of 2 and use a shift?
+    uint endChunkIdx = (realElemCount - 1) / elemPerChunk;  //         This division ends up taking a *lot* of the total CPU time
 
     // 2. Optimise for start- and end- of chain (small lists & very likely for Push & Pop)
-    if (targetChunkIdx == 0)
-    { // start of chain
-        *found = true;
-        *chunkPtr = v->_baseChunkTable;
-        *chunkIndex = targetChunkIdx;
-        return;
-    }
     if (v->_elementCount == 0 || targetChunkIdx == endChunkIdx)
     { // lands on end-of-chain
         *found = true;
         *chunkPtr = v->_endChunkPtr;
+        *chunkIndex = targetChunkIdx;
+        return;
+    }
+    if (targetChunkIdx == 0)
+    { // start of chain
+        *found = true;
+        *chunkPtr = v->_baseChunkTable;
         *chunkIndex = targetChunkIdx;
         return;
     }
@@ -158,23 +159,9 @@ void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **c
     if (v->_skipEntries > 1)
     {
         // guess search bounds
-        int guess = (targetChunkIdx * v->_skipEntries) / endChunkIdx;
-        int upper = guess + 2;
-        int lower = guess - 2;
-        if (upper > v->_skipEntries) upper = v->_skipEntries;
+        int guess = ((targetChunkIdx-1) * v->_skipEntries) / endChunkIdx;
+        int lower = guess - 1;
         if (lower < 0) lower = 0;
-
-        // binary search for the best chunk
-        while (lower < upper) {
-            var mid = ((upper - lower) / 2) + lower;
-            if (mid == lower) break;
-
-            var midChunkIdx = readUint(v->_skipTable, (SKIP_ELEM_SIZE * mid));
-            if (midChunkIdx == targetChunkIdx) break;
-
-            if (midChunkIdx < targetChunkIdx) lower = mid;
-            else upper = mid;
-        }
 
         var baseAddr = byteOffset(v->_skipTable, (SKIP_ELEM_SIZE * lower)); // pointer to skip table entry
         startChunkIdx = readUint(baseAddr, 0);

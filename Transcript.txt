@@ -1,67 +1,81 @@
+    2: (18) [[ <-- should be '2']]
+    6: (8) [[total = ]]
+7  Integer number [0]
+8  Opcode ms[D9374B57]
+9  Opcode i (1) [D9374B57]
+10  Opcode i (1) [D9374B57]
+11  Opcode i (1) [D9374B57]
+12  Opcode i (1) [D9374B57]
+13  Opcode i (-1) [D9374B57]
+14  Opcode i (-1) [D9374B57]
+15  Opcode mg[D9374B57]
+16  Static string ptr [00000001]
+17  VariableNameRef[B168405A]
+18  Opcode fc[00020000]
+19  Integer number [0]
+20  Opcode ms[A80A4D56]
+21  Integer number [0]
+22  Opcode ms[4CDE285F]
+23  Opcode mg[A80A4D56]
+24  Integer number [480]
+25  Opcode C<[0002000A]
+26  Integer number [0]
+27  Opcode ms[D9374B57]
+28  Opcode mg[D9374B57]
+29  Integer number [640]
+30  Opcode C<[00020003]
+31  Opcode i (1) [4CDE285F]
+32  Opcode i (1) [D9374B57]
+33  Opcode cj[00000006]
+34  Opcode i (1) [A80A4D56]
+35  Opcode cj[0000000D]
+36  Static string ptr [00000005]
+37  Opcode mg[4CDE285F]
+38  VariableNameRef[B168405A]
+39  Opcode fc[00020000]
+40  End Of Program
 
-With small increment optimisation:
+small increment and direct compare:
 
 ======= BYTE CODE SUMMARY ==========
-Data table: 0 tokens (0 bytes)
+Data table: 6 tokens (48 bytes)
+    1: (18) [ <-- should be '2]
+    5: (8) [total = ]
 End of data table
-1 Number: 0
-2 Opcode: ms 'x' (D9374B57)
-3 Opcode: Incr 1 'x' (D9374B57)
-4 Opcode: Incr 1 'x' (D9374B57)
-5 Opcode: Incr 1 'x' (D9374B57)
-6 Opcode: Incr 1 'x' (D9374B57)
-7 Opcode: Incr -1 'x' (D9374B57)
-8 Opcode: Incr -1 'x' (D9374B57)
+7 Number: 0
+8 Opcode: ms 'x' (D9374B57)
+9 Opcode: Incr 1 'x' (D9374B57)
+10 Opcode: Incr 1 'x' (D9374B57)
+11 Opcode: Incr 1 'x' (D9374B57)
+12 Opcode: Incr 1 'x' (D9374B57)
+13 Opcode: Incr -1 'x' (D9374B57)
+14 Opcode: Incr -1 'x' (D9374B57)
+15 Opcode: mg 'x' (D9374B57)
+16 PtrStaticString:  -> 1
+17 VariableRef: 'print' (B168405A)
+18 Opcode: fc (2, 0)
+19 Number: 0
+20 Opcode: ms 'y' (A80A4D56)
+21 Number: 0
+22 Opcode: ms 'total' (4CDE285F)
+23 Opcode: mg 'y' (A80A4D56)
+24 Number: 480
+25 Opcode: C< (2, 10)
+26 Number: 0
+27 Opcode: ms 'x' (D9374B57)
+28 Opcode: mg 'x' (D9374B57)
+29 Number: 640
+30 Opcode: C< (2, 3)
+31 Opcode: Incr 1 'total' (4CDE285F)
+32 Opcode: Incr 1 'x' (D9374B57)
+33 Opcode: cj (0, 6)
+34 Opcode: Incr 1 'y' (A80A4D56)
+35 Opcode: cj (0, 13)
+36 PtrStaticString:  -> 5
+37 Opcode: mg 'total' (4CDE285F)
+38 VariableRef: 'print' (B168405A)
+39 Opcode: fc (2, 0)
 
 ====================================
-
-
-Integer number [0]
-Opcode ms 'x' [D9374B57]
-Opcode i 'x' [D9374B57]
-Opcode i 'x' [D9374B57]
-Opcode i 'x' [D9374B57]
-Opcode i 'x' [D9374B57]
-Opcode    'x' [D9374B57]
-Opcode    'x' [D9374B57]
-End Of Program
-
-
-Without small increment:
-
-1  Integer number [0]
-2  Opcode ms[D9374B57]
-3  Opcode mg[D9374B57]
-4  Integer number [1]
-5  VariableNameRef[F0A26DE1]
-6  Opcode fc[00020000]
-7  Opcode ms[D9374B57]
-8  VariableNameRef[D9374B57]
-9  Opcode mg[D9374B57]
-10  Integer number [1]
-11  VariableNameRef[F0A26DE1]
-12  Opcode fc[00020000]
-13  Opcode ms[D9374B57]
-14  Integer number [1]
-15  Opcode mg[D9374B57]
-16  VariableNameRef[F0A26DE1]
-17  Opcode fc[00020000]
-18  Opcode ms[D9374B57]
-19  Integer number [1]
-20  VariableNameRef[D9374B57]
-21  Opcode mg[D9374B57]
-22  VariableNameRef[F0A26DE1]
-23  Opcode fc[00020000]
-24  Opcode ms[D9374B57]
-25  Opcode mg[D9374B57]
-26  Integer number [1]
-27  VariableNameRef[C88D474D]
-28  Opcode fc[00020000]
-29  Opcode ms[D9374B57]
-30  VariableNameRef[D9374B57]
-31  Opcode mg[D9374B57]
-32  Integer number [1]
-33  VariableNameRef[C88D474D]
-34  Opcode fc[00020000]
-35  Opcode ms[D9374B57]
-36  End Of Program
+2 <-- should be '2'
+total = 307200

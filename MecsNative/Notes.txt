@@ -34,7 +34,7 @@ Input handling:
   * [x] scope (vector of hashmaps)
   * [x] context
   * [x] desugar
-  * [ ] optimisations
+  * [x] optimisations
   * [ ] symbol output (for debug)
     * [ ] line to tag-code mapping
 
@@ -43,9 +43,11 @@ The machine:
 
 * [ ] Performance optimise
 * [ ] Try introducing C++ namespacing?
+* [ ] change 'deallocate' functions to `...Deallocate(thing** x){ ... *x = NULL ...}`
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
+  * [ ] ### FIX the weird string/get issue ###
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 * [ ] Debug symbols file and reader
 
@@ -60,6 +62,7 @@ Actor model stuff:
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
 * [ ] Scheduler
+* [ ] Suspend & resume (including suspend-to-disk)
 
 Garbage collector:
 ------------------

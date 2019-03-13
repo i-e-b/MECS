@@ -12,6 +12,8 @@ const unsigned int SAFE_HASH = 0x80000000; // just in case you get a zero result
 const unsigned int MIN_BUCKET_SIZE = 64; // default size used if none given
 const float LOAD_FACTOR = 0.8f; // higher is more memory efficient. Lower is faster, to a point.
 
+#define AGGRESSIVE_SCALING 1
+
 // Entry in the hash-table
 // The actual entries are tagged on the end of the entry
 typedef struct HashMap_Entry {
@@ -186,14 +188,18 @@ void HashMapPurge(HashMap *h) {
 bool ResizeNext(HashMap * h) {
     // mild scaling can save memory, but resizing is very expensive
 
-    // Mild scaling
-    return Resize(h, h->count == 0 ? 32 : h->count * 2, true);
-
+#ifdef AGGRESSIVE_SCALING
     // Aggressive scaling
-    /*unsigned long size = (unsigned long)h->count * 2;
+    unsigned long size = (unsigned long)h->count * 2;
     if (h->count < 8192) size = (unsigned long)h->count * h->count;
     if (size < MIN_BUCKET_SIZE) size = MIN_BUCKET_SIZE;
-    return Resize(h, (uint32_t)size, true);*/
+    return Resize(h, (uint32_t)size, true);
+#else
+    // Mild scaling
+    return Resize(h, h->count == 0 ? 32 : h->count * 2, true);
+#endif
+
+
 }
 
 HashMap* HashMapAllocate(uint32_t size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void *key_A, void *key_B), unsigned int(*getHashFunc)(void *key)) {
