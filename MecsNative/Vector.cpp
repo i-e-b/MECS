@@ -11,12 +11,18 @@ typedef struct Vector {
     Arena* _arena; // the arena this vector should be pinned to (the active one when the vector was created)
 
     // Calculated parts
+
+    // Number of data entries in each chunk (should always be a power of 2)
     int ElemsPerChunk;
+    // Log2 of `ElemsPerChunk`
+    int ElemChunkLog2;
+    // Number of bytes in each element
     int ElementByteSize;
-    int ChunkHeaderSize;
+    // Size of an allocated chunk (should be `ElemsPerChunk` * `ElementByteSize`)
     unsigned short ChunkBytes;
 
     // dynamic parts
+
     unsigned int _elementCount;     // how long is the logical array
     unsigned int _baseOffset;       // how many elements should be ignored from first chunk (for de-queueing)
     int  _skipEntries;              // how long is the logical skip table
@@ -55,6 +61,7 @@ const int ARENA_SIZE = 65535; // number of bytes for each chunk (limit -- should
 
 // Desired maximum elements per chunk. This will be reduced if element is large (to fit in Arena limit)
 // Larger values are significantly faster for big arrays, but more memory-wasteful on small arrays
+// This should ALWAYS be a power-of-2
 const int TARGET_ELEMS_PER_CHUNK = 128;
 
 // Maximum size of the skip table.
@@ -116,17 +123,24 @@ void *NewChunk(Vector *v) {
 }
 
 void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **chunkPtr, unsigned int *chunkIndex) {
+    if (v->_elementCount == 0) { // Optimised for empty list
+        *found = true;
+        *chunkPtr = v->_endChunkPtr;
+        *chunkIndex = 0;
+        return;
+    }
+
     // 0. Apply offsets
     uint elemPerChunk = v->ElemsPerChunk;
     uint realIndex = targetIndex + v->_baseOffset;
     uint realElemCount = v->_elementCount + v->_baseOffset;
 
     // 1. Calculate desired chunk index
-    uint targetChunkIdx = realIndex / elemPerChunk;         // TODO: ? Could force these to a power of 2 and use a shift?
-    uint endChunkIdx = (realElemCount - 1) / elemPerChunk;  //         This division ends up taking a *lot* of the total CPU time
+    uint targetChunkIdx = realIndex >> v->ElemChunkLog2;
+    uint endChunkIdx = (realElemCount - 1) >> v->ElemChunkLog2;
 
     // 2. Optimise for start- and end- of chain (small lists & very likely for Push & Pop)
-    if (v->_elementCount == 0 || targetChunkIdx == endChunkIdx)
+    if (targetChunkIdx == endChunkIdx)
     { // lands on end-of-chain
         *found = true;
         *chunkPtr = v->_endChunkPtr;
@@ -196,7 +210,7 @@ void RebuildSkipTable(Vector *v)
 {
     v->_rebuilding = true;
     v->_skipTableDirty = false;
-    auto chunkTotal = v->_elementCount / v->ElemsPerChunk;
+    auto chunkTotal = v->_elementCount >> v->ElemChunkLog2;
     if (chunkTotal < 4) { // not worth having a skip table
         if (v->_skipTable != NULL) VecFree(v, v->_skipTable);
         v->_skipEntries = 0;
@@ -269,7 +283,28 @@ void * PtrOfElem(Vector *v, uint index) {
     FindNearestChunk(v, index, &found, &chunkPtr, &index);
     if (!found) return NULL;
 
-    return byteOffset(chunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+    return byteOffset(chunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));
+}
+
+uint32_t NextPow2(uint32_t c) {
+    c--;
+    c |= c >> 1;
+    c |= c >> 2;
+    c |= c >> 4;
+    c |= c >> 8;
+    c |= c >> 16;
+    c |= c >> 32;
+    return ++c;
+}
+
+uint32_t Log2(uint32_t i) {
+    uint32_t r = 0;
+
+    while (i > 0) {
+        r++;
+        i >>= 1;
+    }
+    return r - 1;
 }
 
 // Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
@@ -282,11 +317,9 @@ Vector *VectorAllocateArena(Arena* a, int elementSize) {
     result->ElementByteSize = elementSize;
 
     // Work out how many elements can fit in an arena
-    result->ChunkHeaderSize = PTR_SIZE;
-    auto spaceForElements = ARENA_SIZE - result->ChunkHeaderSize; // need pointer space
+    auto spaceForElements = ARENA_SIZE - PTR_SIZE; // need pointer space
     result->ElemsPerChunk = (int)(spaceForElements / result->ElementByteSize);
 
-    // TODO: here, force to a power-of-two, and store the log2 of that (to use as a bit-shift parameter)
     if (result->ElemsPerChunk <= 1) {
         result->IsValid = false;
         return result;
@@ -295,7 +328,11 @@ Vector *VectorAllocateArena(Arena* a, int elementSize) {
     if (result->ElemsPerChunk > TARGET_ELEMS_PER_CHUNK)
         result->ElemsPerChunk = TARGET_ELEMS_PER_CHUNK; // no need to go crazy with small items.
 
-    result->ChunkBytes = (unsigned short)(result->ChunkHeaderSize + (result->ElemsPerChunk * result->ElementByteSize));
+    // Force to a power-of-two, and store the log2 of that (to use as a bit-shift parameter)
+    result->ElemsPerChunk = NextPow2(result->ElemsPerChunk - 1); // force to a power of two
+    result->ElemChunkLog2 = Log2(result->ElemsPerChunk);
+
+    result->ChunkBytes = (unsigned short)(PTR_SIZE + (result->ElemsPerChunk * result->ElementByteSize));
 
     // Make a table, which can store a few chunks, and can have a next-chunk-table pointer
     // Each chunk can hold a few elements.
@@ -405,14 +442,14 @@ bool VectorPush(Vector *v, void* value) {
     {
         var ok = NewChunk(v);
         if (ok == NULL) return false;
-        writeValue(v->_endChunkPtr, v->ChunkHeaderSize, value, v->ElementByteSize);
+        writeValue(v->_endChunkPtr, PTR_SIZE, value, v->ElementByteSize);
         v->_elementCount++;
         return true;
     }
     if (chunkPtr == NULL) return false;
 
     // Writing value into existing chunk
-    writeValue(chunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx), value, v->ElementByteSize);
+    writeValue(chunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx), value, v->ElementByteSize);
     v->_elementCount++;
 
     return true;
@@ -439,7 +476,7 @@ bool VectorDequeue(Vector * v, void * outValue) {
 
     // read the element at index `_baseOffset`, then increment `_baseOffset`.
     if (outValue != NULL) {
-        auto ptr = byteOffset(v->_baseChunkTable, v->ChunkHeaderSize + (v->_baseOffset * v->ElementByteSize));
+        auto ptr = byteOffset(v->_baseChunkTable, PTR_SIZE + (v->_baseOffset * v->ElementByteSize));
         writeValue(outValue, 0, ptr, v->ElementByteSize);
     }
     v->_baseOffset++;
@@ -492,7 +529,7 @@ bool VectorPop(Vector *v, void *target) {
     var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
 
     // Get the value
-    var result = byteOffset(v->_endChunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+    var result = byteOffset(v->_endChunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));
     if (result == NULL) return false;
     if (target != NULL) { // need to copy element, as we might dealloc the chunk it lives in
         writeValue(target, 0, result, v->ElementByteSize);
@@ -537,7 +574,7 @@ bool VectorPeek(Vector *v, void* target) {
     var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
 
     // Get the value
-    var result = byteOffset(v->_endChunkPtr, v->ChunkHeaderSize + (v->ElementByteSize * entryIdx));
+    var result = byteOffset(v->_endChunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));
     if (result == NULL) return false;
     if (target != NULL) {
         writeValue(target, 0, result, v->ElementByteSize);
