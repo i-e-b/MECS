@@ -1064,11 +1064,11 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
 
         // Prevent stackoverflow.
         // Ex: if(true 1 10 20)
-        if ((is->_stepsTaken & 127) == 0 && VecLength(is->_valueStack) > 100) { // TODO: improve this mess. Maybe add sentinels and dequeue on returns?
+        /*if ((is->_stepsTaken & 127) == 0 && VecLength(is->_valueStack) > 100) { // TODO: improve this mess. Maybe add sentinels and dequeue on returns?
             for (int i = 0; i < 100; i++) {
                 VectorDequeue(is->_valueStack, NULL); // knock values off the far side of the stack.
             }
-        }
+        }*/
 
         // Keep scope clean.
         // This *REALLY* needs to be improved

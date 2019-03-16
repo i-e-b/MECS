@@ -212,7 +212,7 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
     auto childData = TreeReadBody_SourceNode(child);
 
     // this special case around `get` is probably an artefact of `TreePivot`
-    if (!StringAreEqual(nodeData->Text, "get") || paramCount > 1) {
+    if (!StringAreEqual(nodeData->Text, "get") || paramCount > 0) {
         TCW_Merge(wr, Compile(child, level + 1, debug, parameterNames, NULL, Context::MemoryAccess));
     }
 
@@ -320,11 +320,13 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
         // output just the arguments
         CmpOp cmpOp;
         uint16_t argCount;
+
         auto argNodes = CO_ReadSimpleComparison(condition, &cmpOp, &argCount);
         if (argNodes == NULL) {
             TCW_AddError(wr, StringNew("Simple comparison optimisation is faulty. Inspect pre-check."));
             return false;
         }
+        
         auto conditionArgs = Compile(argNodes, level + 1, debug, parameterNames, NULL, context);
         TCW_Merge(wr, conditionArgs);
         TCW_CompoundCompareJump(wr, cmpOp, argCount, opCodeCount);

@@ -6,6 +6,8 @@ typedef SourceNode Node; // 'SourceNode'. Typedef just for brevity
 RegisterTreeStatics(T)
 RegisterTreeFor(Node, T)
 
+//#define DISABLE_OPTIMISATIONS 1
+
 
 bool IsGet(TreeNode* node, String* target) {
     auto nodeData = TReadBody_Node(node);
@@ -53,17 +55,22 @@ TreeNode* Repack(TreeNode* parent) {
     auto tree = TAllocate_Node();
     TSetValue_Node(tree, &root);
 
+    TAppendNode(tree, TChild(parent));
+    /*
     auto child = TChild(parent);
     while (child != NULL) {
         auto data = TReadBody_Node(child);
         TAddChild_Node(tree, data);
         child = TSibling(child);
-    }
+    }*/
 
     return tree;
 }
 
 bool CO_IsSmallIncrement(TreeNode * node, int8_t * outIncr, String ** outVarName) {
+#ifdef DISABLE_OPTIMISATIONS
+    return false;
+#endif
     if (node == NULL || outIncr == NULL || outVarName == NULL) return false;
 
     // These cases to be handled:
@@ -136,6 +143,9 @@ bool CO_IsSmallIncrement(TreeNode * node, int8_t * outIncr, String ** outVarName
 // Is this a single comparison between two values?
 // opCodeCount is the jump length of the condition
 bool CO_IsSimpleComparsion(TreeNode* condition, int opCodeCount) {
+#ifdef DISABLE_OPTIMISATIONS
+    return false;
+#endif
     if (opCodeCount >= 32767) return false; // can't be encoded
 
     auto target = TChild(condition);
