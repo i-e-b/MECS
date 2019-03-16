@@ -56,13 +56,6 @@ TreeNode* Repack(TreeNode* parent) {
     TSetValue_Node(tree, &root);
 
     TAppendNode(tree, TChild(parent));
-    /*
-    auto child = TChild(parent);
-    while (child != NULL) {
-        auto data = TReadBody_Node(child);
-        TAddChild_Node(tree, data);
-        child = TSibling(child);
-    }*/
 
     return tree;
 }

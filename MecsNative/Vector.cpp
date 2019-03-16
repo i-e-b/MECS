@@ -122,44 +122,40 @@ void *NewChunk(Vector *v) {
     return ptr;
 }
 
-void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **chunkPtr, unsigned int *chunkIndex) {
+bool FindNearestChunk(Vector *v, unsigned int targetIndex, void **chunkPtr, unsigned int *chunkIndex) {
     if (v->_elementCount == 0) { // Optimised for empty list
-        *found = true;
         *chunkPtr = v->_endChunkPtr;
         *chunkIndex = 0;
-        return;
+        return true;
     }
 
     // 0. Apply offsets
-    uint elemPerChunk = v->ElemsPerChunk;
     uint realIndex = targetIndex + v->_baseOffset;
-    uint realElemCount = v->_elementCount + v->_baseOffset;
 
     // 1. Calculate desired chunk index
     uint targetChunkIdx = realIndex >> v->ElemChunkLog2;
-    uint endChunkIdx = (realElemCount - 1) >> v->ElemChunkLog2;
 
     // 2. Optimise for start- and end- of chain (small lists & very likely for Push & Pop)
-    if (targetChunkIdx == endChunkIdx)
-    { // lands on end-of-chain
-        *found = true;
-        *chunkPtr = v->_endChunkPtr;
-        *chunkIndex = targetChunkIdx;
-        return;
-    }
     if (targetChunkIdx == 0)
     { // start of chain
-        *found = true;
         *chunkPtr = v->_baseChunkTable;
         *chunkIndex = targetChunkIdx;
-        return;
+        return true;
+    }
+
+    uint realElemCount = v->_elementCount + v->_baseOffset;
+    uint endChunkIdx = (realElemCount - 1) >> v->ElemChunkLog2;
+    if (targetChunkIdx == endChunkIdx)
+    { // lands on end-of-chain
+        *chunkPtr = v->_endChunkPtr;
+        *chunkIndex = targetChunkIdx;
+        return true;
     }
     if (targetIndex >= v->_elementCount)
     { // lands outside a chunk -- off the end
-        *found = false;
         *chunkPtr = v->_endChunkPtr;
         *chunkIndex = targetChunkIdx;
-        return;
+        return false;
     }
 
     // All the simple optimal paths failed. Make sure the skip list is good...
@@ -193,17 +189,16 @@ void FindNearestChunk(Vector *v, unsigned int targetIndex, bool *found, void **c
         auto next = readPtr(chunkHeadPtr, 0);
         if (next == NULL) {
             // walk chain failed! We will store the last step in case it's useful.
-            *found = false;
             *chunkPtr = chunkHeadPtr;
             *chunkIndex = targetChunkIdx;
-            return;
+            return false;
         }
         chunkHeadPtr = next;
     }
 
-    *found = true;
     *chunkPtr = chunkHeadPtr;
     *chunkIndex = targetChunkIdx;
+    return true;
 }
 
 void RebuildSkipTable(Vector *v)
@@ -238,7 +233,7 @@ void RebuildSkipTable(Vector *v)
     unsigned int chunkIndex;
 
     for (uint i = 0; i < entries; i++) {
-        FindNearestChunk(v, target, &found, &chunkPtr, &chunkIndex);
+        found = FindNearestChunk(v, target, &chunkPtr, &chunkIndex);
 
         if (!found || chunkPtr == NULL) { // total fail
             VecFree(v,newTablePtr);
@@ -278,10 +273,8 @@ void * PtrOfElem(Vector *v, uint index) {
 
     var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
 
-    bool found;
     void *chunkPtr = NULL;
-    FindNearestChunk(v, index, &found, &chunkPtr, &index);
-    if (!found) return NULL;
+    if (!FindNearestChunk(v, index, &chunkPtr, &index)) return NULL;
 
     return byteOffset(chunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));
 }
@@ -434,11 +427,9 @@ bool VectorPush(Vector *v, void* value) {
     if (v == NULL) return false;
     var entryIdx = (v->_elementCount + v->_baseOffset) % v->ElemsPerChunk;
 
-    bool found;
     void *chunkPtr = NULL;
     uint index;
-    FindNearestChunk(v, v->_elementCount, &found, &chunkPtr, &index);
-    if (!found) // need a new chunk, write at start
+    if (!FindNearestChunk(v, v->_elementCount, &chunkPtr, &index)) // need a new chunk, write at start
     {
         var ok = NewChunk(v);
         if (ok == NULL) return false;
@@ -538,11 +529,10 @@ bool VectorPop(Vector *v, void *target) {
     // Clean up if we've emptied a chunk that isn't the initial one
     if (entryIdx < 1 && v->_elementCount > 1) {
         // need to dealloc end chunk
-        bool found;
         void *prevChunkPtr = NULL;
         uint deadChunkIdx = 0;
-        FindNearestChunk(v, index - 1, &found, &prevChunkPtr, &deadChunkIdx);
-        if (!found || prevChunkPtr == v->_endChunkPtr) {
+        if (!FindNearestChunk(v, index - 1, &prevChunkPtr, &deadChunkIdx)
+            || prevChunkPtr == v->_endChunkPtr) {
             // damaged references!
             v->IsValid = false;
             return false;

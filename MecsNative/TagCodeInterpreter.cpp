@@ -1070,10 +1070,8 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             }
         }*/
 
-        // Keep scope clean.
-        // This *REALLY* needs to be improved
-        //ScopePurge(is->_variables); // this doesn't really work...
 
+        // TODO: Add a range->native array cache and use here. Should help a lot in loops.
         auto wptr = VecGet_DataTag(is->_program, is->_position);
         if (wptr == NULL) break;
         DataTag word = *wptr;
@@ -1088,6 +1086,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         case (int)DataType::Invalid:
         {
             StringAppendFormat(is->_output, "Unknown code point at position \x02\n", is->_position);
+            break;
         }
 
         case (int)DataType::Opcode:

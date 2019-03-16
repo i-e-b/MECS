@@ -1015,7 +1015,7 @@ int TestProgramSuite() {
 
     //errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
 
-    //errs += RunProgram("stressTest.ecs"); // really slow in debug mode
+    errs += RunProgram("stressTest.ecs"); // really slow in debug mode
     errs += RunProgram("nestedLoops.ecs");
 
     errs += RunProgram("demo_program2.ecs");
