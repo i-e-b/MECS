@@ -563,6 +563,12 @@ void HandleControlSignal(int* position, char codeAction, int opCodeCount, Interp
 int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint16_t opCodeCount, InterpreterState* is) {
     auto param = ReadParams(is, argCount);
 
+    if (param == NULL) {
+        is->ErrorFlag = true;
+        StringAppend(is->_output, "Out of mem");
+        return -1;
+    }
+
     int result;
     auto cmp = (CmpOp)codeAction;
     switch (cmp) {
