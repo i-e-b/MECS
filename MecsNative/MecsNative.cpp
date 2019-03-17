@@ -946,8 +946,14 @@ int RunProgram(const char* filename) {
     TCW_Deallocate(tagCode);
     MMPop();
 
-    // run
+    // set-up
     auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
+
+    auto inp = StringNew("xhello, world\nLine2\nLine3\n"); // some sample input
+    WriteInput(is, inp);
+    StringDeallocate(inp);
+
+    // run
     auto startTime = SystemTime();
     auto result = InterpRun(is, true, 5000);
     while (result.State == ExecutionState::Paused) {
@@ -1013,9 +1019,9 @@ int TestProgramSuite() {
 
     int errs = 0;
 
-    //errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
+    errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
 
-   // errs += RunProgram("stressTest.ecs"); // really slow in debug mode
+    //errs += RunProgram("stressTest.ecs"); // really slow in debug mode
     errs += RunProgram("nestedLoops.ecs");
 
     errs += RunProgram("demo_program2.ecs");

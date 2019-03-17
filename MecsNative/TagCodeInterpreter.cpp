@@ -202,6 +202,12 @@ ExecutionResult PausedExecutionResult() {
     r.State = ExecutionState::Paused;
     return r;
 }
+ExecutionResult WaitingExecutionResult() {
+    ExecutionResult r = {};
+    r.Result = NonResult();
+    r.State = ExecutionState::Waiting;
+    return r;
+}
 
 String* DbgStr(InterpreterState* is, uint32_t hash)
 {
@@ -430,7 +436,7 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
     }
 }
 
-void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
+DataType PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
     DataTag nameTag = {};
     VecPop_DataTag(is->_valueStack, &nameTag);
     auto functionNameHash = DecodeVariableRef(nameTag);
@@ -439,17 +445,20 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
     if (param == NULL) {
         is->ErrorFlag = true;
         VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
-        return;
+        return DataType::Exception;
     }
 
     // Evaluate function.
     DataTag evalResult = EvaluateFunctionCall(position, functionNameHash, nbParams, param, is);
+    ArenaDereference(is->_memory, param);
 
     if (evalResult.type == (int)DataType::Exception) {
         is->ErrorFlag = true;
         VecPush_DataTag(is->_valueStack, evalResult);
-        ArenaDereference(is->_memory, param);
-        return;
+        return DataType::Exception;
+    }
+    if (evalResult.type == (int)DataType::MustWait) {
+        return DataType::MustWait;
     }
 
     // Add result on stack as a value.
@@ -457,7 +466,8 @@ void PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is)
         && evalResult.type != (int)DataType::Void) {
         VecPush_DataTag(is->_valueStack, evalResult);
     }
-    ArenaDereference(is->_memory, param);
+
+    return (DataType)evalResult.type;
 }
 
 void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCount, InterpreterState* is) {
@@ -565,7 +575,7 @@ int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint
 
     if (param == NULL) {
         is->ErrorFlag = true;
-        StringAppend(is->_output, "Out of mem");
+        StringAppend(is->_output, "Out of memory");
         return -1;
     }
 
@@ -641,13 +651,13 @@ void HandleMemoryAccess(int* position, char action, int varRef, uint16_t paramCo
 }
 
 // dispatch for op codes. valueStack is Vector<DataTag>, returnStack is Vector<int>
-bool ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, int* position, DataTag word, InterpreterState* is) {
+DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, int* position, DataTag word, InterpreterState* is) {
     uint32_t varRef;
     switch (codeClass)
     {
     case 'f': // Function operations
         if (codeAction == 'c') {
-            PrepareFunctionCall(position, p1, is);
+            return PrepareFunctionCall(position, p1, is);
         } else if (codeAction == 'd') {
             HandleFunctionDefinition(position, p1, p2, is);
         }
@@ -676,13 +686,13 @@ bool ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, in
 
     case 's': // reserved for System operation.
         StringAppendFormat(is->_output, "Unimplemented System operation op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
-        return false;
+        return DataType::Exception;
 
     default:
         StringAppendFormat(is->_output, "Unexpected op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
-        return false;
+        return DataType::Exception;
     }
-    return true;
+    return DataType::Void;
 }
 
 
@@ -1101,8 +1111,11 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             char codeClass, codeAction;
             uint16_t p1, p2;
             DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2);
-            if (!ProcessOpCode(codeClass, codeAction, p1, p2, &(is->_position), word, is)) {
+            auto result = ProcessOpCode(codeClass, codeAction, p1, p2, &(is->_position), word, is);
+            if (result == DataType::Exception) {
                 return FailureResult(is->_position);
+            } else if (result == DataType::MustWait) {
+                return WaitingExecutionResult();
             }
             programEnd = VectorLength(is->_program); // In case 'eval' changed it
             break;
