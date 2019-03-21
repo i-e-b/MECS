@@ -1,10 +1,15 @@
 #include "TagCodeReader.h"
 
+#define BYTE unsigned char
+
+RegisterHashMapStatics(Map)
+RegisterHashMapFor(int, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 RegisterVectorStatics(Vec)
 RegisterVectorFor(DataTag, Vec)
+RegisterVectorFor(BYTE, Vec)
+RegisterVectorFor(char, Vec)
 
-#define BYTE unsigned char
 
 void TCR_Swizzle(Vector* v, int i) {
     BYTE* res = NULL;
@@ -91,7 +96,7 @@ String* DecodeString(Vector* data, int position, int length) {
     return str;
 }
 
-String* TCR_Describe(Vector* data) {
+String* TCR_Describe(Vector* data, HashMap* symbols) {
     if (data == NULL) return NULL;
     if (!TCR_FixByteOrder(data)) return NULL;
 
@@ -135,10 +140,58 @@ String* TCR_Describe(Vector* data) {
     for (i = offset + 1; i < opCount; i++) {
         StringAppendFormat(tagStr, "\x02  ", i);
         DataTag opcode = *VecGet_DataTag(data, i);
-        DescribeTag(opcode, tagStr, NULL); // TODO: symbols to a debug DB file
+        DescribeTag(opcode, tagStr, symbols);
         StringAppendChar(tagStr, '\n');
     }
     return tagStr;
+}
+
+bool GetUint32(Vector* v, uint32_t* outVal) {
+    if (outVal == NULL) return false;
+
+    uint8_t a, b, c, d;
+    if (!VecDequeue_BYTE(v, &a)) return false;
+    if (!VecDequeue_BYTE(v, &b)) return false;
+    if (!VecDequeue_BYTE(v, &c)) return false;
+    if (!VecDequeue_BYTE(v, &d)) return false;
+
+    *outVal = (a << 24) | (b << 16) | (c << 8) | (d);
+}
+
+// Build a Map<uint32 -> string> reading from a BYTE vector
+// This should also add the default (built-in) symbols
+HashMap* TCR_ReadSymbols(Vector* v) {
+    auto outp = MapAllocate_int_StringPtr(256);
+
+    uint32_t crush;
+    uint32_t strLength;
+    char c;
+    for (;;) {
+        if (!GetUint32(v, &crush)) break;
+        if (!GetUint32(v, &strLength)) break;
+
+        if (strLength < 1) continue;
+        auto str = StringEmpty();
+        while (strLength-- > 0) {
+            if (!VecDequeue_char(v, &c)) break;
+            StringAppendChar(str, c);
+        }
+
+        MapPut_int_StringPtr(outp, crush, str, true);
+    }
+
+    // the default symbols
+    // TODO: put these and the ones in the interpreter somewhere central
+#define add(name)  MapPut_int_StringPtr(outp, GetCrushedName(name), StringNew(name), true);
+
+    add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
+    add("assert"); add("random"); add("eval"); add("call"); add("not"); add("or");
+    add("and"); add("readkey"); add("readline"); add("print"); add("substring");
+    add("length"); add("replace"); add("concat"); add("+"); add("-"); add("*");
+    add("/"); add("%"); add("()"); 
+#undef add;
+
+    return outp;
 }
 
 

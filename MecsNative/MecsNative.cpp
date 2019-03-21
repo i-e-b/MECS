@@ -848,7 +848,8 @@ int TestCompiler() {
 int TestRuntimeExec() {
     // This relies on the 'tagcode.dat' file created in the test compiler step
     std::cout << "***************** RUNTIME ******************\n";
-    
+
+    // Read code file --------------------------------
     auto tagCode = VecAllocate_DataTag();
     auto path = StringNew("tagcode.dat");
     uint64_t actual;
@@ -863,25 +864,40 @@ int TestRuntimeExec() {
         return -1;
     }
 
-    auto str = TCR_Describe(tagCode);
+    // Read symbols file --------------------------------
+    std::cout << "Trying to read symbol file\n";
+    StringClear(path);
+    StringAppend(path, "tagsymb.dat");
+    HashMap* symbolMap = NULL;
+    auto rawSymb = VecAllocate_char();
+
+    ok = FileLoadChunk(path, rawSymb, 0, FILE_LOAD_ALL, &actual);
+    if (!ok || actual < 10) { std::cout << "Failed to read symbol file (ignoring)\n"; }
+    else { symbolMap = TCR_ReadSymbols(rawSymb); }
+    VecDeallocate(rawSymb);
+
+    // Write a summary of the program to be executed ----------
+    auto str = TCR_Describe(tagCode, symbolMap);
     WriteStr(str);
     StringDeallocate(str);
+    StringDeallocate(path);
     
-    // Prepare a runtime task
-    auto interp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
+    // Prepare a runtime task ------------------------------------
+    auto interp = InterpAllocate(tagCode, 1 MEGABYTE, symbolMap);
 
     // run a few cycles and print any output
     std::cout << "Executing...\n";
     auto startTime = SystemTime();
     auto result = InterpRun(interp, true, 5000);
     while (result.State == ExecutionState::Paused) {
-        //std::cout << ".";
         str = StringEmpty();
         ReadOutput(interp, str);
         WriteStrInline(str);
         StringDeallocate(str);
         result = InterpRun(interp, true, 5000);
     }
+
+    // Write a status report ------------------------------
     auto endTime = SystemTime();
     str = StringEmpty();
     ReadOutput(interp, str);
@@ -916,6 +932,8 @@ int TestRuntimeExec() {
 
     // clean up
     InterpDeallocate(interp);
+    MapDeallocate(symbolMap);
+    VecDeallocate(tagCode);
     auto arena = MMCurrent();
     ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
     std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";

@@ -132,8 +132,8 @@ void InterpDeallocate(InterpreterState* is) {
     if (is->_input != NULL) StringDeallocate(is->_input);
     if (is->_output != NULL) StringDeallocate(is->_output);
     if (is->Functions != NULL) MapDeallocate(is->Functions);
-    //if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
-    //if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
+    if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
+    if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
     if (is->_variables != NULL) ScopeDeallocate(is->_variables);
     if (is->_memory != NULL) DropArena(&(is->_memory));
 
