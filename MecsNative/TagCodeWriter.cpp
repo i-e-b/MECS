@@ -13,6 +13,7 @@ RegisterVectorStatics(Vec)
 RegisterVectorFor(StringPtr, Vec)
 RegisterVectorFor(DataTag, Vec)
 RegisterVectorFor(char, Vec)
+RegisterVectorFor(int, Vec)
 RegisterVectorFor(HashMap_KVP, Vec)
 
 typedef struct TagCodeCache {
@@ -24,6 +25,9 @@ typedef struct TagCodeCache {
 
     // Names that we've hashed
     HashMap* _symbols; // Map of uint32_t -> String (the crush hash to the original symbol name)
+
+    // Map from input location to output location
+    Vector* _codeMap; // Vector<int>; index is opcode position, value is approximate source text position
 
     // any errors that have been found
     Vector* _errors; // Vector of string
@@ -39,6 +43,7 @@ TagCodeCache * TCW_Allocate() {
     result->_opcodes = VecAllocate_DataTag();
     result->_stringTable = VecAllocate_StringPtr();
     result->_symbols = MapAllocate_int_StringPtr(1024);
+    result->_codeMap = VecAllocate_int();
     result->_errors = NULL;
     result->_returnsValues = false;
 
@@ -58,6 +63,7 @@ void TCW_Deallocate(TagCodeCache* tcc) {
     if (tcc->_stringTable != NULL) VectorDeallocate(tcc->_stringTable);
     if (tcc->_symbols != NULL) HashMapDeallocate(tcc->_symbols);
     if (tcc->_errors != NULL) VectorDeallocate(tcc->_errors);
+    if (tcc->_codeMap != NULL) VectorDeallocate(tcc->_errors);
 
     tcc->_opcodes = NULL;
     tcc->_stringTable = NULL;
@@ -177,6 +183,18 @@ int SumOfPaddedSize(Vector* v) {
     return sum;
 }
 
+void WriteUint32(Vector* output, uint32_t data) {
+    // The data in the tag will be in local byte-order
+    // We have to do a bit of extra work to ensure it's
+    // always in network order. This *MUST* be matched
+    // on the read side.
+
+    VecPush_char(output, (data >> 24) & 0xFF);
+    VecPush_char(output, (data >> 16) & 0xFF);
+    VecPush_char(output, (data >> 8) & 0xFF);
+    VecPush_char(output, (data >> 0) & 0xFF);
+}
+
 void WriteCode(Vector* output, DataTag tag) {
     // The data in the tag will be in local byte-order, and unknown struct layout.
     // We have to do a bit of extra work to ensure it's
@@ -218,8 +236,8 @@ void WriteCodeIndex(Vector* output, DataTag tag, int index) {
     VecSet_char(output, index++, (tag.data >> 0) & 0xFF, NULL);
 }
 
-// Append a string data to the output vector, consuming the string
-void WriteString(Vector* output, String* staticStr, int expectedLength) {
+// Append a string data to the output BYTE vector, consuming the string
+void WriteString(Vector* output, String* staticStr) {
     // While we use a 1-byte encoding, then this is byte-order safe
     char c = StringDequeue(staticStr);
 
@@ -229,7 +247,7 @@ void WriteString(Vector* output, String* staticStr, int expectedLength) {
     }
 }
 
-
+// Append a string data to the output DataTag vector, consuming the string
 void WriteStringToDataTags(Vector* output, String* staticStr, int expectedLength) {
     // While we use a 1-byte encoding, then this is byte-order safe
 
@@ -293,7 +311,7 @@ int TCW_AppendToStream(TagCodeCache* tcc, Vector* output) {
         auto headerOpCode = EncodeInt32(bytes);
         WriteCode(output, headerOpCode);
 
-        WriteString(output, staticStr, bytes);
+        WriteString(output, staticStr);
         StringDeallocate(staticStr);
 
         // pad so that we are always 64-bit aligned
@@ -377,10 +395,7 @@ int TCW_AppendToVector(TagCodeCache* tcc, Vector* output) {
         auto headerOpCode = EncodeInt32(bytes);
         VecPush_DataTag(output, headerOpCode);
 
-        // TODO !!!!
         WriteStringToDataTags(output, staticStr, bytes);
-        //VecPush_DataTag
-        // ^ this needs to chunk into 64-bit blocks
         StringDeallocate(staticStr);
     }
 
@@ -425,6 +440,37 @@ int TCW_AppendToVector(TagCodeCache* tcc, Vector* output) {
     }
     MapDeallocate(mapping);
     return baseLocation;
+}
+
+// Adds a symbol map to a BYTE vector.
+bool TCW_WriteSymbolsToStream(TagCodeCache* tcc, Vector* v) {
+    if (tcc == NULL || v == NULL) return false;
+
+    // The file format is repeated blocks of:
+    // [crush-name: uint32_t][string-length: uint32_t][string bytes ...]
+    // all data is stored in network byte order.
+
+    if (tcc->_symbols == NULL) return false;
+    auto symbols = MapAllEntries(tcc->_symbols); //Vector<HashMap_KVP<uint, string> >
+
+    HashMap_KVP kvp;
+    while (VecPop_HashMap_KVP(symbols, &kvp)) {
+        auto crushNamePtr = (uint32_t*)kvp.Key;
+        auto stringPtr = *((StringPtr*)kvp.Value);
+
+        if (crushNamePtr == NULL || stringPtr == NULL) continue;
+
+        auto strCopy = StringClone(stringPtr);
+
+        WriteUint32(v, *crushNamePtr);
+        WriteUint32(v, StringLength(stringPtr));
+        WriteString(v, strCopy);
+
+        StringDeallocate(strCopy);
+    }
+    VecDeallocate(symbols);
+
+    return true;
 }
 
 bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym) {

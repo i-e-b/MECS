@@ -14,9 +14,11 @@
 bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, uint64_t* actual);
 
 // Write a file, replacing any existing. Reads from a vector of bytes
+// This removes entries from the buffer, but does not deallocate it.
 bool FileWriteAll(String* path, Vector* buffer);
 
 // Write a file, appending any existing. Reads from a vector of bytes
+// This removes entries from the buffer, but does not deallocate it.
 bool FileAppendAll(String* path, Vector* buffer);
 
 #endif

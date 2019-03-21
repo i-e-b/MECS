@@ -359,16 +359,16 @@ bool HashMapStringKeyCompare(void* key_A, void* key_B) {
     auto B = *((StringPtr*)key_B);
     return StringAreEqual(A, B);
 }
-unsigned int HashMapStringKeyHash(void* key) {
+uint32_t HashMapStringKeyHash(void* key) {
     auto A = *((StringPtr*)key);
     return StringHash(A);
 }
 bool HashMapIntKeyCompare(void* key_A, void* key_B) {
-    auto A = *((int*)key_A);
-    auto B = *((int*)key_B);
+    auto A = *((uint32_t*)key_A);
+    auto B = *((uint32_t*)key_B);
     return A == B;
 }
-unsigned int HashMapIntKeyHash(void* key) {
-    auto A = *((unsigned int*)key);
+uint32_t HashMapIntKeyHash(void* key) {
+    auto A = *((uint32_t*)key);
     return A | 0xA0000000;
 }

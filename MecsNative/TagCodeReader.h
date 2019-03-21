@@ -22,6 +22,10 @@
 // of read-write memory (everything before this should be read-only)
 bool TCR_Read(Vector* v, uint32_t* outStartOfCode, uint32_t* outStartOfMemory);
 
+// Build a Map<uint32 -> string> reading from a BYTE vector
+// This should also add the default (built-in) symbols
+HashMap* TCR_ReadSymbols(Vector* v);
+
 // Generate a string representation of the tag code data
 String* TCR_Describe(Vector* data);
 

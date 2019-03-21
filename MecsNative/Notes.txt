@@ -18,6 +18,15 @@ Components to do:
 * [x] String-to-num parsing
 * [x] Allow containers to have a target Arena embedded into them (optional)
 
+* [ ] Vector datatype
+  * [ ] vector-index type
+  * [ ] vector-as-function syntax
+  * [ ] get/set/length/toString etc
+* [ ] Hash datatype (always string-><any>)
+  * [ ] hash-as-function syntax
+  * [ ] get/set/length/toString etc
+
+* [ ] Extended data types (vector and hash)
 * [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
   * [ ] Handle parsing, including scientific notation
   * [ ] Investigate a reduction of ( http://dec64.com/ ) as a single number type -- bottom 32 bits in tag data, exponent and remaining bits in tag params.
@@ -28,6 +37,7 @@ Input handling:
 * [x] File system abstraction
 * [x] Improve filesystem to allow non-byte sized vectors?
 * [ ] Hunt down and fix compiler and parser leaks (relatively low priority)
+  * [ ] improve / re-write the tree container (2-list generalised graph?)
 * [x] Convert parser
 * [x] Convert compiler
   * [x] tag code write
@@ -35,13 +45,13 @@ Input handling:
   * [x] context
   * [x] desugar
   * [x] optimisations
-  * [ ] symbol output (for debug)
+  * [ ] symbol output (for debug)       <--- this next
     * [ ] line to tag-code mapping
 
 The machine:
 ------------
 
-* [ ] Add readline / readkey support
+* [x] Add readline / readkey support
 * [ ] Performance optimise
 * [ ] Try introducing C++ namespacing?
 * [ ] change 'deallocate' functions to `...Deallocate(thing** x){ ... *x = NULL ...}`
@@ -71,4 +81,3 @@ Garbage collector:
 * [ ] extend 'potential garbage' to hold a list instead of single refs
 * [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
 * [ ] maybe have 'destroy&recreate' for actors?
-* [ ] improve / re-write the tree container (2-list generalised graph?)

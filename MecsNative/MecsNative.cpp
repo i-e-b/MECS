@@ -814,11 +814,18 @@ int TestCompiler() {
         WriteStr(tagStr);
         StringDeallocate(tagStr);
         
-        std::cout << "\n\nWriting to file...";
+        std::cout << "\n\nWriting to code file...";
         auto buf = TCW_WriteToStream(tagCode);
         std::cout << VecLength(buf) << " bytes...";
         FileWriteAll(StringNew("tagcode.dat"), buf);
+
+        std::cout << "\n\nWriting to symbols file...";
+        TCW_WriteSymbolsToStream(tagCode, buf);
+        std::cout << VecLength(buf) << " bytes...";
+        FileWriteAll(StringNew("tagsymb.dat"), buf);
         std::cout << "Done\n";
+
+        VecDeallocate(buf);
     }
 
     StringDeallocate(nstr);
@@ -1099,8 +1106,10 @@ int main() {
     if (runit != 0) return runit;
     MMPop();
 
+    /*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
+    */
 
     ShutdownManagedMemory();
 }

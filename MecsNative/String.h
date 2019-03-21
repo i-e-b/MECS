@@ -23,6 +23,8 @@ String * StringNewFormat(const char* fmt, ...);
 String* StringFromInt32(int32_t i);
 // Clear the contents of a string, but leave it allocated
 void StringClear(String *str);
+// Make a copy of a string (copies storage, so you can edit one without affecting the other)
+String* StringClone(String *str);
 
 // Create an empty string in a specific memory arena
 String *StringEmptyInArena(Arena* a);

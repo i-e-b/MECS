@@ -192,6 +192,12 @@ void StringAppend(String *first, String *second) {
     first->hashval = 0;
 }
 
+String* StringClone(String *str) {
+    auto outp = StringEmpty();
+    StringAppend(outp, str);
+    return outp;
+}
+
 void StringAppend(String *first, const char *second) {
     if (first == NULL || second == NULL) return;
     while (*second != 0) {

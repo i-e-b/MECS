@@ -64,6 +64,9 @@ bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym);
 // Return the original names of variable references we've hashed. Keys are the Variable Ref byte codes
 HashMap* TCW_GetSymbols(TagCodeCache* tcc);
 
+// Adds a symbol map to a BYTE vector.
+bool TCW_WriteSymbolsToStream(TagCodeCache* tcc, Vector* existing);
+
 
 // Generation methods:
 
