@@ -18,15 +18,15 @@ Components to do:
 * [x] String-to-num parsing
 * [x] Allow containers to have a target Arena embedded into them (optional)
 
-* [ ] Vector datatype
-  * [ ] vector-index type
-  * [ ] vector-as-function syntax
-  * [ ] get/set/length/toString etc
-* [ ] Hash datatype (always string-><any>)
-  * [ ] hash-as-function syntax
-  * [ ] get/set/length/toString etc
-
 * [ ] Extended data types (vector and hash)
+    * [ ] Vector datatype
+      * [ ] vector-index type
+      * [ ] vector-as-function syntax
+      * [ ] get/set/length/toString etc
+    * [ ] Hash datatype (always string-><any>)
+      * [ ] hash-as-function syntax
+      * [ ] get/set/length/toString etc
+
 * [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
   * [ ] Handle parsing, including scientific notation
   * [ ] Investigate a reduction of ( http://dec64.com/ ) as a single number type -- bottom 32 bits in tag data, exponent and remaining bits in tag params.
@@ -45,7 +45,7 @@ Input handling:
   * [x] context
   * [x] desugar
   * [x] optimisations
-  * [ ] symbol output (for debug)       <--- this next
+  * [x] symbol output (for debug)
     * [ ] line to tag-code mapping
 
 The machine:
