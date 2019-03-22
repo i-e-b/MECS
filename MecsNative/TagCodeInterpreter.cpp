@@ -60,6 +60,16 @@ typedef struct InterpreterState {
 } InterpreterState;
 
 
+DataTag _Exception(InterpreterState* is, const char* msg) {
+    StringAppend(is->_output, msg);
+    return RuntimeError(is->_position);
+}
+DataTag _Exception(InterpreterState* is, const char* msg, String* details) {
+    StringAppend(is->_output, msg);
+    StringAppend(is->_output, details);
+    return RuntimeError(is->_position);
+}
+
 Arena* InterpInternalMemory(InterpreterState* is) {
     return is->_memory;
 }
@@ -402,7 +412,7 @@ bool FoldLessThan(int nbParams, DataTag* param, InterpreterState* is) {
     return true;
 }
 
-
+// Try to read a tag from the value stack
 DataTag TryPopTag(InterpreterState* is, int position) {
     DataTag tag;
     if (!VecPop_DataTag(is->_valueStack, &tag)) {
@@ -447,6 +457,50 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
         auto result = StoreStringAndGetReference(is, dst);
         StringDeallocate(src);
         VecPush_DataTag(is->_valueStack, result);
+        return;
+    }
+
+    case (int)DataType::VectorPtr:
+    {
+        auto src = (Vector*)InterpreterDeref(is, value);
+        if (src == NULL) {
+            VecPush_DataTag(is->_valueStack, NonResult());
+            return;
+        }
+        auto srcLength = VecLength(src);
+        // if we've asked for one index, we return the value directly:
+        if (paramCount == 1) {
+            auto idx = CastInt(is, TryPopTag(is, is->_position));
+            if (idx >= 0 && idx < srcLength) VecPush_DataTag(is->_valueStack, *VecGet_DataTag(src, idx));
+            return;
+        }
+
+        // if more than one, we build a new vector:
+        auto list = VecAllocateArena_DataTag(is->_memory);
+        auto indexes = VecAllocateArena_int(is->_memory);
+
+        // get indexes from stack order to index order
+        for (int i = 0; i < paramCount; i++) {
+            auto idx = CastInt(is, TryPopTag(is, is->_position));
+            if (idx >= 0 && idx < srcLength) VecPush_int(indexes, idx);
+        }
+
+        // Pick source indexes and copy into output list
+        int idx = 0;
+        while (VecPop_int(indexes, &idx)) {
+            if (idx >= 0 && idx < srcLength) {
+                VecPush_DataTag(list, *VecGet_DataTag(src, idx));
+            }
+        }
+
+        uint32_t encPtr = ArenaPtrToOffset(is->_memory, list); // allows us to place a 32-bit ptr in 64-bit space
+        if (encPtr < 1) { // nonsense result from arena allocation
+            is->ErrorFlag = true;
+            VecPush_DataTag(is->_valueStack, _Exception(is, "Arena mapping failed in indexed get from list"));
+            return;
+        }
+
+        VecPush_DataTag(is->_valueStack, EncodePointer(encPtr, DataType::VectorPtr));
         return;
     }
     default:
@@ -724,16 +778,6 @@ DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2
 // Add IPC messages to an InterpreterState (only when it's not running)
 void InterpAddIPC(InterpreterState*is, Vector* ipcMessages) {
 
-}
-
-DataTag _Exception(InterpreterState* is, const char* msg) {
-    StringAppend(is->_output, msg);
-    return RuntimeError(is->_position);
-}
-DataTag _Exception(InterpreterState* is, const char* msg, String* details) {
-    StringAppend(is->_output, msg);
-    StringAppend(is->_output, details);
-    return RuntimeError(is->_position);
 }
 
 String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterState* is) {
