@@ -13,6 +13,7 @@ enum class CmpOp {
 };
 
 // Enum mapping for all in-built functions from the runtime
+// These are used primarily in TagCodeInterpreter.cpp -> AddBuiltInFunctionSymbols()
 enum class FuncDef {
     // A bad function mapping
     Invalid = -200,
@@ -26,13 +27,10 @@ enum class FuncDef {
     GreaterThan,
     LessThan,
     NotEqual,
-    Assert,
-    Random,
-    Eval,
-    Call,
     LogicNot,
     LogicOr,
     LogicAnd,
+
     ReadKey,
     ReadLine,
     Print,
@@ -40,11 +38,23 @@ enum class FuncDef {
     Length,
     Replace,
     Concat,
+
+    Assert,
+    Random,
+    Eval,
+    Call,
+
     MathAdd,
     MathSub,
     MathProd,
     MathDiv,
     MathMod,
+
+    NewList,
+    Push,
+    Pop,
+    Dequeue,
+
     UnitEmpty
 };
 

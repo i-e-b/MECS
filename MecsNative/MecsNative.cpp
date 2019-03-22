@@ -912,7 +912,8 @@ int TestRuntimeExec() {
         StringAppend(str, "\r\nProgram waiting for input");
         break;
     case ExecutionState::ErrorState:
-        StringAppend(str, "\r\nProgram ERRORED");
+        StringAppend(str, "\r\nProgram ERRORED: ");
+        DescribeTag(result.Result, str, symbolMap);
         break;
     case ExecutionState::Running:
         StringAppend(str, "\r\nProgram still running?");

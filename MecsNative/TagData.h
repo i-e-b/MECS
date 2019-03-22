@@ -18,6 +18,7 @@
 #define NUMERIC_TYPE 0x40
 
 // Every variable or opcode in the interpreter must be one of these:
+// Range 0-10 are 'core'; Range 11-63 are non-numeric values, Range 64-126 are numeric; Range 128-249 are 'allocated'
 enum class DataType {
     Invalid      = 0, // Tag is not initialised, or is a sentinel value
 
@@ -43,6 +44,7 @@ enum class DataType {
 
     HashtablePtr = ALLOCATED_TYPE + 1,  // Data is pointer to HashTable. Params not used. Can be collected by GC
     VectorPtr    = ALLOCATED_TYPE + 2,  // Data is pointer to Vector. Params not used. Can be collected by GC
+    VectorIndex  = 12,                  // Data is pointer to Vector, Params is index into vector.
 
     DebugStringPtr = 20,                           // A string debug pointer, used for symbols / tracing
     SmallString = 21,                              // A small string, no allocation. Params + Data contain up to 7 characters.

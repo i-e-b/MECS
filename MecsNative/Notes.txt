@@ -53,6 +53,7 @@ The machine:
 
 * [x] Add readline / readkey support
 * [ ] Performance optimise
+* [ ] Tail-recursion support (maybe with counting return stack?)
 * [ ] Try introducing C++ namespacing?
 * [ ] change 'deallocate' functions to `...Deallocate(thing** x){ ... *x = NULL ...}`
 * [x] TagCode reader (fix byte order)
@@ -60,6 +61,7 @@ The machine:
   * [ ] Add breakpoints
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 * [ ] Debug symbols file and reader
+* [ ] Value stack improvements (delete unused return values)
 
 
 Actor model stuff:

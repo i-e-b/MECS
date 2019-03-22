@@ -68,16 +68,24 @@ Arena* InterpInternalMemory(InterpreterState* is) {
 void AddBuiltInFunctionSymbols(HashMap* fd) {
     if (fd == NULL) return;
 #define add(name,type)  MapPut_Name_FunctionDefinition(fd, GetCrushedName(name), FunctionDefinition{type}, true);
-
+    // this should be kept in sync with TagCodeReader.cpp -> MapPut_int_StringPtr()
     add("=", FuncDef::Equal); add("equals", FuncDef::Equal); add(">", FuncDef::GreaterThan);
     add("<", FuncDef::LessThan); add("<>", FuncDef::NotEqual); add("not-equal", FuncDef::NotEqual);
+    add("not", FuncDef::LogicNot); add("or", FuncDef::LogicOr); add("and", FuncDef::LogicAnd);
+
     add("assert", FuncDef::Assert); add("random", FuncDef::Random); add("eval", FuncDef::Eval);
-    add("call", FuncDef::Call); add("not", FuncDef::LogicNot); add("or", FuncDef::LogicOr);
-    add("and", FuncDef::LogicAnd); add("readkey", FuncDef::ReadKey); add("readline", FuncDef::ReadLine);
+    add("call", FuncDef::Call);
+
+    add("readkey", FuncDef::ReadKey); add("readline", FuncDef::ReadLine);
     add("print", FuncDef::Print); add("substring", FuncDef::Substring);
     add("length", FuncDef::Length); add("replace", FuncDef::Replace); add("concat", FuncDef::Concat);
+
     add("+", FuncDef::MathAdd); add("-", FuncDef::MathSub); add("*", FuncDef::MathProd);
     add("/", FuncDef::MathDiv); add("%", FuncDef::MathMod);
+    
+    add("new-list", FuncDef::NewList); add("push", FuncDef::Push);
+    add("pop", FuncDef::Pop); add("dequeue", FuncDef::Dequeue);
+
     add("()", FuncDef::UnitEmpty); // empty value marker
 #undef add;
 }
@@ -227,12 +235,23 @@ String* DiagnosticString(DataTag tag, InterpreterState* is) {
     return StringEmpty();
 }
 
-DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){//int position, uint16_t nbParams, Vector* valueStack) {
-    DataTag* param = (DataTag*)ArenaAllocate(is->_memory, nbParams * sizeof(DataTag));//mcalloc(nbParams, sizeof(DataTag));
+DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
+    DataTag* param = (DataTag*)ArenaAllocate(is->_memory, nbParams * sizeof(DataTag));
     if (param == NULL) return NULL;
-    // Pop values from stack into a param cache
+
+    // Pop values from stack into a param cache, putting into source-code order
     for (int i = nbParams - 1; i >= 0; i--) {
-        VecPop_DataTag(is->_valueStack, &(param[i]));
+        if (!VecPop_DataTag(is->_valueStack, &(param[i]))) {
+            is->ErrorFlag = true;
+            StringAppendFormat(is->_output, "\nValue stack underflow at position \x03 (\x02)\n", is->_position, is->_position);
+            return NULL;
+        }
+
+        if (param[i].type == 0) { // invalid value!
+            is->ErrorFlag = true;
+            StringAppendFormat(is->_output, "\nInvalid value in parameters! Found when calling at position x03 (\x02)\n", is->_position, is->_position);
+            return NULL;
+        }
     }
 
     return param;
@@ -461,9 +480,14 @@ DataType PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState*
         return DataType::MustWait;
     }
 
+    if (evalResult.type == 0) { // something gave a totally invalid result
+        is->ErrorFlag = true;
+        VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
+        return DataType::Exception;
+    }
+
     // Add result on stack as a value.
-    if (evalResult.type != (int)DataType::Not_a_Result
-        && evalResult.type != (int)DataType::Void) {
+    if (evalResult.type != (int)DataType::Void) { // NaR is added so it can propagate
         VecPush_DataTag(is->_valueStack, evalResult);
     }
 
@@ -575,7 +599,7 @@ int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint
 
     if (param == NULL) {
         is->ErrorFlag = true;
-        StringAppend(is->_output, "Out of memory");
+        StringAppend(is->_output, "Out of memory?");
         return -1;
     }
 
@@ -755,6 +779,47 @@ DataTag ChainRemainder(InterpreterState* is, int nbParams, DataTag* param) {
     return EncodeInt32(sum);
 }
 
+DataTag ConcatStrings(int nbParams, InterpreterState * is, DataTag * param)
+{
+    auto str = StringEmpty();
+
+    for (int i = 0; i < nbParams; i++) {
+        auto s = CastString(is, param[i]);
+        StringAppend(str, s);
+        StringDeallocate(s);
+    }
+
+    return StoreStringAndGetReference(is, str);
+}
+
+DataTag ConcatVectors(int nbParams, InterpreterState * is, DataTag * param) {
+    auto list = VecAllocateArena_DataTag(is->_memory);
+
+    // unpack each vector, and copy its data across
+    for (int i = 0; i < nbParams; i++) {
+        auto src = (Vector*)InterpreterDeref(is, param[i]);
+        if (src == NULL) continue;
+
+        int len = VecLength(src);
+        for (int j = 0; j < len; j++) {
+            VecPush_DataTag(list, *VecGet_DataTag(src, j));
+        }
+    }
+
+    uint32_t encPtr = ArenaPtrToOffset(is->_memory, list); // allows us to place a 32-bit ptr in 64-bit space
+    if (encPtr < 1) { return RuntimeError(is->_position); } // nonsense result from arena allocation
+
+    return EncodePointer(encPtr, DataType::VectorPtr);
+}
+
+bool AllVectors(int nbParams, DataTag * param) {
+    for (int i = 0; i < nbParams; i++)
+    {
+        if (param[i].type != (int)DataType::VectorPtr) return false;
+    }
+    return true;
+}
+
 DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is){
     switch (kind) {
         // each element equal to the first
@@ -890,8 +955,15 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
     case FuncDef::Length:
     {
+        if (param[0].type == (int)DataType::VectorPtr) {
+            auto vec = (Vector*)InterpreterDeref(is, param[0]);
+            if (vec == NULL) return EncodeInt32(0);
+            return EncodeInt32(VecLength(vec));
+        }
+
+        // anything else is stringified
         auto str = CastString(is, param[0]);
-        int v = StringLength(str); // TODO: lengths of other things
+        int v = StringLength(str);
         StringDeallocate(str);
         return EncodeInt32(v);
     }
@@ -913,15 +985,17 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
     case FuncDef::Concat:
     {
-        auto str = StringEmpty();
-
-        for (int i = 0; i < nbParams; i++) {
-            auto s = CastString(is, param[i]);
-            StringAppend(str, s);
-            StringDeallocate(s);
+        // TODO: extend this:
+        // if all params are vectors, we make a new vector of their contents (copying)
+        // if all params are hash-maps, we make a new map with all the KVPs
+        // else we stringify everything and concat the results
+        if (param[0].type == (int)DataType::VectorPtr) {
+            if (AllVectors(nbParams, param)) {
+                return ConcatVectors(nbParams, is, param);
+            }
         }
 
-        return StoreStringAndGetReference(is, str);
+        return ConcatStrings(nbParams, is, param);
     }
 
     case FuncDef::UnitEmpty:
@@ -991,6 +1065,60 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         auto functionNameHash = GetCrushedName(strName);
         StringDeallocate(strName);
         return EvaluateFunctionCall(position, functionNameHash, nbParams - 1, param + 1, is);
+    }
+    case FuncDef::NewList:
+    {
+        auto list = VecAllocateArena_DataTag(is->_memory);
+
+        // lists store datatags directly
+        for (int i = 0; i < nbParams; i++) {
+            VecPush_DataTag(list, param[i]); // TODO: check this is the correct order
+        }
+
+        uint32_t encPtr = ArenaPtrToOffset(is->_memory, list); // allows us to place a 32-bit ptr in 64-bit space
+        if (encPtr < 1) { return RuntimeError(is->_position); } // nonsense result from arena allocation
+
+        return EncodePointer(encPtr, DataType::VectorPtr);
+    }
+    case FuncDef::Push:
+    {
+        if (nbParams < 2) return _Exception(is, "`push` needs a list and at least one value");
+        if (param[0].type != (int)DataType::VectorPtr) return _Exception(is, "First parameter to `push` must be a list");
+
+        auto vec = (Vector*)InterpreterDeref(is, param[0]);
+        if (vec == NULL) return _Exception(is, "The list you tried to `push` to was invalid");
+
+        for (int i = 1; i < nbParams; i++) {
+            if (param[i].type == (int)DataType::Not_a_Result) continue;
+            VecPush_DataTag(vec, param[i]);
+        }
+        return VoidReturn(); // maybe push could return something useful?
+    }
+    case FuncDef::Pop:
+    {
+        if (nbParams != 1) return _Exception(is, "`pop` needs a single list");
+        if (param[0].type != (int)DataType::VectorPtr) return _Exception(is, "First parameter to `pop` must be a list");
+
+        auto vec = (Vector*)InterpreterDeref(is, param[0]);
+        if (vec == NULL) return _Exception(is, "The list you tried to `pop` from was invalid");
+
+        DataTag result;
+        if (!VecPop_DataTag(vec, &result)) {
+            return NonResult();
+        }
+        return result;
+    }
+    case FuncDef::Dequeue:
+    {
+        if (nbParams != 1) return _Exception(is, "`dequeue` needs a single list");
+        if (param[0].type != (int)DataType::VectorPtr) return _Exception(is, "First parameter to `dequeue` must be a list");
+
+        auto vec = (Vector*)InterpreterDeref(is, param[0]);
+        if (vec == NULL) return _Exception(is, "The list you tried to `dequeue` from was invalid");
+
+        DataTag result;
+        if (!VecDequeue_DataTag(vec, &result)) { return NonResult(); }
+        return result;
     }
 
     default:
@@ -1072,7 +1200,11 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             return PausedExecutionResult();
         }
         if (is->ErrorFlag) {
-            return FailureResult(0);
+            uint32_t errPos = 0;
+            // try to read exception position
+            if (VecPop_DataTag(is->_valueStack, &evalResult)) { if (evalResult.type == (int)DataType::Exception) errPos = evalResult.data; }
+            else { errPos = is->_position; }
+            return FailureResult(errPos);
         }
 
         is->_stepsTaken++;

@@ -5,8 +5,8 @@ Intended to contain a complete memory model, for embedding onto a SBC.
 ## Move to C for embedding
 
 * [x] Re-implement container types in C
-* [ ] Rebuild interpreter using the native containers
-* [ ] Full memory model (including return & value stacks)
+* [x] Rebuild interpreter using the native containers
+* [x] Full memory model (including return & value stacks)
 * [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
 * [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
 * [ ] Make sure (de)serialisation is available
@@ -42,7 +42,6 @@ Intended to contain a complete memory model, for embedding onto a SBC.
 * Set/flags                   (Hash table with dummy contents)
 * Dictionary/map/hashtable    (Hash table keyed and valued with tags)
 * Array/List                  (Scalable vector of tags)
-* Grid (2+D array, sparse)    (Hash table with specially constructed keys)
 
 # Language definitions
 

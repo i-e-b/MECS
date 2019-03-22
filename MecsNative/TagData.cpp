@@ -228,8 +228,7 @@ void DescribeTag(DataTag token, String* target, HashMap* symbols) {
         return;
 
     case DataType::Exception:
-        StringAppend(target, "Runtime Error at ");
-        StringAppendInt32Hex(target, token.data);
+        StringAppendFormat(target, "Runtime Error at \x03 (\x02)", token.data, token.data);
         return;
 
     case DataType::DebugStringPtr:

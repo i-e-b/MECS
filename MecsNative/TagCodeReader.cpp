@@ -183,12 +183,12 @@ HashMap* TCR_ReadSymbols(Vector* v) {
     // the default symbols
     // TODO: put these and the ones in the interpreter somewhere central
 #define add(name)  MapPut_int_StringPtr(outp, GetCrushedName(name), StringNew(name), true);
-
+    // This should be kept in sync with TagCodeInterpreter.cpp -> AddBuiltInFunctionSymbols()
     add("="); add("equals"); add(">"); add("<"); add("<>"); add("not-equal");
     add("assert"); add("random"); add("eval"); add("call"); add("not"); add("or");
     add("and"); add("readkey"); add("readline"); add("print"); add("substring");
     add("length"); add("replace"); add("concat"); add("+"); add("-"); add("*");
-    add("/"); add("%"); add("()"); 
+    add("/"); add("%"); add("()"); add("new-list"); add("push"); add("pop"); add("dequeue");
 #undef add;
 
     return outp;

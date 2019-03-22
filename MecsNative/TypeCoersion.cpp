@@ -3,9 +3,8 @@
 #include "Scope.h"
 #include "Fix16.h"
 
-/*
-Convert from RuntimeMemoryModel.cs
-*/
+
+RegisterVectorFor(DataTag, Vector)
 
 
 String* DereferenceString(InterpreterState* is, DataTag stringTag) {
@@ -149,6 +148,27 @@ int CastInt(InterpreterState* is, DataTag  encoded) {
     }
 }
 
+String* StringifyVector(InterpreterState* is, DataTag encoded) {
+    auto original = (Vector*)InterpreterDeref(is, encoded);
+
+    if (original == NULL) return StringNew("<null>");
+
+    auto output = StringNew('[');
+    auto length = VectorLength(original);
+    for (int i = 0; i < length; i++) {
+        auto str = CastString(is, *VectorGet_DataTag(original, i));
+        StringAppend(output, str);
+        StringDeallocate(str);
+
+        if (i < length - 1) {
+            StringAppend(output, ", ");
+        }
+    }
+
+    StringAppendChar(output, ']');
+    return output;
+}
+
 
 // Get a resonable string representation from a value.
 // This should include stringifying non-string types (numbers, structures etc)
@@ -158,7 +178,7 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     switch (type) {
     case (int)DataType::Invalid: return StringEmpty();
     case (int)DataType::Integer: return StringFromInt32(encoded.data); //encoded.ToString(CultureInfo.InvariantCulture);
-    case (int)DataType::Fraction: return StringNew("TODO");
+    case (int)DataType::Fraction: return StringNew("<fractional number>");
     case (int)DataType::Opcode: return StringNew("<Op Code>");
 
     case (int)DataType::Not_a_Result: return StringEmpty();
@@ -182,8 +202,10 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     case (int)DataType::StringPtr:
         return DereferenceString(is, encoded);
 
-    case (int)DataType::HashtablePtr:
     case (int)DataType::VectorPtr:
+        return StringifyVector(is, encoded);
+
+    case (int)DataType::HashtablePtr:
         return StringNew("<complex type>"); // TODO: add stringification later
 
     default:
