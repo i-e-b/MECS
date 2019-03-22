@@ -19,10 +19,14 @@ Components to do:
 * [x] Allow containers to have a target Arena embedded into them (optional)
 
 * [ ] Extended data types (vector and hash)
-    * [ ] Vector datatype
+    * [x] Vector datatype
       * [ ] vector-index type
       * [ ] vector-as-function syntax
-      * [ ] get/set/length/toString etc
+      * [ ] indexed get/set
+      * [x] length
+      * [x] concat
+      * [x] push/pop/dequeue
+      * [x] CastString / print
     * [ ] Hash datatype (always string-><any>)
       * [ ] hash-as-function syntax
       * [ ] get/set/length/toString etc

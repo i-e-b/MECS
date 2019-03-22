@@ -249,7 +249,8 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
 
         if (param[i].type == 0) { // invalid value!
             is->ErrorFlag = true;
-            StringAppendFormat(is->_output, "\nInvalid value in parameters! Found when calling at position x03 (\x02)\n", is->_position, is->_position);
+            // this can happen if we have an unresolved name. Should be handled earlier.
+            StringAppendFormat(is->_output, "\nInvalid value in parameters! Found when calling at position \x03 (\x02)\n", is->_position, is->_position);
             return NULL;
         }
     }
