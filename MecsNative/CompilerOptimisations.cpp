@@ -20,6 +20,7 @@ bool IsGet(TreeNode* node, String* target) {
     return false;
 }
 
+
 bool IsGet(TreeNode* node) {
     auto nodeData = TReadBody_Node(node);
     if (nodeData->NodeType == NodeType::Atom && StringLength(nodeData->Text) > 0) return true;
@@ -58,6 +59,15 @@ TreeNode* Repack(TreeNode* parent) {
     TAppendNode(tree, TChild(parent));
 
     return tree;
+}
+
+
+bool CO_IsSimpleSet(TreeNode* setNode) {
+#ifdef DISABLE_OPTIMISATIONS
+    return false;
+#endif
+    auto nodeData = TReadBody_Node(setNode);
+    return (StringAreEqual(nodeData->Text, "set") && TCountChildren(TChild(setNode)) == 0);
 }
 
 bool CO_IsSmallIncrement(TreeNode * node, int8_t * outIncr, String ** outVarName) {

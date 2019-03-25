@@ -22,7 +22,8 @@ Components to do:
     * [x] Vector datatype
       * [ ] vector-index type
       * [ ] vector-as-function syntax
-      * [ ] indexed get/set
+      * [x] indexed get
+      * [ ] set on a vector-index type
       * [x] length
       * [x] concat
       * [x] push/pop/dequeue

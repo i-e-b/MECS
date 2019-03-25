@@ -18,6 +18,9 @@ bool CO_IsSmallIncrement(TreeNode* node, int8_t* outIncr, String** outVarName);
 // Is this a single comparison between two values?
 bool CO_IsSimpleComparsion(TreeNode* condition, int opCodeCount);
 
+// Is this node a set command, where the target is a simple reference
+bool CO_IsSimpleSet(TreeNode* setNode);
+
 // Pack a comparison between two simple values into a single op-code. Reduces loop condition complexity
 TreeNode* CO_ReadSimpleComparison(TreeNode* condition, CmpOp *outCmpOp, uint16_t* outArgCount);
 

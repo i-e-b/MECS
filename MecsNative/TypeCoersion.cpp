@@ -54,6 +54,19 @@ bool CastBoolean(InterpreterState* is, DataTag encoded) {
         return CastBoolean(is, next);
     }
 
+    case (int)DataType::VectorIndex:
+    {
+        // dereference the vector index, and call CastInt again:
+        auto idx = encoded.params; // grab the index
+        encoded.type = (int)DataType::VectorPtr; // make this into a reference to the actual vector
+        auto src = (Vector*)InterpreterDeref(is, encoded); // get the vector
+        if (src == NULL) return false;
+
+        auto tag = VectorGet_DataTag(src, idx);
+        if (tag == NULL) return false;
+        return CastBoolean(is, *tag);
+    }
+
     // All the things that can't be meaningfully cast are 'false'
     default: return false;
     }
@@ -104,6 +117,19 @@ float CastDouble(InterpreterState* is, DataTag encoded) {
         return (ok) ? (fix16_to_float(dest)) : 0;
     }
 
+    case (int)DataType::VectorIndex:
+    {
+        // dereference the vector index, and call CastInt again:
+        auto idx = encoded.params; // grab the index
+        encoded.type = (int)DataType::VectorPtr; // make this into a reference to the actual vector
+        auto src = (Vector*)InterpreterDeref(is, encoded); // get the vector
+        if (src == NULL) return 0;
+
+        auto tag = VectorGet_DataTag(src, idx);
+        if (tag == NULL) return 0;
+        return CastDouble(is, *tag);
+    }
+
     // All the things that can't be meaningfully cast
     default: return 0.0;
     }
@@ -143,6 +169,18 @@ int CastInt(InterpreterState* is, DataTag  encoded) {
     }
     case (int)DataType::Integer: return (int)encoded.data;
 
+    case (int)DataType::VectorIndex:
+    {
+        // dereference the vector index, and call CastInt again:
+        auto idx = encoded.params; // grab the index
+        encoded.type = (int)DataType::VectorPtr; // make this into a reference to the actual vector
+        auto src = (Vector*)InterpreterDeref(is, encoded); // get the vector
+        if (src == NULL) return 0;
+
+        auto tag = VectorGet_DataTag(src, idx);
+        if (tag == NULL) return 0;
+        return CastInt(is, *tag);
+    }
     default:
         return 0;
     }
@@ -204,6 +242,19 @@ String* CastString(InterpreterState* is, DataTag encoded) {
 
     case (int)DataType::VectorPtr:
         return StringifyVector(is, encoded);
+
+    case (int)DataType::VectorIndex:
+    {
+        // dereference the vector index, and call CastInt again:
+        auto idx = encoded.params; // grab the index
+        encoded.type = (int)DataType::VectorPtr; // make this into a reference to the actual vector
+        auto src = (Vector*)InterpreterDeref(is, encoded); // get the vector
+        if (src == NULL) return false;
+
+        auto tag = VectorGet_DataTag(src, idx);
+        if (tag == NULL) return false;
+        return CastString(is, *tag);
+    }
 
     case (int)DataType::HashtablePtr:
         return StringNew("<complex type>"); // TODO: add stringification later

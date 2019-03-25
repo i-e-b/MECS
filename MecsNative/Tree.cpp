@@ -252,10 +252,11 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child) {
 TreeNode* TreePivot(TreeNode *node) {
     if (node == NULL || node->FirstChildPtr == NULL) return NULL;
 
-    void* firstNodeData = TreeReadBody(node->FirstChildPtr);
+    auto firstChild = node->FirstChildPtr;
+    void* firstNodeData = TreeReadBody(firstChild);
     auto newRoot = AllocateAndWriteNode(node, node->ElementByteSize, firstNodeData);
 
-    newRoot->FirstChildPtr = TreeSibling(node->FirstChildPtr);
+    newRoot->FirstChildPtr = TreeSibling(firstChild);
 
     return newRoot;
 }

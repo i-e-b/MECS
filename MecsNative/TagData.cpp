@@ -129,6 +129,15 @@ DataTag EncodePointer(uint32_t ptrTarget, DataType type) {
     return t;
 }
 
+// Encode a reference to a value inside a vector
+DataTag VectorIndexTag(uint32_t vectorPtrTarget, int index) {
+    DataTag t;
+    t.params = index;
+    t.type = (char)DataType::VectorIndex;
+    t.data = vectorPtrTarget;
+    return t;
+}
+
 uint32_t DecodePointer(DataTag encoded) {
     return encoded.data;
 }

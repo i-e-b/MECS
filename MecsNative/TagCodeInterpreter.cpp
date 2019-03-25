@@ -271,7 +271,67 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
 // Defined at bottom
 DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is);
 
-DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
+// Try to resolve a variable name being called as if it were a function
+// for vectors and hashmaps, this gets a proxy to the held value (or a NaR)
+// for everything else, it's an error
+DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, int nbParams, DataTag* param) {
+    auto tag = ScopeResolve(is->_variables, functionNameHash);
+
+    if (nbParams != 1) return InvalidTag();
+
+    switch (tag.type) {
+    case (int)DataType::VectorPtr:
+    {
+        // Return an encoding for the index. We don't actually resolve anything from the vector at this point (a get/set or use will do that)
+        return VectorIndexTag(tag.data, CastInt(is, param[0]));
+    }
+    default: return InvalidTag();
+    }
+}
+
+// Check to see if the tag is a vector-index or hash-entry.
+// if so, we resolve it to the stored value. Otherwise, we do nothing.
+void ResolveIndexIfRequired(InterpreterState* is, DataTag* tag) {
+    if (tag == NULL) return;
+    switch (tag->type) {
+    case (int)DataType::VectorIndex:
+    {
+        // dereference the vector index, and call CastInt again:
+        auto idx = tag->params; // grab the index
+
+        auto offset = DecodePointer(*tag);
+        auto src = (Vector*)ArenaOffsetToPtr(is->_memory, offset);
+        if (src == NULL) {// broken reference. Switch value to NaR
+            tag->type = (int)DataType::Not_a_Result;
+            tag->params = 0;
+            tag->data = 0;
+            return; 
+        }
+
+        auto newtag = VecGet_DataTag(src, idx);
+        if (tag == NULL) {// broken reference. Switch value to NaR
+            tag->type = (int)DataType::Not_a_Result;
+            tag->params = 0;
+            tag->data = 0;
+            return;
+        }
+
+        tag->type = newtag->type;
+        tag->params = newtag->params;
+        tag->data = newtag->data;
+        return;
+    }
+
+    default: return;
+    }
+}
+
+// returns true if the tag is a vector-index or hash-entry.
+bool IsContainerIndex(DataTag tag) {
+    return (tag.type == (int)DataType::VectorIndex || tag.type == (int)DataType::HashtableKey);
+}
+
+DataTag EvaluateFunctionCall(int* position, uint32_t functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
     FunctionDefinition* fun = NULL;
     
     if (!MapIsValid(is->Functions)) {
@@ -282,7 +342,14 @@ DataTag EvaluateFunctionCall(int* position, int functionNameHash, int nbParams, 
 
     bool found = MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &fun);
 
-    if (!found) {
+    if (!found) { // No function with that name (neither built-in or runtime-defined)
+        // It could be a variable de-ref (for vector or hash), or a true error
+        if (ScopeCanResolve(is->_variables, functionNameHash)) {
+            auto result = ResolveValueAsFunction(is, functionNameHash, nbParams, param);
+            if (result.type != 0) return result;
+        }
+
+        // Nope, just an error
         is->ErrorFlag = true;
         StringAppendFormat(is->_output,
             "Tried to call an undefined function '\x01' at position \x02\n", DbgStr(is, functionNameHash), *position);
@@ -413,7 +480,7 @@ bool FoldLessThan(int nbParams, DataTag* param, InterpreterState* is) {
 }
 
 // Try to read a tag from the value stack
-DataTag TryPopTag(InterpreterState* is, int position) {
+DataTag TryPopFromValueStack(InterpreterState* is, int position) {
     DataTag tag;
     if (!VecPop_DataTag(is->_valueStack, &tag)) {
         is->ErrorFlag = true;
@@ -424,26 +491,23 @@ DataTag TryPopTag(InterpreterState* is, int position) {
 }
 
 void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
-    auto target = TryPopTag(is, is->_position);
+    auto target = TryPopFromValueStack(is, is->_position);
     auto value = ScopeResolve(is->_variables, DecodeVariableRef(target));
 
     switch (value.type)
     {
-        // Note: Numeric types should read the bit at index
-        // Hashes and arrays do the obvious lookup
-        // Sets return true/false for occupancy
     case (int)DataType::StringPtr:
     case (int)DataType::StaticStringPtr:
     {
         // get the other indexes. If more than one, build a string out of the bits?
-        // What to do with out-of-range?
+        // out-of-range is ignored
         auto src = CastString(is, value);
         auto srcLength = StringLength(src);
         auto dst = StringEmpty();
         auto indexes = VecAllocateArena_int(is->_memory);
 
         for (int i = 0; i < paramCount; i++) { // get indexes from stack order to index order
-            auto idx = CastInt(is, TryPopTag(is, is->_position));
+            auto idx = CastInt(is, TryPopFromValueStack(is, is->_position));
             if (idx >= 0 && idx < srcLength) VecPush_int(indexes, idx);
         }
 
@@ -470,7 +534,7 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
         auto srcLength = VecLength(src);
         // if we've asked for one index, we return the value directly:
         if (paramCount == 1) {
-            auto idx = CastInt(is, TryPopTag(is, is->_position));
+            auto idx = CastInt(is, TryPopFromValueStack(is, is->_position));
             if (idx >= 0 && idx < srcLength) VecPush_DataTag(is->_valueStack, *VecGet_DataTag(src, idx));
             return;
         }
@@ -481,7 +545,7 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
 
         // get indexes from stack order to index order
         for (int i = 0; i < paramCount; i++) {
-            auto idx = CastInt(is, TryPopTag(is, is->_position));
+            auto idx = CastInt(is, TryPopFromValueStack(is, is->_position));
             if (idx >= 0 && idx < srcLength) VecPush_int(indexes, idx);
         }
 
@@ -506,8 +570,61 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
     default:
 
         is->ErrorFlag = true;
-        StringAppendFormat(is->_output, "Can't index at position: '\x02'", is->_position);
+        auto info = DbgStr(is, target.data);
+        StringAppendFormat(is->_output, "Tried to index the wrong kind of thing (\x01). position: '\x02'", info, is->_position);
+        StringDeallocate(info);
     }
+}
+
+void DoIndexedSet(InterpreterState* is, uint16_t paramCount) {
+    /*
+this code:
+    set(fullList(1) 3)
+
+compiles to this:
+    1  Integer number [1]
+    2  Integer number [3]
+    3  VariableNameRef 'fullList' [8B563F61]
+    4  Opcode mS[00020000]
+    */
+
+    if (paramCount != 2) {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, "Index set with wrong number of parameters: '\x02'", is->_position);
+        return;
+    }
+    auto target = TryPopFromValueStack(is, is->_position);
+    auto valueToSet = TryPopFromValueStack(is, is->_position);
+    ResolveIndexIfRequired(is, &valueToSet); // if this is an index reference, resolve it before continuing
+    auto indexValue = TryPopFromValueStack(is, is->_position);
+    
+    auto container = ScopeResolve(is->_variables, DecodeVariableRef(target));
+
+    switch (container.type)
+    {
+    case (int)DataType::VectorPtr:
+    {
+        auto src = (Vector*)InterpreterDeref(is, container);
+        if (src == NULL) {
+            return;
+        }
+        auto srcLength = VecLength(src);
+        auto idx = CastInt(is, indexValue);
+        if (idx >= 0 && idx < srcLength) {
+            // all ok, set the value
+            VecSet_DataTag(src, idx, valueToSet, NULL);
+        }
+
+        return;
+    }
+    default:
+
+        is->ErrorFlag = true;
+        auto info = DbgStr(is, target.data);
+        StringAppendFormat(is->_output, "Tried to set-by-index on the wrong kind of thing (\x01). position: '\x02'", info, is->_position);
+        StringDeallocate(info);
+    }
+    // so var stack should have the target, then the value, then indexes in reverse order (should be exactly 1 at the moment)
 }
 
 DataType PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
@@ -608,7 +725,7 @@ void HandleControlSignal(int* position, char codeAction, int opCodeCount, Interp
     // cmp - relative jump *DOWN* if top of stack is false
     case 'c':
     {
-        DataTag tag = TryPopTag(is, *position);
+        DataTag tag = TryPopFromValueStack(is, *position);
         auto condition = CastBoolean(is, tag);
 
         if (condition == false) { *position += opCodeCount; }
@@ -686,13 +803,16 @@ int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint
     return result;
 }
 
-void HandleMemoryAccess(int* position, char action, int varRef, uint16_t paramCount, InterpreterState* is) {
+void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint16_t paramCount, InterpreterState* is) {
     switch (action)
     {
     case 'g': // get (adds a value to the stack, false if not set)
-        VecPush_DataTag(is->_valueStack, ScopeResolve(is->_variables, varRef));
+    {
+        auto tag = ScopeResolve(is->_variables, varRef);
+        ResolveIndexIfRequired(is, &tag); // if this is an index reference, resolve it before continuing
+        VecPush_DataTag(is->_valueStack, tag);
         break;
-
+    }
     case 's': // set
     {
         DataTag tag;
@@ -701,6 +821,7 @@ void HandleMemoryAccess(int* position, char action, int varRef, uint16_t paramCo
             StringAppendFormat(is->_output, "There were no values to save. Did you forget a `return` in a function? Position:  \x02", *position);
             return;
         }
+        ResolveIndexIfRequired(is, &tag); // if this is an index reference, resolve it before continuing
 
         ScopeSetValue(is->_variables, varRef, tag);
         break;
@@ -718,6 +839,10 @@ void HandleMemoryAccess(int* position, char action, int varRef, uint16_t paramCo
     }
     case 'G': // indexed get
         DoIndexedGet(is, paramCount);
+        break;
+
+    case 'S': // indexed set
+        DoIndexedSet(is, paramCount);
         break;
 
     default:

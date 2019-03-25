@@ -31,10 +31,10 @@ typedef struct Vector {
 
     // Pointers to data
     // Start of the chunk chain
-    void* _baseChunkTable;
+    char* _baseChunkTable;
 
     // End of the chunk chain
-    void* _endChunkPtr;
+    char* _endChunkPtr;
 
     // Pointer to skip table
     void* _skipTable;
@@ -116,7 +116,7 @@ void *NewChunk(Vector *v) {
 
     ((size_t*)ptr)[0] = 0; // set the continuation pointer of the new chunk to invalid
     if (v->_endChunkPtr != NULL) ((size_t*)v->_endChunkPtr)[0] = (size_t)ptr;  // update the continuation pointer of the old end chunk
-    v->_endChunkPtr = ptr;                                    // update the end chunk pointer
+    v->_endChunkPtr = (char*)ptr; // update the end chunk pointer
     v->_skipTableDirty = true; // updating the skip table wouldn't be wasted
 
     return ptr;
@@ -340,7 +340,7 @@ Vector *VectorAllocateArena(Arena* a, int elementSize) {
         result->IsValid = false;
         return result;
     }
-    result->_baseChunkTable = baseTable;
+    result->_baseChunkTable = (char*)baseTable;
     result->_elementCount = 0;
     result->_baseOffset = 0;
     RebuildSkipTable(result);
@@ -401,7 +401,7 @@ void VectorDeallocate(Vector *v) {
         VecFree(v, current);
 
         if (current == v->_endChunkPtr) break; // sentinel
-        current = next;
+        current = (char*)next;
     }
     v->_baseChunkTable = NULL;
     v->_endChunkPtr = NULL;
@@ -487,7 +487,7 @@ bool VectorDequeue(Vector * v, void * outValue) {
     }
     // Advance the base and free the old
     auto oldChunk = v->_baseChunkTable;
-    v->_baseChunkTable = nextChunk;
+    v->_baseChunkTable = (char*)nextChunk;
     VecFree(v, oldChunk);
 
     if (v->_skipTable == NULL) return true; // don't need to fix the table
@@ -538,7 +538,7 @@ bool VectorPop(Vector *v, void *target) {
             return false;
         }
         VecFree(v, v->_endChunkPtr);
-        v->_endChunkPtr = prevChunkPtr;
+        v->_endChunkPtr = (char*)prevChunkPtr;
         writePtr(prevChunkPtr, 0, NULL); // remove the 'next' pointer from the new end chunk
 
         if (v->_skipEntries > 0) {
@@ -601,7 +601,7 @@ bool VectorPrealloc(Vector *v, unsigned int length) {
             nextChunkPtr = NewChunk(v);
             if (nextChunkPtr == NULL) return false;
         }
-        chunkHeadPtr = nextChunkPtr;
+        chunkHeadPtr = (char*)nextChunkPtr;
     }
 
     v->_elementCount = length;
