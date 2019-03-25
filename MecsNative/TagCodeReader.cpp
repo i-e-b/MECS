@@ -156,6 +156,7 @@ bool GetUint32(Vector* v, uint32_t* outVal) {
     if (!VecDequeue_BYTE(v, &d)) return false;
 
     *outVal = (a << 24) | (b << 16) | (c << 8) | (d);
+    return true;
 }
 
 // Build a Map<uint32 -> string> reading from a BYTE vector

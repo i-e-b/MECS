@@ -20,18 +20,20 @@ Components to do:
 
 * [ ] Extended data types (vector and hash)
     * [x] Vector datatype
-      * [ ] vector-index type
-      * [ ] vector-as-function syntax
+      * [x] vector-index type
+      * [x] vector-as-function syntax
       * [x] indexed get
-      * [ ] set on a vector-index type
+      * [x] set on a vector-index type
       * [x] length
       * [x] concat
       * [x] push/pop/dequeue
       * [x] CastString / print
+      * [ ] Add list functions to main readme
     * [ ] Hash datatype (always string-><any>)
       * [ ] hash-as-function syntax
       * [ ] get/set/length/toString etc
 
+This next -->
 * [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
   * [ ] Handle parsing, including scientific notation
   * [ ] Investigate a reduction of ( http://dec64.com/ ) as a single number type -- bottom 32 bits in tag data, exponent and remaining bits in tag params.

@@ -1365,7 +1365,16 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
     auto programEnd = VectorLength(is->_program);
     int localSteps = 0;
 
-    while (is->_position < programEnd) {
+    // we keep a window of the program for speed
+    int lowIndex = is->_position - 200;
+    int highIndex = is->_position + 400; // bias forward
+    auto programWindow = VecCacheRange_DataTag(is->_program, &lowIndex, &highIndex);
+    if (programWindow == NULL) {
+        // total failure. Out of memory?
+        return FailureResult(-127);
+    }
+
+    while (true){ //(is->_position < programEnd) {
         if (localSteps >= maxCycles) {
             return PausedExecutionResult();
         }
@@ -1390,9 +1399,26 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
 
 
         // TODO: Add a range->native array cache and use here. Should help a lot in loops.
-        auto wptr = VecGet_DataTag(is->_program, is->_position);
+        /*auto wptr = VecGet_DataTag(is->_program, is->_position);
         if (wptr == NULL) break;
-        DataTag word = *wptr;
+        DataTag word = *wptr;*/
+        auto pos = is->_position;
+        if (pos < lowIndex || pos > highIndex) { // out of cached range. Re-cache
+            mfree(programWindow);
+            lowIndex = pos - 200;
+            highIndex = pos + 400; // bias forward
+            programWindow = VecCacheRange_DataTag(is->_program, &lowIndex, &highIndex);
+            if (programWindow == NULL) {
+                // total failure. Out of memory?
+                return FailureResult(-127);
+            }
+            if (pos < lowIndex || pos > highIndex) {
+                // still out of range. We're out of bounds.
+                break;
+            }
+        }
+
+        auto word = programWindow[pos - lowIndex];
 
         if (traceExecution) {/* TODO: this stuff, when diagnostic string is done
             _output.WriteLine("          stack :" + string.Join(", ", _valueStack.ToArray().Select(t = > _memory.DiagnosticString(t, DebugSymbols))));
@@ -1419,7 +1445,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             } else if (result == DataType::MustWait) {
                 return WaitingExecutionResult();
             }
-            programEnd = VectorLength(is->_program); // In case 'eval' changed it
+//            programEnd = VectorLength(is->_program); // In case 'eval' changed it
             break;
         }
         case (int)DataType::EndOfSubProgram:

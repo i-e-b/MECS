@@ -2,44 +2,11 @@
 Compiler, Interpreter, and Runtime engine for a simple language.
 Intended to contain a complete memory model, for embedding onto a SBC.
 
-## Move to C for embedding
-
-* [x] Re-implement container types in C
-* [x] Rebuild interpreter using the native containers
-* [x] Full memory model (including return & value stacks)
-* [ ] Built-ins for hash-tables, 1D arrays, 2D arrays.
-* [ ] Reference counting / basic GC / etc (follow scope? Maybe copy-arenas for simplicity. Be smart about params)
-* [ ] Make sure (de)serialisation is available
-* [ ] Messaging / Mailboxes
-
-## Possible Future work
-
-* [ ] Experiment with NAR propagation and a test function.
-* [ ] Map files for byte code, to help with error messages and diagnosis.
-* [ ] Syntax for defining variadic functions ( `...{array name}` or something? Look at https://blog.taylorwood.io/2017/09/15/year-behind.html )
-
-* [ ] Try adding iterators/yield?
-
-* [ ] String interning / deduplication (runtime, maybe with a hash-map?)
-
-* [ ] Single step in repl gui
-* [ ] Handle malformed source code correctly
-* [ ] Skip and EndWhile for loops (like `continue` and `break` in C)
-* [ ] More math: abs, sign, pow, floor, ceil, round, random, sin, cos, tan, ...etc
-* [ ] More math: useful constants (pi, e, inf, neg-inf)
-* [ ] Object-literal form? Functions-as-data, or special syntax?
-* [ ] Built-ins to handle variadic functions (expose naming? Limit '__' prefixed names to local scope only?)
-* [ ] Infix blocks? (like `set(x [y + (4 * z)])`?)
-* [ ] Iterators/Generators?
-* [ ] Try optimised 'top n' references in Scope?
-* [ ] Try simple tail-recursion optimisation?
-
 ### Data types
 
 * String                      (Ascii block with header -- not a null-term string)
 * Int                         (tail 32 bits of tag)
 * Float/Number                (non-nan double)
-* Set/flags                   (Hash table with dummy contents)
 * Dictionary/map/hashtable    (Hash table keyed and valued with tags)
 * Array/List                  (Scalable vector of tags)
 

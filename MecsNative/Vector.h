@@ -44,6 +44,11 @@ bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
 // Compare should return 0 if the two values are equal, negative if A should be before B, and positive if B should be before A.
 void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B));
 
+// Read a range of the vector into a contiguous array
+// this is for optimising multiple local accesses in algorithms.
+// `lowIndex` and `highIndex` will be updated to the actual range returned
+void* VectorCacheRange(Vector* v, int* lowIndex, int* highIndex);
+
 // Size of vector elements, in bytes
 int VectorElementSize(Vector *v);
 
@@ -72,6 +77,7 @@ int VectorElementSize(Vector *v);
     inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName element, typeName* prevValue){ return VectorSet(v, index, &element, (void*)prevValue); } \
     inline bool nameSpace##Dequeue_##typeName(Vector *v, typeName* outValue) { return VectorDequeue(v, (void*)outValue);}\
     inline void nameSpace##Sort_##typeName(Vector *v, int(*compareFunc)(typeName* A, typeName* B)) {VectorSort(v, (int(*)(void* A, void* B))compareFunc);}\
+    inline typeName* nameSpace##CacheRange_##typeName(Vector* v, int* lowIndex, int* highIndex) {return (typeName*)VectorCacheRange(v, lowIndex, highIndex);}\
 
 
 

@@ -122,6 +122,8 @@ void *NewChunk(Vector *v) {
     return ptr;
 }
 
+// This is the core of most of the containers in MECS.
+// It's very important this is correct and optimal
 bool FindNearestChunk(Vector *v, unsigned int targetIndex, void **chunkPtr, unsigned int *chunkIndex) {
     if (v->_elementCount == 0) { // Optimised for empty list
         *chunkPtr = v->_endChunkPtr;
@@ -286,7 +288,6 @@ uint32_t NextPow2(uint32_t c) {
     c |= c >> 4;
     c |= c >> 8;
     c |= c >> 16;
-    c |= c >> 32;
     return ++c;
 }
 
@@ -448,6 +449,51 @@ bool VectorPush(Vector *v, void* value) {
 
 void* VectorGet(Vector *v, unsigned int index) {
     return PtrOfElem(v, index);
+}
+
+
+void* VectorCacheRange(Vector* v, int* lowIndex, int* highIndex) {
+    if (v == NULL || v->_elementCount < 1) return NULL;
+    uint32_t chunkIndex = 0;
+    void* chunkPtr = NULL;
+
+    // force to range, and update
+    if ((*lowIndex) < 0) *lowIndex = 0;
+    if ((*highIndex) >= v->_elementCount) *highIndex = v->_elementCount - 1;
+
+    auto requiredElems = ((*highIndex) - (*lowIndex)) + 1;
+
+    // get offsets for optimisations
+    auto maxIdx = v->ElemsPerChunk;
+    uint32_t index = ((*lowIndex) + v->_baseOffset) % v->ElemsPerChunk;
+   
+    // find first chunk
+    if (!FindNearestChunk(v, *lowIndex, &chunkPtr, &chunkIndex)) return NULL;
+
+    // make memory for our chunk
+    auto esz = v->ElementByteSize;
+    auto block = VecAlloc(v, esz * requiredElems);
+    if (block == NULL) return NULL;
+
+    // now, scan along (switching chunk as required) until full
+    auto dst = block;
+    auto src = byteOffset(chunkPtr, PTR_SIZE + (esz * index));
+    while (requiredElems > 0) {
+        writeValue(dst, 0, src, esz);
+        dst = byteOffset(dst, esz);
+
+        requiredElems--;
+        index++;
+        if (index >= maxIdx) { // move to next chunk
+            index = 0;
+            chunkPtr = readPtr(chunkPtr, 0);
+            src = byteOffset(chunkPtr, PTR_SIZE);
+        } else { // next element in same chunk
+            src = byteOffset(src, esz);
+        }
+    }
+
+    return block;
 }
 
 bool VectorCopy(Vector * v, unsigned int index, void * outValue)

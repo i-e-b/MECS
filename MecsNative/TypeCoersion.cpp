@@ -84,7 +84,7 @@ bool StringTruthyness(String* strVal) {
 // Interpret, or cast value as double
 float CastDouble(InterpreterState* is, DataTag encoded) {
     auto type = encoded.type;
-    float result;
+    float result = 0;
     switch (type) {
     case (int)DataType::Integer:
         return encoded.data;

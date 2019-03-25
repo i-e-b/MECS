@@ -36,7 +36,7 @@ inline void * byteOffset(void *ptr, int byteOffset) {
     x += byteOffset;
     return (void*)x;
 }
-inline unsigned unsigned short readUshort(void* ptr, int byteOffset) {
+inline unsigned short readUshort(void* ptr, int byteOffset) {
     char* x = (char*)ptr;
     x += byteOffset;
     return *((unsigned short*)x);

@@ -948,7 +948,7 @@ int RunProgram(const char* filename) {
 
     std::cout << "########## Attempting program: " << filename << " #########\n";
 
-    MMPush(1 MEGABYTES);
+    MMPush(10 MEGABYTES);
     auto program = VecAllocate_DataTag();
 
     // Compile and load
@@ -973,7 +973,7 @@ int RunProgram(const char* filename) {
     MMPop();
 
     // set-up
-    auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
+    auto is = InterpAllocate(program, 10 MEGABYTE, NULL);
 
     auto inp = StringNew("xhello, world\nLine2\nLine3\n"); // some sample input
     WriteInput(is, inp);
@@ -1045,9 +1045,9 @@ int TestProgramSuite() {
 
     int errs = 0;
 
-    errs += RunProgram("strings.ecs"); // TODO: input and output not being handled correctly
+    errs += RunProgram("strings.ecs");
 
-    //errs += RunProgram("stressTest.ecs"); // really slow in debug mode
+    errs += RunProgram("stressTest.ecs"); // really slow in debug mode
     errs += RunProgram("nestedLoops.ecs");
 
     errs += RunProgram("demo_program2.ecs");
@@ -1125,10 +1125,8 @@ int main() {
     if (runit != 0) return runit;
     MMPop();
 
-    /*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
-    */
 
     ShutdownManagedMemory();
 }
