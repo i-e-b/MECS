@@ -17,6 +17,9 @@
 #endif
 typedef uint32_t Name;
 
+// TODO: Fix: The stress test is running out of memory with this set:
+#define EXPERIMENTAL_ACCESS 1
+
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(Name, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 RegisterHashMapFor(Name, FunctionDefinition, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
@@ -257,12 +260,14 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
             return NULL;
         }
 
-        if (param[i].type == 0) { // invalid value!
+        // TODO: hunt down where invalid values are coming in.
+        // Either fix, or replace with NaR. Then put this code back in.
+        /*if (param[i].type == 0) { // invalid value!
             is->ErrorFlag = true;
             // this can happen if we have an unresolved name. Should be handled earlier.
             StringAppendFormat(is->_output, "\nInvalid value in parameters! Found when calling at position \x03 (\x02)\n", is->_position, is->_position);
             return NULL;
-        }
+        }*/
     }
 
     return param;
@@ -1323,6 +1328,8 @@ Scope* InterpreterScope(InterpreterState* is) {
 // Store a new string at the end of memory, and return a string pointer token for it
 // The original string parameter is deallocated
 DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
+    if (str == NULL) return RuntimeError(is->_position);
+
     // short strings are stack/scope values
     if (StringLength(str) <= 6) {
         return EncodeShortStr(str);
@@ -1365,6 +1372,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
     auto programEnd = VectorLength(is->_program);
     int localSteps = 0;
 
+#if EXPERIMENTAL_ACCESS
     // we keep a window of the program for speed
     int lowIndex = is->_position - 200;
     int highIndex = is->_position + 400; // bias forward
@@ -1374,8 +1382,14 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         return FailureResult(-127);
     }
 
-    while (true){ //(is->_position < programEnd) {
+    while (true){
+#else
+    while (is->_position < programEnd) {
+#endif
         if (localSteps >= maxCycles) {
+#if EXPERIMENTAL_ACCESS
+            mfree(programWindow);
+#endif
             return PausedExecutionResult();
         }
         if (is->ErrorFlag) {
@@ -1398,10 +1412,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         }*/
 
 
-        // TODO: Add a range->native array cache and use here. Should help a lot in loops.
-        /*auto wptr = VecGet_DataTag(is->_program, is->_position);
-        if (wptr == NULL) break;
-        DataTag word = *wptr;*/
+#if EXPERIMENTAL_ACCESS
         auto pos = is->_position;
         if (pos < lowIndex || pos > highIndex) { // out of cached range. Re-cache
             mfree(programWindow);
@@ -1419,6 +1430,11 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         }
 
         auto word = programWindow[pos - lowIndex];
+#else
+        auto wptr = VecGet_DataTag(is->_program, is->_position);
+        if (wptr == NULL) break;
+        DataTag word = *wptr;
+#endif
 
         if (traceExecution) {/* TODO: this stuff, when diagnostic string is done
             _output.WriteLine("          stack :" + string.Join(", ", _valueStack.ToArray().Select(t = > _memory.DiagnosticString(t, DebugSymbols))));
@@ -1445,7 +1461,9 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             } else if (result == DataType::MustWait) {
                 return WaitingExecutionResult();
             }
-//            programEnd = VectorLength(is->_program); // In case 'eval' changed it
+#ifndef EXPERIMENTAL_ACCESS
+            programEnd = VectorLength(is->_program); // In case 'eval' changed it
+#endif
             break;
         }
         case (int)DataType::EndOfSubProgram:
@@ -1483,6 +1501,10 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
 
 GOOD_EXIT:
     // Exited the program. Cleanup and return value
+
+#if EXPERIMENTAL_ACCESS
+    mfree(programWindow);
+#endif
 
     if (VecLength(is->_valueStack) != 0) {
         VecPop_DataTag(is->_valueStack, &evalResult);

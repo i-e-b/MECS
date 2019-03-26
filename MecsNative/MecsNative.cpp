@@ -973,7 +973,7 @@ int RunProgram(const char* filename) {
     MMPop();
 
     // set-up
-    auto is = InterpAllocate(program, 10 MEGABYTE, NULL);
+    auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
 
     auto inp = StringNew("xhello, world\nLine2\nLine3\n"); // some sample input
     WriteInput(is, inp);
@@ -1069,7 +1069,7 @@ int main() {
     if (aares != 0) return aares;
 
     StartManagedMemory();
-
+    /*
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1124,7 +1124,7 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-
+    */
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
 

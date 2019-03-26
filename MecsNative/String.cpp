@@ -298,7 +298,11 @@ String *StringSlice(String* str, int startIdx, int length) {
 
     for (int i = 0; i < length; i++) {
         uint32_t x = (i + startIdx) % len;
-        VPush_char(result->chars, *VGet_char(str->chars, x));
+        if (!VPush_char(result->chars, *VGet_char(str->chars, x))) {
+            // out of memory?
+            StringDeallocate(result);
+            return NULL;
+        }
     }
 
     return result;

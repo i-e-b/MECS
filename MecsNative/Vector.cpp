@@ -433,7 +433,10 @@ bool VectorPush(Vector *v, void* value) {
     if (!FindNearestChunk(v, v->_elementCount, &chunkPtr, &index)) // need a new chunk, write at start
     {
         var ok = NewChunk(v);
-        if (ok == NULL) return false;
+        if (ok == NULL) {
+            v->IsValid = false;
+            return false;
+        }
         writeValue(v->_endChunkPtr, PTR_SIZE, value, v->ElementByteSize);
         v->_elementCount++;
         return true;
