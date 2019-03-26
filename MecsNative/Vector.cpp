@@ -62,12 +62,12 @@ const int ARENA_SIZE = 65535; // number of bytes for each chunk (limit -- should
 // Desired maximum elements per chunk. This will be reduced if element is large (to fit in Arena limit)
 // Larger values are significantly faster for big arrays, but more memory-wasteful on small arrays
 // This should ALWAYS be a power-of-2
-const int TARGET_ELEMS_PER_CHUNK = 128;
+const int TARGET_ELEMS_PER_CHUNK = 64;
 
 // Maximum size of the skip table.
 // This is dynamically sizes, so large values won't use extra memory for small arrays.
 // This limits the memory growth of larger arrays. If it's bigger than an arena, everything will fail.
-const long SKIP_TABLE_SIZE_LIMIT = 1024;
+const long SKIP_TABLE_SIZE_LIMIT = 2048;
 
 /*
  * Structure of the element chunk:
@@ -262,14 +262,14 @@ void RebuildSkipTable(Vector *v)
     v->_rebuilding = false;
 }
 
-void MaybeRebuildSkipTable(Vector *v) {
+inline void MaybeRebuildSkipTable(Vector *v) {
     if (v->_rebuilding) return;
 
     // If we've added a few chunks since last update, then refresh the skip table
     if (v->_skipTableDirty) RebuildSkipTable(v);
 }
 
-void * PtrOfElem(Vector *v, uint index) {
+inline void * PtrOfElem(Vector *v, uint index) {
     if (v == NULL) return NULL;
     if (index >= v->_elementCount) return NULL;
 
@@ -419,7 +419,7 @@ void VectorDeallocate(Vector *v) {
     }
 }
 
-int VectorLength(Vector *v) {
+inline int VectorLength(Vector *v) {
     if (v == NULL) return 0;
     return v->_elementCount;
 }

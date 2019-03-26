@@ -17,9 +17,6 @@
 #endif
 typedef uint32_t Name;
 
-// TODO: Fix: The stress test is running out of memory with this set:
-#define EXPERIMENTAL_ACCESS 1
-
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(Name, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 RegisterHashMapFor(Name, FunctionDefinition, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
@@ -1372,24 +1369,8 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
     auto programEnd = VectorLength(is->_program);
     int localSteps = 0;
 
-#if EXPERIMENTAL_ACCESS
-    // we keep a window of the program for speed
-    int lowIndex = is->_position - 200;
-    int highIndex = is->_position + 400; // bias forward
-    auto programWindow = VecCacheRange_DataTag(is->_program, &lowIndex, &highIndex);
-    if (programWindow == NULL) {
-        // total failure. Out of memory?
-        return FailureResult(-127);
-    }
-
-    while (true){
-#else
     while (is->_position < programEnd) {
-#endif
         if (localSteps >= maxCycles) {
-#if EXPERIMENTAL_ACCESS
-            mfree(programWindow);
-#endif
             return PausedExecutionResult();
         }
         if (is->ErrorFlag) {
@@ -1412,29 +1393,9 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
         }*/
 
 
-#if EXPERIMENTAL_ACCESS
-        auto pos = is->_position;
-        if (pos < lowIndex || pos > highIndex) { // out of cached range. Re-cache
-            mfree(programWindow);
-            lowIndex = pos - 200;
-            highIndex = pos + 400; // bias forward
-            programWindow = VecCacheRange_DataTag(is->_program, &lowIndex, &highIndex);
-            if (programWindow == NULL) {
-                // total failure. Out of memory?
-                return FailureResult(-127);
-            }
-            if (pos < lowIndex || pos > highIndex) {
-                // still out of range. We're out of bounds.
-                break;
-            }
-        }
-
-        auto word = programWindow[pos - lowIndex];
-#else
         auto wptr = VecGet_DataTag(is->_program, is->_position);
         if (wptr == NULL) break;
         DataTag word = *wptr;
-#endif
 
         if (traceExecution) {/* TODO: this stuff, when diagnostic string is done
             _output.WriteLine("          stack :" + string.Join(", ", _valueStack.ToArray().Select(t = > _memory.DiagnosticString(t, DebugSymbols))));
@@ -1461,9 +1422,7 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
             } else if (result == DataType::MustWait) {
                 return WaitingExecutionResult();
             }
-#ifndef EXPERIMENTAL_ACCESS
             programEnd = VectorLength(is->_program); // In case 'eval' changed it
-#endif
             break;
         }
         case (int)DataType::EndOfSubProgram:
@@ -1501,10 +1460,6 @@ ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycl
 
 GOOD_EXIT:
     // Exited the program. Cleanup and return value
-
-#if EXPERIMENTAL_ACCESS
-    mfree(programWindow);
-#endif
 
     if (VecLength(is->_valueStack) != 0) {
         VecPop_DataTag(is->_valueStack, &evalResult);

@@ -12,7 +12,7 @@ const unsigned int SAFE_HASH = 0x80000000; // just in case you get a zero result
 const unsigned int MIN_BUCKET_SIZE = 64; // default size used if none given
 const float LOAD_FACTOR = 0.8f; // higher is more memory efficient. Lower is faster, to a point.
 
-#define AGGRESSIVE_SCALING 1
+//#define AGGRESSIVE_SCALING 1
 
 // Entry in the hash-table
 // The actual entries are tagged on the end of the entry
@@ -53,19 +53,19 @@ bool HashMapIsValid(HashMap *h) {
 
 bool ResizeNext(HashMap * h); // defined below
 
-uint32_t DistanceToInitIndex(HashMap * h, uint32_t indexStored) {
-    if (!VectorIsValid(h->buckets)) return indexStored + h->count;
+inline uint32_t DistanceToInitIndex(HashMap * h, uint32_t indexStored, HashMap_Entry* entry) {
+    //if (!VectorIsValid(h->buckets)) return indexStored + h->count;
 
-    auto entry = (HashMap_Entry*)VectorGet(h->buckets, indexStored);
+    //auto entry = (HashMap_Entry*)VectorGet(h->buckets, indexStored);
     auto indexInit = entry->hash & h->countMod;
     if (indexInit <= indexStored) return indexStored - indexInit;
     return indexStored + (h->count - indexInit);
 }
 
-void* KeyPtr(HashMap_Entry* e) {
+inline void* KeyPtr(HashMap_Entry* e) {
     return byteOffset(e, sizeof(HashMap_Entry));
 }
-void* ValuePtr(HashMap* h, HashMap_Entry* e) {
+inline void* ValuePtr(HashMap* h, HashMap_Entry* e) {
     return byteOffset(e, sizeof(HashMap_Entry) + h->KeyByteSize);
 }
 
@@ -75,7 +75,7 @@ bool SwapOut(Vector* vec, uint32_t idx, HashMap_Entry* newEntry) {
     auto size = VectorElementSize(vec);
 
     auto temp = (HashMap_Entry*)mmalloc(size);
-    //if (!VectorCopy(vec, idx, &temp)) return false;
+
     if (!VectorSet(vec, idx, newEntry, temp)) {
         mfree(temp);
         return false;
@@ -108,14 +108,14 @@ bool PutInternal(HashMap * h, HashMap_Entry* entry, bool canReplace, bool checkD
             ) {
             if (!canReplace) return false;
 
-            if (!VectorIsValid(h->buckets))
-                return false;
+            if (!VectorIsValid(h->buckets)) return false;
+
             VectorSet(h->buckets, indexCurrent, entry, NULL);
             return true;
         }
 
         // Perform the core robin-hood balancing
-        auto probeDistance = DistanceToInitIndex(h, indexCurrent);
+        auto probeDistance = DistanceToInitIndex(h, indexCurrent, current);
         if (probeCurrent > probeDistance) {
             probeCurrent = probeDistance;
             if (!SwapOut(h->buckets, indexCurrent, entry))
@@ -220,7 +220,7 @@ void HashMapDeallocate(HashMap * h) {
     if (h->buckets != NULL) VectorDeallocate(h->buckets);
 }
 
-bool Find(HashMap* h, void* key, uint32_t* index) {
+bool Find(HashMap* h, void* key, uint32_t* index, HashMap_Entry** found) {
     *index = 0;
     if (h == NULL) return false;
     if (h->countUsed <= 0) return false;
@@ -235,13 +235,16 @@ bool Find(HashMap* h, void* key, uint32_t* index) {
         auto res = (HashMap_Entry*)VectorGet(h->buckets, *index);
         if (res == NULL) return false; // internal failure
 
-        auto keyData = KeyPtr(res);//VectorGet(h->keys, res->key);
+        auto keyData = KeyPtr(res);
 
         // found?
-        if ((hash == res->hash) && h->KeyComparer(key, keyData)) return true;
+        if ((hash == res->hash) && h->KeyComparer(key, keyData)) {
+            if (found != NULL) *found = res;
+            return true;
+        }
 
         // not found, probe further
-        if (res->hash != 0) probeDistance = DistanceToInitIndex(h, *index);
+        if (res->hash != 0) probeDistance = DistanceToInitIndex(h, *index, res);
 
         if (i > probeDistance) break;
     }
@@ -253,10 +256,11 @@ bool HashMapGet(HashMap* h, void* key, void** outValue) {
     if (h == NULL) return false;
     // Find the entry index
     uint32_t index = 0;
-    if (!Find(h, key, &index)) return false;
+    HashMap_Entry* res = NULL;
+    if (!Find(h, key, &index, &res)) return false;
 
     // look up the entry
-    auto res = (HashMap_Entry*)VectorGet(h->buckets, index);
+    //auto res = (HashMap_Entry*)VectorGet(h->buckets, index);
     if (res == NULL) {
         return false;
     }
@@ -312,12 +316,12 @@ Vector *HashMapAllEntries(HashMap* h) {
 
 bool HashMapContains(HashMap* h, void* key) {
     uint32_t idx;
-    return Find(h, key, &idx);
+    return Find(h, key, &idx, NULL);
 }
 
 bool HashMapRemove(HashMap* h, void* key) {
     uint32_t index;
-    if (!Find(h, key, &index)) return false;
+    if (!Find(h, key, &index, NULL)) return false;
 
     // Note: we only remove the hashmap entry. The data is retained (mostly to keep the code simple)
     // Data will be purged when a resize happens
@@ -328,7 +332,7 @@ bool HashMapRemove(HashMap* h, void* key) {
         auto res = (HashMap_Entry*)VectorGet(h->buckets, nextIndex);
         if (res == NULL) return false; // internal failure
 
-        if ((res->hash == 0) || (DistanceToInitIndex(h, nextIndex) == 0))
+        if ((res->hash == 0) || (DistanceToInitIndex(h, nextIndex, res) == 0))
         {
             auto empty = HashMap_Entry();
             VectorSet(h->buckets, curIndex, &empty, NULL);
