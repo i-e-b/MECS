@@ -17,7 +17,7 @@ bool CastBoolean(InterpreterState* is, DataTag encoded);
 // null, empty, "false" or "0" are false. All other strings are true.
 bool StringTruthyness(String* strVal);
 // Interpret, or cast value as double
-float CastDouble(InterpreterState* is, DataTag encoded);
+double CastDouble(InterpreterState* is, DataTag encoded);
 // Cast a value to int. If not applicable, returns zero
 int CastInt(InterpreterState* is, DataTag  encoded);
 

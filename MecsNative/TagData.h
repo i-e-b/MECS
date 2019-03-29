@@ -11,10 +11,10 @@
 #include "String.h"
 #include "HashMap.h"
 
-// Bit flag on DataType that indicates the value is a pointer to GC memory
+// (128) Bit flag on DataType that indicates the value is a pointer to GC memory
 #define ALLOCATED_TYPE 0x80
 
-// Bit flag on DataType that indicates the value represents a number
+// (64) Bit flag on DataType that indicates the value represents a number
 #define NUMERIC_TYPE 0x40
 
 // Every variable or opcode in the interpreter must be one of these:
@@ -39,18 +39,18 @@ enum class DataType {
 
 
     // ##### Runtime data types ############
-    Integer     = NUMERIC_TYPE + 1, // Data is a 32-bit signed integer, Params are unused.
-    Fraction    = NUMERIC_TYPE + 2, // Data is a 16.16-bit pixed point fractional number. Params are unused (could be an extension to 40.16 or 28.28 in the future)
+    Integer     = NUMERIC_TYPE + 1, // (65) Data is a 32-bit signed integer, Params are unused.
+    Fraction    = NUMERIC_TYPE + 2, // (66) Data is a 16.16-bit pixed point fractional number. Params are unused (could be an extension to 40.16 or 28.28 in the future)
 
-    HashtablePtr = ALLOCATED_TYPE + 1,  // Data is pointer to HashTable. Params not used. Can be collected by GC
-    VectorPtr    = ALLOCATED_TYPE + 2,  // Data is pointer to Vector. Params not used. Can be collected by GC
+    HashtablePtr = ALLOCATED_TYPE + 1,  // (129) Data is pointer to HashTable. Params not used. Can be collected by GC
+    VectorPtr    = ALLOCATED_TYPE + 2,  // (130) Data is pointer to Vector. Params not used. Can be collected by GC
     VectorIndex  = 12,                  // Data is pointer to Vector, Params is index into vector.
     HashtableKey = 13,                  // ??? TODO: NOT YET DEFINED ???
 
     DebugStringPtr = 20,                           // A string debug pointer, used for symbols / tracing
     SmallString = 21,                              // A small string, no allocation. Params + Data contain up to 7 characters.
     StaticStringPtr = 22,                          // Data is a pointer to a static string in tag code vector. Ignored by GC. Params not used.
-    StringPtr = ALLOCATED_TYPE + StaticStringPtr,  // Data is pointer to dynamic string in arena memory. Params not used. Can be collected by GC
+    StringPtr = ALLOCATED_TYPE + StaticStringPtr,  // (150) Data is pointer to dynamic string in arena memory. Params not used. Can be collected by GC
 
     // This special value means the interpreter needs to pause for input.
     // The triggering opcode will be repeated when more input is available
@@ -121,6 +121,9 @@ DataTag VectorIndexTag(uint32_t vectorPtrTarget, int index);
 
 DataTag EncodeInt32(int32_t original);
 int32_t DecodeInt32(DataTag encoded);
+
+DataTag EncodeDouble(double original);
+double DecodeDouble(DataTag encoded);
 
 DataTag EncodeBool(bool b);
 bool DecodeBool(DataTag encoded);

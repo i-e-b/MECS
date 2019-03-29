@@ -1,8 +1,6 @@
 #include "TypeCoersion.h"
 
 #include "Scope.h"
-#include "Fix16.h"
-
 
 RegisterVectorFor(DataTag, Vector)
 
@@ -82,7 +80,7 @@ bool StringTruthyness(String* strVal) {
 }
 
 // Interpret, or cast value as double
-float CastDouble(InterpreterState* is, DataTag encoded) {
+double CastDouble(InterpreterState* is, DataTag encoded) {
     auto type = encoded.type;
     float result = 0;
     switch (type) {
@@ -100,21 +98,21 @@ float CastDouble(InterpreterState* is, DataTag encoded) {
     {
         String* temp = StringEmpty();
         DecodeShortStr(encoded, temp);
-        fix16_t dest; // TODO: move over to float
-        bool ok = StringTryParse_f16(temp, &dest);
+        double dest;
+        bool ok = StringTryParse_double(temp, &dest);
         StringDeallocate(temp);
-        return (ok) ? (fix16_to_float(dest)) : 0;
+        return (ok) ? (dest) : 0;
     }
     case (int)DataType::StaticStringPtr:
     case (int)DataType::StringPtr:
     {
         auto ptr = DecodePointer(encoded);
         auto temp = DereferenceString(is, encoded);
-        fix16_t dest; // TODO: move over to float
-        bool ok = StringTryParse_f16(temp, &dest);
+        double dest;
+        bool ok = StringTryParse_double(temp, &dest);
         StringDeallocate(temp);
 
-        return (ok) ? (fix16_to_float(dest)) : 0;
+        return (ok) ? (dest) : 0;
     }
 
     case (int)DataType::VectorIndex:

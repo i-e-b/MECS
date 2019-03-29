@@ -259,12 +259,12 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
 
         // TODO: hunt down where invalid values are coming in.
         // Either fix, or replace with NaR. Then put this code back in.
-        /*if (param[i].type == 0) { // invalid value!
+        if (param[i].type == 0) { // invalid value!
             is->ErrorFlag = true;
             // this can happen if we have an unresolved name. Should be handled earlier.
             StringAppendFormat(is->_output, "\nInvalid value in parameters! Found when calling at position \x03 (\x02)\n", is->_position, is->_position);
             return NULL;
-        }*/
+        }
     }
 
     return param;
@@ -279,7 +279,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, int nbParams, DataTag* param) {
     auto tag = ScopeResolve(is->_variables, functionNameHash);
 
-    if (nbParams != 1) return InvalidTag();
+    if (nbParams != 1) return NonResult();
 
     switch (tag.type) {
     case (int)DataType::VectorPtr:
@@ -287,7 +287,7 @@ DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, 
         // Return an encoding for the index. We don't actually resolve anything from the vector at this point (a get/set or use will do that)
         return VectorIndexTag(tag.data, CastInt(is, param[0]));
     }
-    default: return InvalidTag();
+    default: return NonResult();
     }
 }
 

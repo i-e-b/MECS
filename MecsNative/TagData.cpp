@@ -34,9 +34,11 @@ DataTag MustWait(uint32_t resumePosition) {
 DataTag InvalidTag() {
     return DataTag{ (int)DataType::Invalid, 0, 0 };
 }
-// returns false if the tag is of `Invalid` type, true otherwise
+// returns false if the tag is of Invalid, NaR, Void types; true otherwise
 bool IsTagValid(DataTag t) {
-    return t.type != (int)DataType::Invalid;
+    return t.type != (int)DataType::Invalid
+        && t.type != (int)DataType::Not_a_Result
+        && t.type != (int)DataType::Void;
 }
 
 bool TagsAreEqual(DataTag a, DataTag b) {
@@ -149,6 +151,20 @@ int32_t DecodeInt32(DataTag encoded) {
     return encoded.data;
 }
 
+
+DataTag EncodeDouble(double original) {
+    uint64_t* bits = (uint64_t*)(&original);
+    uint32_t base = ((*bits) >>  8) & 0xFFFFFFFF;
+    uint32_t head = ((*bits) >> 40) & 0x00FFFFFF;
+    return DataTag{ (int)DataType::Fraction, head, base };
+}
+
+double DecodeDouble(DataTag encoded) {
+    uint64_t bits = ((uint64_t)encoded.data << 8) | ((uint64_t)encoded.params << 40);
+    double* output = (double*)(&bits);
+    return *output;
+}
+
 DataTag EncodeBool(bool b) {
     return DataTag{ (int)DataType::Integer, 0, (b) ? 0xffffffffu : 0u };
 }
@@ -248,7 +264,7 @@ void DescribeTag(DataTag token, String* target, HashMap* symbols) {
 
     case DataType::Fraction:
         StringAppend(target, "Fractional number [");
-        StringAppendF16(target, token.data);
+        StringAppendDouble(target, token.data);
         StringAppendChar(target, ']');
         return;
 

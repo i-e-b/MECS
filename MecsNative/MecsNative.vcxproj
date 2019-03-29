@@ -175,7 +175,6 @@
     <ClCompile Include="CompilerOptimisations.cpp" />
     <ClCompile Include="Desugar.cpp" />
     <ClCompile Include="FileSys.cpp" />
-    <ClCompile Include="Fix16.cpp" />
     <ClCompile Include="HashMap.cpp" />
     <ClCompile Include="Heap.cpp" />
     <ClCompile Include="MecsNative.cpp" />
@@ -199,7 +198,6 @@
     <ClInclude Include="CompilerOptimisations.h" />
     <ClInclude Include="Desugar.h" />
     <ClInclude Include="FileSys.h" />
-    <ClInclude Include="Fix16.h" />
     <ClInclude Include="HashMap.h" />
     <ClInclude Include="Heap.h" />
     <ClInclude Include="MathBits.h" />

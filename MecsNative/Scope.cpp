@@ -192,7 +192,7 @@ void ScopeDrop(Scope* s) {
 }
 
 DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
-    if (s == NULL) return InvalidTag();
+    if (s == NULL) return NonResult();
 
     int currentScopeIdx = VecLength(s->_scopes) - 1;
 
@@ -206,7 +206,7 @@ DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
     }
 
     // fell out of the loop without finding anything
-    return InvalidTag();
+    return NonResult();
 }
 
 void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {

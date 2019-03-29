@@ -292,7 +292,7 @@ bool TryCaptureComment(String* source, int* inOutPosition, bool preserveMetadata
 }
 
 bool IsNumeric(String* word) {
-    return StringTryParse_f16(word, NULL);
+    return StringTryParse_double(word, NULL);
 }
 
 void MaybeIncludeWhitespace(bool y, TreeNode** wsNode, TreeNode* target) {

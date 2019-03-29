@@ -10,9 +10,6 @@
 #include "ArenaAllocator.h"
 #include "MemoryManager.h"
 
-// Math:
-#include "Fix16.h"
-
 // Encoding:
 #include "TagData.h"
 #include "TagCodeReader.h"
@@ -419,38 +416,38 @@ int TestString() {
     // FIXED POINT
     StringClear(str1);
     StringAppend(str1, "-110.001");
-    fix16_t fix = 0;
-    ok = StringTryParse_f16(str1, &fix);
+    double fix = 0;
+    ok = StringTryParse_double(str1, &fix);
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
-    StringAppendF16(str1, fix);
+    StringAppendDouble(str1, fix);
     WriteStr(str1);
 
     StringClear(str1);
     StringAppend(str1, "110.01");
     fix = 0;
-    ok = StringTryParse_f16(str1, &fix);
+    ok = StringTryParse_double(str1, &fix);
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
-    StringAppendF16(str1, fix);
+    StringAppendDouble(str1, fix);
     WriteStr(str1);
 
     StringClear(str1);
     StringAppend(str1, "-110");
     fix = 0;
-    ok = StringTryParse_f16(str1, &fix);
+    ok = StringTryParse_double(str1, &fix);
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
-    StringAppendF16(str1, fix);
+    StringAppendDouble(str1, fix);
     WriteStr(str1);
 
     StringClear(str1);
     StringAppend(str1, "3000.0123");
     fix = 0;
-    ok = StringTryParse_f16(str1, &fix);
+    ok = StringTryParse_double(str1, &fix);
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
-    StringAppendF16(str1, fix);
+    StringAppendDouble(str1, fix);
     WriteStr(str1);
 
     // String formatting
@@ -481,61 +478,6 @@ int TestString() {
     StringDeallocate(str2);
     StringDeallocate(needle);
     StringDeallocate(replacement);
-
-    return 0;
-}
-
-int TestFixedPoint() {
-    std::cout << "*************** FIXED POINT *****************\n";
-
-    // Test basic operations against constant
-    fix16_t fexpected = FOUR_DIV_PI;
-    fix16_t fpi = fix16_pi;
-    fix16_t f4 = fix16_from_int(4);
-    fix16_t fresult = fix16_div(f4, fpi);
-
-    fix16_t diff = fix16_abs(fix16_sub(fresult, fexpected));
-
-    auto str1 = StringNew("Raw difference: ");
-    StringAppendInt32Hex(str1, diff);
-    WriteStr(str1);
-
-    // Test constants and conversions with string generation
-    StringClear(str1);
-    StringAppend(str1, "Pi: ");
-    StringAppendF16(str1, fix16_pi);
-    StringAppend(str1, ", e: ");
-    StringAppendF16(str1, fix16_e);
-    StringAppend(str1, ", 1.0: ");
-    StringAppendF16(str1, fix16_one);
-    StringAppend(str1, ", FIX16.16 maximum: ");
-    StringAppendF16(str1, fix16_maximum);
-    WriteStr(str1);
-
-    StringClear(str1);
-    StringAppend(str1, "1.03: ");
-    StringAppendF16(str1, fix16_from_float(1.03));
-    StringAppend(str1, ", 100.001: ");
-    StringAppendF16(str1, fix16_from_float(100.001));
-    StringAppend(str1, ", 0.9999: ");
-    StringAppendF16(str1, fix16_from_float(0.9999));
-    StringAppend(str1, ", 1000.0: ");
-    StringAppendF16(str1, fix16_from_float(1000.0));
-
-    WriteStr(str1);
-
-    // Test of saturating math
-    StringClear(str1);
-    auto big = fix16_from_float(30000.1234);
-    auto bigger = fix16_sadd(big, big);
-    StringAppend(str1, "Sat add: ");
-    StringAppendF16(str1, bigger);
-    StringAppend(str1, " (expecting max F16 ~ 32767.9999)");
-    WriteStr(str1);
-
-
-    StringDeallocate(str1);
-
 
     return 0;
 }
@@ -613,6 +555,16 @@ int TestTagData() {
     StringAppend(str, "decoded: '");
     DecodeShortStr(tag, str);
     StringAppend(str, "' (expected 'ShrtStr')");
+    WriteStr(str);
+
+    double origd = 123450.098765;
+    StringClear(str);
+    StringAppendDouble(str, origd);
+    tag = EncodeDouble(origd);
+    StringAppend(str, "; decoded: '");
+    double resd = DecodeDouble(tag);
+    StringAppendDouble(str, resd);
+    StringAppend(str, "' (expected approx 123450.098765)");
     WriteStr(str);
 
 
@@ -737,7 +689,8 @@ int TestCompiler() {
 
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
-    auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
+    //auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
+    auto pathOfValid = StringNew("stringSearch.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
@@ -1047,7 +1000,7 @@ int TestProgramSuite() {
 
     errs += RunProgram("strings.ecs");
 
-    errs += RunProgram("stressTest.ecs"); // really slow in debug mode
+    //errs += RunProgram("stressTest.ecs"); // really slow in debug mode
     errs += RunProgram("nestedLoops.ecs");
 
     errs += RunProgram("demo_program2.ecs");
@@ -1069,7 +1022,7 @@ int main() {
     if (aares != 0) return aares;
 
     StartManagedMemory();
-    /*
+
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1096,11 +1049,6 @@ int main() {
     MMPop();
 
     MMPush(1 MEGABYTE);
-    auto fpres = TestFixedPoint();
-    if (fpres != 0) return fpres;
-    MMPop();
-
-    MMPush(1 MEGABYTE);
     auto hres = TestHeaps();
     if (hres != 0) return hres;
     MMPop();
@@ -1124,9 +1072,9 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-    */
+    /*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
-
+    */
     ShutdownManagedMemory();
 }

@@ -1,6 +1,5 @@
 #include "String.h"
 #include "Vector.h"
-#include "Fix16.h"
 #include "MemoryManager.h"
 
 #include <stdarg.h>
@@ -147,35 +146,36 @@ void StringAppendInt64Hex(String *str, uint64_t value) {
     StringAppendInt32Hex(str, value & 0xFFFFFFFF);
 }
 
-void StringAppendF16(String *str, int32_t value) {
+void StringAppendDouble(String *str, double value) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == false) return;
 
     str->hashval = 0;
 
-    uint32_t uvalue = value;
+    double uvalue = value;
     if (value < 0) {
         VPush_char(str->chars, '-');
         uvalue = -value;
     }
 
-    unsigned intpart = uvalue >> 16;
-    uint32_t fracpart = uvalue & 0xFFFF;
+    // TODO: this whole thing could do with fixing...
+    uint32_t intpart = uvalue;
+    uint32_t fracpart = (uvalue - intpart) * 100000;
 
     StringAppendInt32(str, intpart);
     VPush_char(str->chars, '.');
 
     int64_t digit = 0;
 
-    uint32_t scale = 100000;// max scale of uint16 = 65535
-    fracpart = fix16_mul(fracpart, scale * 10);
+    uint32_t scale = 10000;
+    //fracpart = fracpart * scale * 10;
     bool tail = true;
     while (fracpart > 0 && scale > 0) {
         digit = fracpart / scale;
+        fracpart = fracpart % scale;
 
         tail = false;
         VPush_char(str->chars, '0' + digit);
-        fracpart = fracpart % scale;
 
         scale /= 10;
     }
@@ -650,7 +650,7 @@ bool StringTryParse_int32(String *str, int32_t *dest) {
 }
 
 
-bool StringTryParse_f16(String *str, int32_t *dest) {
+bool StringTryParse_double(String *str, double *dest) {
     if (str == NULL) return false;
 
     // Plan: parse each side of the '.' as int32, truncate and weld
@@ -667,7 +667,7 @@ bool StringTryParse_f16(String *str, int32_t *dest) {
     if (!found) {
         int32_t res;
         bool ok = StringTryParse_int32(str, &res);
-        if (ok && dest != NULL) *dest = fix16_from_int(res);
+        if (ok && dest != NULL) *dest = res;
         return ok;
     }
 
@@ -691,9 +691,10 @@ bool StringTryParse_f16(String *str, int32_t *dest) {
     if (!ok) fracpart = 0;
 
     // Combine int and frac
-    int32_t scale = 1;
+    double scale = 1;
     for (int s = 0; s < flen; s++) { scale *= 10; }
-    if (dest != NULL) *dest = fix16_sadd(intpart << 16, fix16_div(fracpart << 16, scale << 16));
+    if (dest != NULL) *dest = intpart + ((double)fracpart / scale);
+        //fix16_sadd(intpart << 16, fix16_div(fracpart << 16, scale << 16));
 
     return true;
 }

@@ -106,12 +106,12 @@ void StringAppendInt32(String *str, int32_t value);
 void StringAppendInt32Hex(String *str, uint32_t value);
 // Append an long integer as a fixed length hex string
 void StringAppendInt64Hex(String *str, uint64_t value);
-// Append a fixed-point number as a decimal string (F16.16, passed as int32)
-void StringAppendF16(String *str, int32_t value); // TODO...
+// Append a floating-point number as a decimal string
+void StringAppendDouble(String *str, double value);
 
 // Parse an int from a decimal string
 bool StringTryParse_int32(String *str, int32_t *dest);
 // Parse a fixed-point number from a decimal string (F16.16, passed as int32)
-bool StringTryParse_f16(String *str, int32_t *dest); // TODO
+bool StringTryParse_double(String *str, double *dest); // TODO
 
 #endif

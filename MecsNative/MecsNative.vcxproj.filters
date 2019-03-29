@@ -43,9 +43,6 @@
     <ClCompile Include="String.cpp">
       <Filter>Source Files\Containers</Filter>
     </ClCompile>
-    <ClCompile Include="Fix16.cpp">
-      <Filter>Source Files\Math</Filter>
-    </ClCompile>
     <ClCompile Include="Heap.cpp">
       <Filter>Source Files\Containers</Filter>
     </ClCompile>
@@ -107,9 +104,6 @@
     </ClInclude>
     <ClInclude Include="String.h">
       <Filter>Source Files\Containers</Filter>
-    </ClInclude>
-    <ClInclude Include="Fix16.h">
-      <Filter>Source Files\Math</Filter>
     </ClInclude>
     <ClInclude Include="Heap.h">
       <Filter>Source Files\Containers</Filter>
