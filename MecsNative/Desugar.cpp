@@ -21,12 +21,7 @@ TreeNode* MakeReturnNode() {
 
     data->Text = StringNew("return");
     data->NodeType = NodeType::Atom;
-
-    auto paren = SourceNode{};
-    paren.Text = StringNew("()");
-    paren.NodeType = NodeType::Atom;
-
-    TreeAddChild_SourceNode(node, &paren);
+    data->functionLike = true;
 
     return node;
 }
@@ -60,11 +55,11 @@ TreeNode* ConvertToPickList(String* funcName, TreeNode* sourceNode, TagCodeCache
     // The entire lot then gets wrapped in a function def and immediately called
     auto newFuncName = SugarName(funcName, sourceData->SourceLocation);
 
-    StringClear(sourceData->Text); StringAppend(sourceData->Text, "()"); // make the contents into an anonymous block
+    StringClear(sourceData->Text);
 
     auto defData = SourceNode{}; defData.Text = StringNew("def");
     auto nameData = SourceNode{}; nameData.Text = newFuncName;
-    auto callData = SourceNode{}; callData.Text = newFuncName;
+    auto callData = SourceNode{}; callData.Text = newFuncName; callData.functionLike = true;
     auto parenData = SourceNode{}; parenData.Text = StringNew("()"); parenData.NodeType = NodeType::Atom;
 
     auto wrapper = TreeAllocate_SourceNode();
@@ -79,7 +74,6 @@ TreeNode* ConvertToPickList(String* funcName, TreeNode* sourceNode, TagCodeCache
     TreeAppendNode(inter, TreeChild(sourceNode)); // modified pick block
 
     auto callBlock = TreeAddChild_SourceNode(wrapper, &callData); // call the function
-    TreeAddChild_SourceNode(callBlock, &parenData);
 
     return wrapper;
 }
