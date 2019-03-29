@@ -34,9 +34,8 @@ Components to do:
       * [ ] get/set/length/toString etc
 
 This next -->
-* [ ] Extend numeric types (use 56 bits of params+data for truncated `double`?)
+* [x] Extend numeric types (use 56 bits of params+data for truncated `double`?)
   * [ ] Handle parsing, including scientific notation
-  * [ ] Investigate a reduction of ( http://dec64.com/ ) as a single number type -- bottom 32 bits in tag data, exponent and remaining bits in tag params.
 
 Input handling:
 ---------------
@@ -60,6 +59,7 @@ The machine:
 
 * [x] Add readline / readkey support
 * [ ] Performance optimise
+  * [ ] special cases for hashmap (most recent n, raw array instead of vector for small hashmaps)
 * [ ] Tail-recursion support (maybe with counting return stack?)
 * [ ] Try introducing C++ namespacing?
 * [ ] change 'deallocate' functions to `...Deallocate(thing** x){ ... *x = NULL ...}`
@@ -67,7 +67,7 @@ The machine:
 * [x] Convert runtime
   * [ ] Add breakpoints
 * [ ] Syntax hiliting editor (caret in the parser and extended AST)
-* [ ] Debug symbols file and reader
+* [x] Debug symbols file and reader
 * [ ] Value stack improvements (delete unused return values)
 
 

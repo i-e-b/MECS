@@ -66,8 +66,6 @@ TreeNode* ConvertToPickList(String* funcName, TreeNode* sourceNode, TagCodeCache
     auto defineBlock = TreeAddChild_SourceNode(wrapper, &defData); // function def
     auto funcNameBlock = TreeAddChild_SourceNode(defineBlock, &nameData); // name, empty param list
 
-    // TODO: I'm really not sure about this bit.
-    // CAREFULLY double check the tag-code output
     int count = TreeCountChildren(sourceNode);
 
     auto inter = TreeAddChild_SourceNode(defineBlock, &parenData); // function def
