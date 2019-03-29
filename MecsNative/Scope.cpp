@@ -265,7 +265,7 @@ bool InScope(Scope* s, uint32_t crushedName) {
 
     MapPtr scope = NULL;
     VecPeek_MapPtr(s->_scopes, &scope);
-    return MapContains_Name_DataTag(scope, crushedName);
+    return MapGet_Name_DataTag(scope, crushedName, NULL);
 }
 
 uint32_t ScopeNameForPosition(int i) {

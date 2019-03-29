@@ -28,8 +28,6 @@ bool HashMapGet(HashMap *h, void* key, void** outValue);
 bool HashMapPut(HashMap *h, void* key, void* value, bool canReplace);
 // List all keys in the hash map. The vector must be deallocated by the caller.
 Vector *HashMapAllEntries(HashMap *h); // returns a Vector<HashMap_KVP>
-// Returns true if hashmap has a value stored to the given key
-bool HashMapContains(HashMap *h, void* key);
 // Remove the entry for the given key, if it exists
 bool HashMapRemove(HashMap *h, void* key);
 // Remove all entries from the hash-map, but leave the hash-map allocated and valid
@@ -66,7 +64,6 @@ unsigned int HashMapIntKeyHash(void* key);
     inline HashMap* nameSpace##Allocate_##keyType##_##valueType(unsigned int size){ return HashMapAllocate(size, sizeof(keyType), sizeof(valueType), compareFuncPtr, hashFuncPtr); } \
     inline bool nameSpace##Get##_##keyType##_##valueType(HashMap *h, keyType key, valueType** outValue){return HashMapGet(h, &key, (void**)(outValue));}\
     inline bool nameSpace##Put##_##keyType##_##valueType(HashMap *h, keyType key, valueType value, bool replace){return HashMapPut(h, &key, &value, replace); }\
-    inline bool nameSpace##Contains##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapContains(h, &key); }\
     inline bool nameSpace##Remove##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapRemove(h, &key); }\
     typedef struct nameSpace##_KVP_##keyType##_##valueType { keyType* Key; valueType* Value; } nameSpace##_KVP_##keyType##_##valueType ; \
 

@@ -679,10 +679,9 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
     }
     auto functionNameHash = DecodeVariableRef(tag);
 
-    if (MapContains_Name_FunctionDefinition(is->Functions, functionNameHash)) {
+    FunctionDefinition* original;
+    if (MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &original)) {
         is->ErrorFlag = true;
-        FunctionDefinition* original;
-        MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &original);
         StringAppendFormat(is->_output, "Function '\x01' redefined at \x02. Original at \x02.", functionNameHash, *position, original->StartPosition);
         return;
     }

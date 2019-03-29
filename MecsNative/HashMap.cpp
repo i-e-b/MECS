@@ -4,13 +4,13 @@
 #include "MemoryManager.h"
 #include "RawData.h"
 
-// Fixed sizes -- these are structural to the code and must not changeo
+// Fixed sizes -- these are structural to the code and must not change
 const unsigned int MAX_BUCKET_SIZE = 1<<30; // safety limit for scaling the buckets
 const unsigned int SAFE_HASH = 0x80000000; // just in case you get a zero result
 
 // Tuning parameters: have a play if you have performance or memory issues.
 const unsigned int MIN_BUCKET_SIZE = 64; // default size used if none given
-const float LOAD_FACTOR = 0.8f; // higher is more memory efficient. Lower is faster, to a point.
+const float LOAD_FACTOR = 0.5f; // higher is more memory efficient. Lower is faster, to a point.
 
 //#define AGGRESSIVE_SCALING 1
 
@@ -54,9 +54,6 @@ bool HashMapIsValid(HashMap *h) {
 bool ResizeNext(HashMap * h); // defined below
 
 inline uint32_t DistanceToInitIndex(HashMap * h, uint32_t indexStored, HashMap_Entry* entry) {
-    //if (!VectorIsValid(h->buckets)) return indexStored + h->count;
-
-    //auto entry = (HashMap_Entry*)VectorGet(h->buckets, indexStored);
     auto indexInit = entry->hash & h->countMod;
     if (indexInit <= indexStored) return indexStored - indexInit;
     return indexStored + (h->count - indexInit);
@@ -260,13 +257,12 @@ bool HashMapGet(HashMap* h, void* key, void** outValue) {
     if (!Find(h, key, &index, &res)) return false;
 
     // look up the entry
-    //auto res = (HashMap_Entry*)VectorGet(h->buckets, index);
     if (res == NULL) {
         return false;
     }
 
     // look up the value
-    *outValue = ValuePtr(h, res);//VectorGet(h->values, res->value);
+    if (outValue != NULL) *outValue = ValuePtr(h, res);
     return true;
 }
 
@@ -314,17 +310,10 @@ Vector *HashMapAllEntries(HashMap* h) {
     return result;
 }
 
-bool HashMapContains(HashMap* h, void* key) {
-    uint32_t idx;
-    return Find(h, key, &idx, NULL);
-}
-
 bool HashMapRemove(HashMap* h, void* key) {
     uint32_t index;
     if (!Find(h, key, &index, NULL)) return false;
 
-    // Note: we only remove the hashmap entry. The data is retained (mostly to keep the code simple)
-    // Data will be purged when a resize happens
     for (uint32_t i = 0; i < h->count; i++) {
         auto curIndex = (index + i) & h->countMod;
         auto nextIndex = (index + i + 1) & h->countMod;

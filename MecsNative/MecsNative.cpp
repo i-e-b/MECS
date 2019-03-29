@@ -84,12 +84,12 @@ int TestHashMap() {
     }
     std::cout << "Found value " << *lu_val_ptr << " (expected 80)\n";
 
-    auto has50 = MapContains_int_int(hmap, 50);
-    auto hasNeg1 = MapContains_int_int(hmap, -1);
+    auto has50 = MapGet_int_int(hmap, 50, NULL);
+    auto hasNeg1 = MapGet_int_int(hmap, -1, NULL);
     std::cout << "Has 50? " << (has50 ? "yes" : "no") << "; Has -1? " << (hasNeg1 ? "yes" : "no") << "\n";
 
     MapRemove_int_int(hmap, 50);
-    has50 = MapContains_int_int(hmap, 50);
+    has50 = MapGet_int_int(hmap, 50, NULL);
     std::cout << "Has 50 after removal? " << (has50 ? "yes" : "no") << "\n";
 
     std::cout << "Count before clear = " << (MapCount(hmap)) << "\n";
