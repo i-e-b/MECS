@@ -1,29 +1,17 @@
 #include "Scope.h"
 
+#include "ScopeMap.h"
 #include "MemoryManager.h"
 
-bool Scope_IntKeyCompare(void* key_A, void* key_B) {
-    auto A = *((uint32_t*)key_A);
-    auto B = *((uint32_t*)key_B);
-    return A == B;
-}
-unsigned int Scope_IntKeyHash(void* key) {
-    auto A = *((uint32_t*)key);
-    return A;
-}
 
-typedef HashMap* MapPtr;
+typedef ScopeMap* MapPtr;
 typedef uint32_t Name;
-
-RegisterHashMapStatics(Map)
-RegisterHashMapFor(Name, DataTag, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
-RegisterHashMapFor(Name, bool, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 RegisterVectorStatics(Vec)
 RegisterVectorFor(MapPtr, Vec)
 RegisterVectorFor(DataTag, Vec)
 RegisterVectorFor(ScopeReference, Vec)
-RegisterVectorFor(Map_KVP_Name_DataTag, Vec)
+RegisterVectorFor(ScopeMap_KVP, Vec)
 
 
 typedef struct Scope {
@@ -38,13 +26,14 @@ Scope* ScopeAllocate() {
     auto result = (Scope*)mmalloc(sizeof(Scope));
     if (result == NULL) return NULL;
 
-    auto firstMap = (MapPtr)MapAllocate_Name_DataTag(64);
+    auto firstMap = (MapPtr)ScopeMapAllocate();
     if (firstMap == NULL) { mfree(result); return NULL; }
 
-    result->PotentialGarbage = MapAllocate_Name_DataTag(1024);
+    // TODO: fix potential garbage
+    result->PotentialGarbage = NULL;//MapAllocate_Name_DataTag(1024);
     result->_scopes = VecAllocate_MapPtr();
 
-    if (result->PotentialGarbage == NULL || result->_scopes == NULL) {
+    if (/*result->PotentialGarbage == NULL ||*/ result->_scopes == NULL) {
         ScopeDeallocate(result);
         return NULL;
     }
@@ -56,13 +45,13 @@ Scope* ScopeAllocate() {
 void ScopeDeallocate(Scope* s) {
     if (s == NULL) return;
     if (s->PotentialGarbage != NULL) {
-        MapDeallocate(s->PotentialGarbage);
+        //MapDeallocate(s->PotentialGarbage);
         s->PotentialGarbage = NULL;
     }
     if (s->_scopes != NULL) {
         MapPtr map;
         while (VecPop_MapPtr(s->_scopes, &map)) {
-            MapDeallocate(map);
+            ScopeMapDeallocate(map);
         }
         VecDeallocate(s->_scopes);
         s->_scopes = NULL;
@@ -80,7 +69,7 @@ Scope* ScopeClone(Scope* source) {
     auto globalScope = *VecGet_MapPtr(result->_scopes, 0);
     ScopeReference entry;
     while (VecPop_ScopeReference(toCopy, &entry)) {
-        MapPut_Name_DataTag(globalScope, entry.crushedName, entry.value, true);
+        ScopeMapPut(globalScope, entry.crushedName, entry.value);
     }
 
     return result;
@@ -95,6 +84,8 @@ HashMap* ScopePotentialGarbage(Scope *s) {
 Vector* ScopeAllVisible(Scope* s) {
     if (s == NULL) return NULL;
 
+    // TODO: fix this, or maybe remove entirely
+    /*
     auto seen = MapAllocate_Name_bool(1024);// to record shadowing
     auto result = VecAllocate_ScopeReference();
     int currentScopeIdx = VecLength(s->_scopes) - 1;
@@ -115,23 +106,25 @@ Vector* ScopeAllVisible(Scope* s) {
         VecDeallocate(values);
     }
     MapDeallocate(seen);
-    return result;
+    return result;*/
+    return NULL;
 }
 
 void ScopePurge(Scope * s) {
     if (s == NULL) return;
+    // TODO: fix this, or maybe remove entirely
 
     int currentScopeIdx = VecLength(s->_scopes) - 1;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scope = VecGet_MapPtr(s->_scopes, i); //var scope = _scopes[i];
-        HashMapPurge(*scope);
+        //HashMapPurge(*scope);
     }
 }
 
 void ScopePush(Scope* s, Vector* parameters) {
     if (s == NULL) return;
 
-    auto newLevel = MapAllocate_Name_DataTag(64);
+    auto newLevel = ScopeMapAllocate();
     if (newLevel == NULL) return;
 
     if (s->_scopes == NULL) {
@@ -144,14 +137,14 @@ void ScopePush(Scope* s, Vector* parameters) {
     int length = VecLength(parameters);
     for (int i = 0; i < length; i++) {
         auto val = VecGet_DataTag(parameters, i);
-        MapPut_Name_DataTag(newLevel, ScopeNameForPosition(i), *val, true);
+        ScopeMapPut(newLevel, ScopeNameForPosition(i), *val);
     }
 }
 
 void ScopePush(Scope* s, DataTag* parameters, uint32_t paramCount) {
     if (s == NULL) return;
 
-    auto newLevel = MapAllocate_Name_DataTag(64);
+    auto newLevel = ScopeMapAllocate();
     if (newLevel == NULL) return;
 
     if (s->_scopes == NULL) {
@@ -162,7 +155,7 @@ void ScopePush(Scope* s, DataTag* parameters, uint32_t paramCount) {
     if (parameters == NULL) return;
 
     for (int i = 0; i < paramCount; i++) {
-        MapPut_Name_DataTag(newLevel, ScopeNameForPosition(i), parameters[i], true);
+        ScopeMapPut(newLevel, ScopeNameForPosition(i), parameters[i]);
     }
 }
 
@@ -178,9 +171,11 @@ void ScopeDrop(Scope* s) {
     VecPop_MapPtr(s->_scopes, &last);
     if (last == NULL) return;
 
+
+    // TODO: fix this
     // add lost references to the potential garbage
     // this could be done out-of-band to speed up function returns
-    auto refs = MapAllEntries(last);
+    /*auto refs = MapAllEntries(last);
     Map_KVP_Name_DataTag lostReference;
     while (VecPop_Map_KVP_Name_DataTag(refs, &lostReference)) {
         if (IsAllocated(*lostReference.Value)) {
@@ -188,7 +183,7 @@ void ScopeDrop(Scope* s) {
         }
     }
     VecDeallocate(refs);
-    MapDeallocate(last);
+    MapDeallocate(last);*/
 }
 
 DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
@@ -199,9 +194,8 @@ DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
     DataTag* found = NULL;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scopeMap = VecGet_MapPtr(s->_scopes, i);
-        if (MapGet_Name_DataTag(*scopeMap, crushedName, &found)) {
-            DataTag localCopy = *found;
-            return localCopy;
+        if (ScopeMapGet(*scopeMap, crushedName, &found)) {
+            return *found;
         }
     }
 
@@ -216,24 +210,24 @@ void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
     // otherwise, insert a new value
 
     int currentScopeIdx = VecLength(s->_scopes) - 1;
-
+    
     DataTag* found = NULL;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scopeMap = *VecGet_MapPtr(s->_scopes, i);
-        if ( ! MapGet_Name_DataTag(scopeMap, crushedName, &found)) {
+        if ( ! ScopeMapGet(scopeMap, crushedName, &found)) {
             continue; // not in this scope
         }
 
-        DataTag localCopy = *found;
-        if (TagsAreEqual(newValue, localCopy)) return; // nothing needs doing
+        if (TagsAreEqual(newValue, *found)) return; // nothing needs doing
 
         // we now need to replace an old value. If the OLD one is a reference type, add it to garbage
-        if (IsAllocated(localCopy)) {
-            MapPut_Name_DataTag(s->PotentialGarbage, crushedName, localCopy, true); // NOTE: we could leak here. The potential garbage really needs to be Map< name, Vec<tag> >
+        if (IsAllocated(*found)) {
+            // TODO: fix this
+            //MapPut_Name_DataTag(s->PotentialGarbage, crushedName, localCopy, true); // NOTE: we could leak here. The potential garbage really needs to be Map< name, Vec<tag> >
         }
 
         // save the new value in scope and exit
-        MapPut_Name_DataTag(scopeMap, crushedName, newValue, true);
+        ScopeMapPut(scopeMap, crushedName, newValue);
         return;
     }
 
@@ -241,7 +235,7 @@ void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
     // We now save a new value in the inner-most scope
     MapPtr innerScope = NULL;
     VecPeek_MapPtr(s->_scopes, &innerScope);
-    MapPut_Name_DataTag(innerScope, crushedName, newValue, true);
+    ScopeMapPut(innerScope, crushedName, newValue);
 }
 
 bool ScopeCanResolve(Scope* s, uint32_t crushedName) {
@@ -255,9 +249,9 @@ void ScopeRemove(Scope* s, uint32_t crushedName) {
 
     // Only works in inner-most or global scope -- global first
     MapPtr scope = *VecGet_MapPtr(s->_scopes, 0);
-    if (MapRemove_Name_DataTag(scope, crushedName)) return;
+    if (ScopeMapRemove(scope, crushedName)) return;
     VecPeek_MapPtr(s->_scopes, &scope);
-    MapRemove_Name_DataTag(scope, crushedName);
+    ScopeMapRemove(scope, crushedName);
 }
 
 bool InScope(Scope* s, uint32_t crushedName) {
@@ -265,7 +259,7 @@ bool InScope(Scope* s, uint32_t crushedName) {
 
     MapPtr scope = NULL;
     VecPeek_MapPtr(s->_scopes, &scope);
-    return MapGet_Name_DataTag(scope, crushedName, NULL);
+    return ScopeMapGet(scope, crushedName, NULL);
 }
 
 uint32_t ScopeNameForPosition(int i) {
@@ -284,11 +278,11 @@ void ScopeMutateNumber(Scope* s, uint32_t crushedName, int8_t increment) {
     DataTag* found = NULL;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scopeMap = VecGet_MapPtr(s->_scopes, i);
-        if (MapGet_Name_DataTag(*scopeMap, crushedName, &found)) {
+        if (ScopeMapGet(*scopeMap, crushedName, &found)) {
 
             // we have a pointer direct to the stored value, so can change it in place...
             // NOTE: we are currently assuming the data is an int32_t. In the future, we need to handle number conversion.
-            found->data = (int32_t)found->data + increment;
+            found->data = (int32_t)(found->data) + increment;
             return;
         }
     }

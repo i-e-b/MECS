@@ -5,7 +5,6 @@
 
 #include <stdint.h>
 
-#include "HashMap.h"
 #include "Vector.h"
 #include "TagData.h"
 

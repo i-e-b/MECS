@@ -10,7 +10,7 @@ const unsigned int SAFE_HASH = 0x80000000; // just in case you get a zero result
 
 // Tuning parameters: have a play if you have performance or memory issues.
 const unsigned int MIN_BUCKET_SIZE = 64; // default size used if none given
-const float LOAD_FACTOR = 0.5f; // higher is more memory efficient. Lower is faster, to a point.
+const float LOAD_FACTOR = 0.8f; // higher is more memory efficient. Lower is faster, to a point.
 
 //#define AGGRESSIVE_SCALING 1
 
@@ -66,7 +66,7 @@ inline void* ValuePtr(HashMap* h, HashMap_Entry* e) {
     return byteOffset(e, sizeof(HashMap_Entry) + h->KeyByteSize);
 }
 
-bool SwapOut(Vector* vec, uint32_t idx, HashMap_Entry* newEntry) {
+inline bool SwapOut(Vector* vec, uint32_t idx, HashMap_Entry* newEntry) {
     if (vec == NULL) return false;
 
     auto size = VectorElementSize(vec);
@@ -166,16 +166,6 @@ bool Resize(HashMap * h, uint32_t newSize, bool autoSize) {
     return true;
 }
 
-unsigned long long NextPow2(unsigned long long c) {
-    c--;
-    c |= c >> 1;
-    c |= c >> 2;
-    c |= c >> 4;
-    c |= c >> 8;
-    c |= c >> 16;
-    c |= c >> 32;
-    return ++c;
-}
 
 void HashMapPurge(HashMap *h) {
     auto size = NextPow2((h->countUsed) / LOAD_FACTOR);
@@ -198,8 +188,7 @@ bool ResizeNext(HashMap * h) {
 
 
 }
-
-HashMap* HashMapAllocate(uint32_t size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void *key_A, void *key_B), unsigned int(*getHashFunc)(void *key)) {
+HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key)) {
     auto result = (HashMap*)mcalloc(1, sizeof(HashMap)); // need to ensure values are zeroed
     if (result == NULL) return NULL;
     result->KeyByteSize = keyByteSize;
@@ -215,6 +204,7 @@ void HashMapDeallocate(HashMap * h) {
     h->IsValid = false;
     h->count = 0;
     if (h->buckets != NULL) VectorDeallocate(h->buckets);
+    mfree(h);
 }
 
 bool Find(HashMap* h, void* key, uint32_t* index, HashMap_Entry** found) {

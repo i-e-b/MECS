@@ -281,15 +281,6 @@ inline void * PtrOfElem(Vector *v, uint index) {
     return byteOffset(chunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));
 }
 
-uint32_t NextPow2(uint32_t c) {
-    c--;
-    c |= c >> 1;
-    c |= c >> 2;
-    c |= c >> 4;
-    c |= c >> 8;
-    c |= c >> 16;
-    return ++c;
-}
 
 uint32_t Log2(uint32_t i) {
     uint32_t r = 0;

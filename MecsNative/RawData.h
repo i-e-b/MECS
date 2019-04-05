@@ -98,4 +98,15 @@ inline void swapMem(void * const a, void * const b, int n) {
     }
 }
 
+inline uint32_t NextPow2(uint32_t c) {
+    c--;
+    c |= c >> 1;
+    c |= c >> 2;
+    c |= c >> 4;
+    c |= c >> 8;
+    c |= c >> 16;
+    return ++c;
+}
+
+
 #endif
