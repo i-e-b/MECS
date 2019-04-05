@@ -221,7 +221,7 @@ bool Find(HashMap* h, void* key, uint32_t* index, HashMap_Entry** found) {
     *index = 0;
     if (h == NULL) return false;
     if (h->countUsed <= 0) return false;
-    if (!VectorIsValid(h->buckets)) return false;
+    //if (!VectorIsValid(h->buckets)) return false;
 
     uint32_t hash = h->GetHash(key);
     uint32_t indexInit = hash & h->countMod;
@@ -229,7 +229,7 @@ bool Find(HashMap* h, void* key, uint32_t* index, HashMap_Entry** found) {
 
     for (uint32_t i = 0; i < h->count; i++) {
         *index = (indexInit + i) & h->countMod;
-        auto res = (HashMap_Entry*)VectorGet(h->buckets, *index);
+        auto res = (HashMap_Entry*)VectorGet(h->buckets, *index); // TODO: optimise with a static mem array when we can
         if (res == NULL) return false; // internal failure
 
         auto keyData = KeyPtr(res);

@@ -62,7 +62,7 @@ const int ARENA_SIZE = 65535; // number of bytes for each chunk (limit -- should
 // Desired maximum elements per chunk. This will be reduced if element is large (to fit in Arena limit)
 // Larger values are significantly faster for big arrays, but more memory-wasteful on small arrays
 // This should ALWAYS be a power-of-2
-const int TARGET_ELEMS_PER_CHUNK = 64;
+const int TARGET_ELEMS_PER_CHUNK = 128;
 
 // Maximum size of the skip table.
 // This is dynamically sizes, so large values won't use extra memory for small arrays.
@@ -96,15 +96,15 @@ const long SKIP_TABLE_SIZE_LIMIT = 2048;
 void MaybeRebuildSkipTable(Vector *v); // defined later
 
 // abstract over alloc/free to help us pin to one arena
-void* VecCAlloc(Vector *v, int count, int size) {
+inline void* VecCAlloc(Vector *v, int count, int size) {
     if (v->_arena == NULL) return mcalloc(count, size);
     return ArenaAllocateAndClear(v->_arena, count*size);
 }
-void VecFree(Vector *v, void* ptr) {
+inline void VecFree(Vector *v, void* ptr) {
     if (v->_arena == NULL) mfree(ptr);
     else ArenaDereference(v->_arena, ptr);
 }
-void* VecAlloc(Vector *v, int size) {
+inline void* VecAlloc(Vector *v, int size) {
     if (v->_arena == NULL) return mmalloc(size);
     return ArenaAllocate(v->_arena,size);
 }
@@ -117,7 +117,7 @@ void *NewChunk(Vector *v) {
     ((size_t*)ptr)[0] = 0; // set the continuation pointer of the new chunk to invalid
     if (v->_endChunkPtr != NULL) ((size_t*)v->_endChunkPtr)[0] = (size_t)ptr;  // update the continuation pointer of the old end chunk
     v->_endChunkPtr = (char*)ptr; // update the end chunk pointer
-    v->_skipTableDirty = true; // updating the skip table wouldn't be wasted
+    //v->_skipTableDirty = true; // updating the skip table wouldn't be wasted
 
     return ptr;
 }
@@ -171,7 +171,7 @@ bool FindNearestChunk(Vector *v, unsigned int targetIndex, void **chunkPtr, unsi
     if (v->_skipEntries > 1)
     {
         // guess search bounds
-        int guess = ((targetChunkIdx-1) * v->_skipEntries) / endChunkIdx;
+        int guess = ((targetChunkIdx - 1) * v->_skipEntries) / endChunkIdx;
         int lower = guess - 1;
         if (lower < 0) lower = 0;
 
@@ -181,7 +181,7 @@ bool FindNearestChunk(Vector *v, unsigned int targetIndex, void **chunkPtr, unsi
     }
 
     var walk = targetChunkIdx - startChunkIdx;
-    if (walk > 5 && v->_skipEntries < SKIP_TABLE_SIZE_LIMIT) {
+    if (walk > 4 && v->_skipEntries < SKIP_TABLE_SIZE_LIMIT) {
         v->_skipTableDirty = true; // if we are walking too far, try builing a better table
     }
 
@@ -203,7 +203,7 @@ bool FindNearestChunk(Vector *v, unsigned int targetIndex, void **chunkPtr, unsi
     return true;
 }
 
-void RebuildSkipTable(Vector *v)
+inline void RebuildSkipTable(Vector *v)
 {
     v->_rebuilding = true;
     v->_skipTableDirty = false;

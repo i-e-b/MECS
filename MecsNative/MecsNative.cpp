@@ -1000,7 +1000,9 @@ int TestProgramSuite() {
 
     errs += RunProgram("strings.ecs");
 
-    //errs += RunProgram("stressTest.ecs"); // really slow in debug mode
+#ifndef DEBUG
+    errs += RunProgram("stressTest.ecs"); // really slow in debug mode
+#endif
     errs += RunProgram("nestedLoops.ecs");
 
     errs += RunProgram("demo_program2.ecs");
