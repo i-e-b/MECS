@@ -59,6 +59,7 @@ The machine:
 
 * [x] Add readline / readkey support
 * [ ] Performance optimise
+  * [ ] Special hashmap for scope (like the c# side uses); use array rather than vector.   <------------- THIS NEXT
   * [ ] special cases for hashmap (most recent n, raw array instead of vector for small hashmaps)
 * [ ] Tail-recursion support (maybe with counting return stack?)
 * [ ] Try introducing C++ namespacing?
