@@ -18,7 +18,7 @@ typedef struct Scope {
     // Hashmap of Name->DataTag
     HashMap* PotentialGarbage;
     // Vector of (Hashmap of Name->DataTag)
-    Vector* _scopes;
+    Vector* _scopes; // this is currently critical in tight loops. Maybe de-vector it?
 } Scope;
 
 

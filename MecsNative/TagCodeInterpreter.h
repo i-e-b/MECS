@@ -41,7 +41,7 @@ void InterpDeallocate(InterpreterState* is);
 
 // Run the interpreter until end or cycle count (whichever comes first)
 // Remember to check execution state afterward
-ExecutionResult InterpRun(InterpreterState* is, bool traceExecution, int maxCycles);
+ExecutionResult InterpRun(InterpreterState* is, int maxCycles);
 
 // Add IPC messages to an InterpreterState (only when it's not running)
 void InterpAddIPC(InterpreterState* is, Vector* ipcMessages);

@@ -59,15 +59,15 @@ The machine:
 
 * [x] Add readline / readkey support
 * [ ] Performance optimise
-  * [ ] Special hashmap for scope (like the c# side uses); use array rather than vector.   <------------- THIS NEXT
-  * [ ] special cases for hashmap (most recent n, raw array instead of vector for small hashmaps)
+  * [x] Special hashmap for scope (like the c# side uses); use array rather than vector.
 * [ ] Tail-recursion support (maybe with counting return stack?)
 * [ ] Try introducing C++ namespacing?
 * [ ] change 'deallocate' functions to `...Deallocate(thing** x){ ... *x = NULL ...}`
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
-* [ ] Syntax hiliting editor (caret in the parser and extended AST)
+* [ ] Graphics (native / win split)
+  * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 * [x] Debug symbols file and reader
 * [ ] Value stack improvements (delete unused return values)
 

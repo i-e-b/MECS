@@ -841,13 +841,13 @@ int TestRuntimeExec() {
     // run a few cycles and print any output
     std::cout << "Executing...\n";
     auto startTime = SystemTime();
-    auto result = InterpRun(interp, true, 5000);
+    auto result = InterpRun(interp, 5000);
     while (result.State == ExecutionState::Paused) {
         str = StringEmpty();
         ReadOutput(interp, str);
         WriteStrInline(str);
         StringDeallocate(str);
-        result = InterpRun(interp, true, 5000);
+        result = InterpRun(interp, 5000);
     }
 
     // Write a status report ------------------------------
@@ -934,14 +934,14 @@ int RunProgram(const char* filename) {
 
     // run
     auto startTime = SystemTime();
-    auto result = InterpRun(is, true, 5000);
+    auto result = InterpRun(is, 5000);
     while (result.State == ExecutionState::Paused) {
         //std::cout << ".";
         auto str = StringEmpty();
         ReadOutput(is, str);
         WriteStrInline(str);
         StringDeallocate(str);
-        result = InterpRun(is, true, 5000);
+        result = InterpRun(is, 5000);
     }
     auto endTime = SystemTime();
 
@@ -1000,7 +1000,7 @@ int TestProgramSuite() {
 
     errs += RunProgram("strings.ecs");
 
-#ifndef DEBUG
+#ifndef _DEBUG
     errs += RunProgram("stressTest.ecs"); // really slow in debug mode
 #endif
     errs += RunProgram("nestedLoops.ecs");
