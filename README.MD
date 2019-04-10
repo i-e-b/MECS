@@ -37,10 +37,14 @@ The `def` function defines custom functions
 
 ```
 =    equals    >    <    <>    not-equal
-assert    random    eval    call    not    or
-and    readkey    readline    print    substring
-length    replace    concat    return    +    -
-*    /    %
+
+new-list  push     pop    dequeue
+
+assert    random     eval        call     not    or
+and       readkey    readline    print    substring
+length    replace    concat      return
+
++    -    *    /    %
 ()
 ```
 
@@ -54,11 +58,19 @@ set(dst get(src)) // copy src into dst (can't use implicit get here)
 ```
 
 ### get (2 params)
-Get a subvalue of a variable by key. For strings, this returns a character. Also to be used for hash tables and sets (later)
+Get a subvalue of a variable by key. For strings, this returns a character.
+For lists, this will read the element at the index
 Indexes are zero-based.
 ```javascript
 set(str "Hello, world")
 print(get(str 5))       // ","
+```
+
+If more than 1 index is given, each index is read and concatenated into the result
+
+```javascript
+set(str "Hello, world")
+print(get(str 7 8 9 11))       // "word"
 ```
 
 ### set (2 params)
@@ -68,6 +80,21 @@ set(myVar "hello")
 set(var2 "world")
 print(myVar ", " var2) // "hello, world"
 ```
+
+To set the value of a list element, use the function-call syntax for the index
+```
+set(myList new-list(1 2 3)) // new list of [1,2,3]
+set(myList(1) 5)            // now list is [1,5,3]
+```
+
+### push (2 params)
+Add an item to the end of a list
+
+### pop (1 param)
+Read and remove the last item from a list
+
+### dequeue (1 param)
+Read and remove the first item from a list
 
 ### `=` or `equals` (2+ params)
 Returns true if values are all the same

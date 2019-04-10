@@ -17,7 +17,6 @@
 #endif
 typedef uint32_t Name;
 
-// TODO: Fix: The stress test is running out of memory with this set:
 #define EXPERIMENTAL_ACCESS 1
 
 RegisterHashMapStatics(Map)
@@ -51,7 +50,7 @@ typedef struct InterpreterState {
     Arena* _memory; // read/write memory (for non-short strings and other 'heap' containers)
 
     // Functions that have been defined at run-time
-    HashMap*  Functions; // Map<CrushName -> FunctionDefinition>
+    HashMap* Functions; // Map<CrushName -> FunctionDefinition>
     HashMap* DebugSymbols; // Map<CrushName -> String>
 
     // number of byte codes interpreted (also used for random number generation)
@@ -336,7 +335,7 @@ bool IsContainerIndex(DataTag tag) {
     return (tag.type == (int)DataType::VectorIndex || tag.type == (int)DataType::HashtableKey);
 }
 
-DataTag EvaluateFunctionCall(int* position, uint32_t functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
+inline DataTag EvaluateFunctionCall(int* position, uint32_t functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
     FunctionDefinition* fun = NULL;
     
     if (!MapIsValid(is->Functions)) {
@@ -485,7 +484,7 @@ bool FoldLessThan(int nbParams, DataTag* param, InterpreterState* is) {
 }
 
 // Try to read a tag from the value stack
-DataTag TryPopFromValueStack(InterpreterState* is, int position) {
+inline DataTag TryPopFromValueStack(InterpreterState* is, int position) {
     DataTag tag;
     if (!VecPop_DataTag(is->_valueStack, &tag)) {
         is->ErrorFlag = true;
@@ -632,7 +631,7 @@ compiles to this:
     // so var stack should have the target, then the value, then indexes in reverse order (should be exactly 1 at the moment)
 }
 
-DataType PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
+inline DataType PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
     DataTag nameTag = {};
     VecPop_DataTag(is->_valueStack, &nameTag);
     auto functionNameHash = DecodeVariableRef(nameTag);
@@ -698,7 +697,7 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
     *position = *position + tokenCount + 1; // start + definition length + terminator token
 }
 
-void HandleReturn(int* position, InterpreterState* is) {
+inline void HandleReturn(InterpreterState* is) {
     if (is == NULL) return;
 
 
@@ -716,14 +715,14 @@ void HandleReturn(int* position, InterpreterState* is) {
     int result;
     if (!VecPop_int(is->_returnStack, &result)) {
         is->ErrorFlag = true;
-        StringAppendFormat(is->_output, "Return stack empty. Check program logic at position \x02", position);
+        StringAppendFormat(is->_output, "Return stack empty. Check program logic at position \x02", is->_position);
     }
 
     ScopeDrop(is->_variables);
-    *position = result;
+    is->_position = result;
 }
 
-void HandleControlSignal(int* position, char codeAction, int opCodeCount, InterpreterState* is) {
+inline void HandleControlSignal(int* position, char codeAction, int opCodeCount, InterpreterState* is) {
     switch (codeAction)
     {
     // cmp - relative jump *DOWN* if top of stack is false
@@ -757,7 +756,7 @@ void HandleControlSignal(int* position, char codeAction, int opCodeCount, Interp
     }
     // ret - pop return stack and jump to absolute position
     case 'r':
-        HandleReturn(position, is);
+        HandleReturn(is);
         break;
 
     default:
@@ -770,7 +769,7 @@ void HandleControlSignal(int* position, char codeAction, int opCodeCount, Interp
 
 }
 
-int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint16_t opCodeCount, InterpreterState* is) {
+inline int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint16_t opCodeCount, InterpreterState* is) {
     auto param = ReadParams(is, argCount);
 
     if (param == NULL) {
@@ -807,7 +806,7 @@ int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint
     return result;
 }
 
-void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint16_t paramCount, InterpreterState* is) {
+inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint16_t paramCount, InterpreterState* is) {
     switch (action)
     {
     case 'g': // get (adds a value to the stack, false if not set)
@@ -1359,6 +1358,25 @@ String* ReadStaticString(InterpreterState* is, int position, int length) {
     return DecodeString(is->_program, position, length);
 }
 
+inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, int* low, int* high) {
+    int pos = is->_position;
+    if (*programWindow != NULL && pos >= *low && pos <= *high) return true;
+
+    // out of cached range. Re-cache
+    if (*programWindow != NULL) mfree(programWindow);
+    *low = pos - 200;
+    *high = pos + 400; // bias forward of current position
+    *programWindow = VecCacheRange_DataTag(is->_program, low, high);
+    if (*programWindow == NULL) {
+        // total failure. Out of memory?
+        return false;
+    }
+    if (pos < *low || pos > *high) {
+        // still out of range. We're out of bounds.
+        return false;
+    }
+    return true;
+}
 
 // Run the interpreter until end or cycle count (whichever comes first)
 // Remember to check execution state afterward
@@ -1371,14 +1389,8 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
     int localSteps = 0;
 
 #if EXPERIMENTAL_ACCESS
-    // we keep a window of the program for speed
-    int lowIndex = is->_position - 200;
-    int highIndex = is->_position + 400; // bias forward
-    auto programWindow = VecCacheRange_DataTag(is->_program, &lowIndex, &highIndex);
-    if (programWindow == NULL) {
-        // total failure. Out of memory?
-        return FailureResult(-127);
-    }
+    DataTag* programWindow = NULL;
+    int lowIndex = -1, highIndex = -1;
 
     while (true){
 #else
@@ -1411,23 +1423,9 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
 
 
 #if EXPERIMENTAL_ACCESS
-        auto pos = is->_position;
-        if (pos < lowIndex || pos > highIndex) { // out of cached range. Re-cache
-            mfree(programWindow);
-            lowIndex = pos - 200;
-            highIndex = pos + 400; // bias forward
-            programWindow = VecCacheRange_DataTag(is->_program, &lowIndex, &highIndex);
-            if (programWindow == NULL) {
-                // total failure. Out of memory?
-                return FailureResult(-127);
-            }
-            if (pos < lowIndex || pos > highIndex) {
-                // still out of range. We're out of bounds.
-                break;
-            }
-        }
+        if (!CheckProgramWindow(is, &programWindow, &lowIndex, &highIndex)) break;
 
-        auto word = programWindow[pos - lowIndex];
+        auto word = programWindow[is->_position - lowIndex];
 #else
         auto wptr = VecGet_DataTag(is->_program, is->_position);
         if (wptr == NULL) break;
@@ -1461,26 +1459,15 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
         case (int)DataType::EndOfSubProgram:
         {
             // Delete back to the 'EndOfProgram' marker
-            HandleReturn(&(is->_position), is);
+            HandleReturn(is);
             RollBackSubProgram(is);
-
-            // What is happening with value stack and scope here?
-            /*StringAppend(is->_output, "\r\nValue stack at end of eval:\r\n");
-            auto vals = is->_valueStack;
-            auto len = VecLength(vals);
-            for (int i = 0; i < len; i++) {
-                auto strVal = CastString(is, *VecGet_DataTag(vals, i));
-                StringAppend(is->_output, strVal);
-                StringAppend(is->_output, "\r\n");
-            }
-            StringAppend(is->_output, "###########################\r\n");*/
             break;
         }
         case (int)DataType::EndOfProgram:
             goto GOOD_EXIT;
 
         default:
-            VecPush_DataTag(is->_valueStack, word); // these could be raw doubles, encoded real values, or references/pointers
+            VecPush_DataTag(is->_valueStack, word); // encoded values, or references/pointers
             break;
         }
 

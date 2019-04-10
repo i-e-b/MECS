@@ -28,7 +28,7 @@ Components to do:
       * [x] concat
       * [x] push/pop/dequeue
       * [x] CastString / print
-      * [ ] Add list functions to main readme
+      * [x] Add list functions to main readme
     * [ ] Hash datatype (always string-><any>)
       * [ ] hash-as-function syntax
       * [ ] get/set/length/toString etc
