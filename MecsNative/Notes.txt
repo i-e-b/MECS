@@ -66,6 +66,7 @@ The machine:
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
+* [ ] Add IPC in/out (vector of strings, or special serialised format)
 * [ ] Graphics (native / win split)
   * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 * [x] Debug symbols file and reader
@@ -82,7 +83,8 @@ Actor model stuff:
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
 * [ ] Scheduler
-* [ ] Suspend & resume (including suspend-to-disk)
+* [ ] Make sure all allocations for interpreter are inside its own memory space
+  * [ ] Suspend & resume (including suspend-to-disk)
 
 Garbage collector:
 ------------------

@@ -690,7 +690,7 @@ int TestCompiler() {
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
     //auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
-    auto pathOfValid = StringNew("stringSearch.ecs"); // should be valid source
+    auto pathOfValid = StringNew("hashmaps.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
@@ -901,7 +901,7 @@ int RunProgram(const char* filename) {
 
     std::cout << "########## Attempting program: " << filename << " #########\n";
 
-    MMPush(10 MEGABYTES);
+    MMPush(1 MEGABYTES);
     auto program = VecAllocate_DataTag();
 
     // Compile and load

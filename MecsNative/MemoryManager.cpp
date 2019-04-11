@@ -127,6 +127,7 @@ void* mcalloc(int count, size_t size) {
 
 // Free memory
 void mfree(void* ptr) {
+    if (ptr == NULL) return;
     // we might not be freeing from the current arena, so this can get complex
     ArenaPtr a = MMCurrent();
     if (a == NULL) { // no arenas. stdlib free

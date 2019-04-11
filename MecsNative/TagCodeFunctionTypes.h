@@ -50,6 +50,7 @@ enum class FuncDef {
     MathDiv,
     MathMod,
 
+    NewMap,
     NewList,
     Push,
     Pop,

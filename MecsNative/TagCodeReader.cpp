@@ -190,6 +190,7 @@ HashMap* TCR_ReadSymbols(Vector* v) {
     add("and"); add("readkey"); add("readline"); add("print"); add("substring");
     add("length"); add("replace"); add("concat"); add("+"); add("-"); add("*");
     add("/"); add("%"); add("()"); add("new-list"); add("push"); add("pop"); add("dequeue");
+     add("new-map");
 #undef add;
 
     return outp;

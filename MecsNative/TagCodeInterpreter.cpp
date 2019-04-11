@@ -17,8 +17,6 @@
 #endif
 typedef uint32_t Name;
 
-#define EXPERIMENTAL_ACCESS 1
-
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(Name, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 RegisterHashMapFor(Name, FunctionDefinition, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
@@ -95,6 +93,7 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
     add("+", FuncDef::MathAdd); add("-", FuncDef::MathSub); add("*", FuncDef::MathProd);
     add("/", FuncDef::MathDiv); add("%", FuncDef::MathMod);
     
+    add("new-map", FuncDef::NewMap); 
     add("new-list", FuncDef::NewList); add("push", FuncDef::Push);
     add("pop", FuncDef::Pop); add("dequeue", FuncDef::Dequeue);
 
@@ -1388,18 +1387,12 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
     auto programEnd = VectorLength(is->_program);
     int localSteps = 0;
 
-#if EXPERIMENTAL_ACCESS
     DataTag* programWindow = NULL;
     int lowIndex = -1, highIndex = -1;
 
     while (true){
-#else
-    while (is->_position < programEnd) {
-#endif
         if (localSteps >= maxCycles) {
-#if EXPERIMENTAL_ACCESS
             mfree(programWindow);
-#endif
             return PausedExecutionResult();
         }
         if (is->ErrorFlag) {
@@ -1422,15 +1415,9 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
         }*/
 
 
-#if EXPERIMENTAL_ACCESS
         if (!CheckProgramWindow(is, &programWindow, &lowIndex, &highIndex)) break;
-
         auto word = programWindow[is->_position - lowIndex];
-#else
-        auto wptr = VecGet_DataTag(is->_program, is->_position);
-        if (wptr == NULL) break;
-        DataTag word = *wptr;
-#endif
+
 
         switch (word.type) {
         case (int)DataType::Invalid:
@@ -1451,9 +1438,6 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
             } else if (result == DataType::MustWait) {
                 return WaitingExecutionResult();
             }
-#ifndef EXPERIMENTAL_ACCESS
-            programEnd = VectorLength(is->_program); // In case 'eval' changed it
-#endif
             break;
         }
         case (int)DataType::EndOfSubProgram:
@@ -1481,9 +1465,7 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
 GOOD_EXIT:
     // Exited the program. Cleanup and return value
 
-#if EXPERIMENTAL_ACCESS
     mfree(programWindow);
-#endif
 
     if (VecLength(is->_valueStack) != 0) {
         VecPop_DataTag(is->_valueStack, &evalResult);
