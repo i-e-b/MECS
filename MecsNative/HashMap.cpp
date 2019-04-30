@@ -23,6 +23,7 @@ typedef struct HashMap_Entry {
 typedef struct HashMap {
     // Storage and types
     Vector* buckets; // this is a Vector<HashMap_Entry + keydata + valuedata>
+    Arena* memory; // location for allocating new memory.
 
     int KeyByteSize; // byte length of the key
     int ValueByteSize; // byte length of the value
@@ -43,7 +44,6 @@ typedef struct HashMap {
     unsigned int(*GetHash)(void* key);
 
 } HashMap;
-
 
 bool HashMapIsValid(HashMap *h) {
     if (h == NULL) return false;
@@ -71,14 +71,17 @@ inline bool SwapOut(Vector* vec, uint32_t idx, HashMap_Entry* newEntry) {
 
     auto size = VectorElementSize(vec);
 
-    auto temp = (HashMap_Entry*)mmalloc(size);
+    // use push/pop to do temp allocation
+    if (!VectorPush(vec, newEntry)) return false;
+
+    auto temp = VectorGet(vec, -1);
 
     if (!VectorSet(vec, idx, newEntry, temp)) {
-        mfree(temp);
+        VectorPop(vec, NULL);
         return false;
     }
     writeValue(newEntry, 0, temp, size);
-    mfree(temp);
+    VectorPop(vec, NULL);
     return true;
 }
 
@@ -136,7 +139,7 @@ bool Resize(HashMap * h, uint32_t newSize, bool autoSize) {
 
     h->countMod = newSize - 1;
 
-    auto newBuckets = VectorAllocate(sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
+    auto newBuckets = VectorAllocateArena(h->memory, sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
     if (!VectorIsValid(newBuckets) || !VectorPrealloc(newBuckets, newSize)) return false;
 
     h->buckets = newBuckets;
@@ -188,9 +191,13 @@ bool ResizeNext(HashMap * h) {
 
 
 }
-HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key)) {
-    auto result = (HashMap*)mcalloc(1, sizeof(HashMap)); // need to ensure values are zeroed
+
+
+HashMap* HashMapAllocateArena(Arena* a, unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key)) {
+    if (a == NULL) return NULL;
+    auto result = (HashMap*)ArenaAllocateAndClear(a, sizeof(HashMap));
     if (result == NULL) return NULL;
+    result->memory = a;
     result->KeyByteSize = keyByteSize;
     result->ValueByteSize = valueByteSize;
     result->KeyComparer = keyComparerFunc;
@@ -198,6 +205,11 @@ HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, 
     result->buckets = NULL; // created in `Resize`
     result->IsValid = Resize(result, (uint32_t)NextPow2(size), false);
     return result;
+}
+
+
+HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key)) {
+    return HashMapAllocateArena(MMCurrent(), size, keyByteSize, valueByteSize, keyComparerFunc, getHashFunc);
 }
 
 void HashMapDeallocate(HashMap * h) {

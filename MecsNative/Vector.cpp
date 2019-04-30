@@ -124,7 +124,7 @@ void *NewChunk(Vector *v) {
 
 // This is the core of most of the containers in MECS.
 // It's very important this is correct and optimal
-bool FindNearestChunk(Vector *v, unsigned int targetIndex, void **chunkPtr, unsigned int *chunkIndex) {
+bool FindNearestChunk(Vector *v, int targetIndex, void **chunkPtr, unsigned int *chunkIndex) {
     if (v->_elementCount == 0) { // Optimised for empty list
         *chunkPtr = v->_endChunkPtr;
         *chunkIndex = 0;
@@ -269,14 +269,16 @@ inline void MaybeRebuildSkipTable(Vector *v) {
     if (v->_skipTableDirty) RebuildSkipTable(v);
 }
 
-inline void * PtrOfElem(Vector *v, uint index) {
+inline void * PtrOfElem(Vector *v, int index) {
     if (v == NULL) return NULL;
+    while (index < 0) { index += v->_elementCount; } // allow negative index syntax
     if (index >= v->_elementCount) return NULL;
 
     var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
 
     void *chunkPtr = NULL;
-    if (!FindNearestChunk(v, index, &chunkPtr, &index)) return NULL;
+    uint32_t realIdx = index;
+    if (!FindNearestChunk(v, index, &chunkPtr, &realIdx)) return NULL;
 
     return byteOffset(chunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));
 }
@@ -441,7 +443,7 @@ bool VectorPush(Vector *v, void* value) {
     return true;
 }
 
-void* VectorGet(Vector *v, unsigned int index) {
+void* VectorGet(Vector *v, int index) {
     return PtrOfElem(v, index);
 }
 
@@ -612,7 +614,7 @@ bool VectorPeek(Vector *v, void* target) {
     return true;
 }
 
-bool VectorSet(Vector *v, unsigned int index, void* element, void* prevValue) {
+bool VectorSet(Vector *v, int index, void* element, void* prevValue) {
     // push in the value, returning previous value
     var ptr = PtrOfElem(v, index);
     if (ptr == NULL) return false;

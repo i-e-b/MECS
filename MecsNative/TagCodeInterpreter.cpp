@@ -20,6 +20,7 @@ typedef uint32_t Name;
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(Name, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 RegisterHashMapFor(Name, FunctionDefinition, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
+RegisterHashMapFor(StringPtr, DataTag, HashMapStringKeyHash, HashMapStringKeyCompare, Map)
 
 RegisterVectorStatics(Vec)
 RegisterVectorFor(DataTag, Vec)
@@ -992,6 +993,9 @@ bool AllVectors(int nbParams, DataTag * param) {
     return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// This is where all the code for the built-in functions are
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is){
     switch (kind) {
         // each element equal to the first
@@ -1244,13 +1248,30 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
         // lists store datatags directly
         for (int i = 0; i < nbParams; i++) {
-            VecPush_DataTag(list, param[i]); // TODO: check this is the correct order
+            VecPush_DataTag(list, param[i]);
         }
 
         uint32_t encPtr = ArenaPtrToOffset(is->_memory, list); // allows us to place a 32-bit ptr in 64-bit space
-        if (encPtr < 1) { return RuntimeError(is->_position); } // nonsense result from arena allocation
+        if (encPtr < 1) { return _Exception(is, "Failed to find list in memory"); } // nonsense result from arena allocation
 
         return EncodePointer(encPtr, DataType::VectorPtr);
+    }
+    case FuncDef::NewMap:
+    {
+        auto theMap = MapAllocateArena_StringPtr_DataTag(64, is->_memory);
+
+        // Read initial data
+        for (int i = 0; i < nbParams; i+=2) {
+            auto key = CastString(is, param[i]);
+            auto value = param[i+1];
+            MapPut_StringPtr_DataTag(theMap, key, value, true);
+        }
+        
+        // map from RAM to arena offset
+        uint32_t encPtr = ArenaPtrToOffset(is->_memory, theMap); // allows us to place a 32-bit ptr in 64-bit space
+        if (encPtr < 1) { return _Exception(is, "Failed to find map in memory"); } // nonsense result from arena allocation
+
+        return EncodePointer(encPtr, DataType::HashtablePtr);
     }
     case FuncDef::Push:
     {

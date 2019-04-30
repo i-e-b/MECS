@@ -1075,8 +1075,10 @@ int main() {
     if (runit != 0) return runit;
     MMPop();
 
+    /*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
+    */
 
     ShutdownManagedMemory();
 }

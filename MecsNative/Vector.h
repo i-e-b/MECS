@@ -23,7 +23,7 @@ int VectorLength(Vector *v);
 // Push a new value to the end of the vector
 bool VectorPush(Vector *v, void* value);
 // Get a pointer to an element in the vector. This is an in-place pointer -- no copy is made
-void* VectorGet(Vector *v, unsigned int index);
+void* VectorGet(Vector *v, int index);
 // Copy data from an element in the vector to a pointer
 bool VectorCopy(Vector *v, unsigned int index, void* outValue);
 // Copy data from first element and remove it from the vector
@@ -34,7 +34,7 @@ bool VectorPop(Vector *v, void *target);
 bool VectorPeek(Vector *v, void* target);
 // Write a value at a given position. This must be an existing allocated position (with either push or prealloc).
 // If not 'prevValue' is not null, the old value is copied there
-bool VectorSet(Vector *v, unsigned int index, void* element, void* prevValue);
+bool VectorSet(Vector *v, int index, void* element, void* prevValue);
 // Ensure the vector has at least this many elements allocated. Any extras written will be zeroed out.
 bool VectorPrealloc(Vector *v, unsigned int length);
 // Swaps the values at two positions in the vector
@@ -70,11 +70,11 @@ int VectorElementSize(Vector *v);
     inline Vector* nameSpace##Allocate_##typeName(){ return VectorAllocate(sizeof(typeName)); } \
     inline Vector* nameSpace##AllocateArena_##typeName(Arena* a){ return VectorAllocateArena(a, sizeof(typeName)); } \
     inline bool nameSpace##Push_##typeName(Vector *v, typeName value){ return VectorPush(v, (void*)&value); } \
-    inline typeName * nameSpace##Get_##typeName(Vector *v, unsigned int index){ return (typeName*)VectorGet(v, index); } \
+    inline typeName * nameSpace##Get_##typeName(Vector *v, int index){ return (typeName*)VectorGet(v, index); } \
     inline bool nameSpace##Copy_##typeName(Vector *v, unsigned int idx, typeName *target){ return VectorCopy(v, idx, (void*) target); } \
     inline bool nameSpace##Pop_##typeName(Vector *v, typeName *target){ return VectorPop(v, (void*) target); } \
     inline bool nameSpace##Peek_##typeName(Vector *v, typeName *target){ return VectorPeek(v, (void*) target); } \
-    inline bool nameSpace##Set_##typeName(Vector *v, unsigned int index, typeName element, typeName* prevValue){ return VectorSet(v, index, &element, (void*)prevValue); } \
+    inline bool nameSpace##Set_##typeName(Vector *v, int index, typeName element, typeName* prevValue){ return VectorSet(v, index, &element, (void*)prevValue); } \
     inline bool nameSpace##Dequeue_##typeName(Vector *v, typeName* outValue) { return VectorDequeue(v, (void*)outValue);}\
     inline void nameSpace##Sort_##typeName(Vector *v, int(*compareFunc)(typeName* A, typeName* B)) {VectorSort(v, (int(*)(void* A, void* B))compareFunc);}\
     inline typeName* nameSpace##CacheRange_##typeName(Vector* v, int* lowIndex, int* highIndex) {return (typeName*)VectorCacheRange(v, lowIndex, highIndex);}\

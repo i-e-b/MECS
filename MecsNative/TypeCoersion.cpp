@@ -205,6 +205,34 @@ String* StringifyVector(InterpreterState* is, DataTag encoded) {
     return output;
 }
 
+String* StringifyHashMap(InterpreterState* is, DataTag encoded) {
+    auto original = (HashMap*)InterpreterDeref(is, encoded); // should always be <string => data tag>
+
+    if (original == NULL) return StringNew("<null>");
+
+    auto output = StringNew('{');
+    auto allKeys = HashMapAllEntries(original); // Vector<  HashMap_KVP<string => data tag>  >
+    HashMap_KVP entry;
+    
+    while (VectorPop(allKeys, &entry)) {
+        StringAppend(output, "\"");
+        StringAppend(output, *(String**)(entry.Key));
+        StringAppend(output, "\": ");
+        
+        DataTag* valTag = (DataTag*)(entry.Value);
+        auto valStr = CastString(is, *valTag);
+        StringAppend(output, valStr);
+        StringDeallocate(valStr);
+        
+        if (VectorLength(allKeys) > 0) {
+            StringAppend(output, ", ");
+        }
+    }
+
+    StringAppendChar(output, '}');
+    return output;
+}
+
 
 // Get a resonable string representation from a value.
 // This should include stringifying non-string types (numbers, structures etc)
@@ -255,7 +283,7 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     }
 
     case (int)DataType::HashtablePtr:
-        return StringNew("<complex type>"); // TODO: add stringification later
+        return StringifyHashMap(is, encoded);
 
     default:
         return StringNew("<value out of range>");

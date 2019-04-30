@@ -16,6 +16,9 @@ typedef struct HashMap HashMap;
 
 // Create a new hash map with an initial size
 HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));
+// Create a new hash map with an initial size, pinned to a specific arena
+HashMap* HashMapAllocateArena(Arena* a, unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));
+
 // Deallocate internal storage of the hash-map. Does not deallocate the keys or values
 void HashMapDeallocate(HashMap *h);
 
@@ -62,6 +65,7 @@ unsigned int HashMapIntKeyHash(void* key);
 // These must be registered for each distinct pair, as they are type variant
 #define RegisterHashMapFor(keyType, valueType, hashFuncPtr, compareFuncPtr, nameSpace) \
     inline HashMap* nameSpace##Allocate_##keyType##_##valueType(unsigned int size){ return HashMapAllocate(size, sizeof(keyType), sizeof(valueType), compareFuncPtr, hashFuncPtr); } \
+    inline HashMap* nameSpace##AllocateArena_##keyType##_##valueType(unsigned int size, Arena* a){ return HashMapAllocateArena(a, size, sizeof(keyType), sizeof(valueType), compareFuncPtr, hashFuncPtr); } \
     inline bool nameSpace##Get##_##keyType##_##valueType(HashMap *h, keyType key, valueType** outValue){return HashMapGet(h, &key, (void**)(outValue));}\
     inline bool nameSpace##Put##_##keyType##_##valueType(HashMap *h, keyType key, valueType value, bool replace){return HashMapPut(h, &key, &value, replace); }\
     inline bool nameSpace##Remove##_##keyType##_##valueType(HashMap *h, keyType key){ return HashMapRemove(h, &key); }\
