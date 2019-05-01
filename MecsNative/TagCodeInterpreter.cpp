@@ -12,6 +12,8 @@
 #include "SourceCodeTokeniser.h"
 #include "CompilerCore.h"
 
+#define CODE_POS_ERR_STR(s)  __FILE__ s
+
 #ifndef abs
 #define abs(x)  ((x < 0) ? (-(x)) : (x))
 #endif
@@ -571,6 +573,14 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
         VecPush_DataTag(is->_valueStack, EncodePointer(encPtr, DataType::VectorPtr));
         return;
     }
+
+    case (int)DataType::HashtablePtr:
+    {
+        is->ErrorFlag = true;
+        StringAppendFormat(is->_output, CODE_POS_ERR_STR("; Line \x02 - Hash table indexing not implemented"), __LINE__ );
+        return;
+    }
+
     default:
 
         is->ErrorFlag = true;
