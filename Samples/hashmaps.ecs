@@ -1,0 +1,30 @@
+// Creating and using maps
+// Maps are always string keyed, and the value can be anything (including a list or another map)
+
+set(emptyMap new-map()) // a new empty map
+set(fullMap new-map("a" 1, "b" 2, "c" 3)) // a new map of {"a": 1, "b": 2, "c": 3}
+// note that the syntax above is the same as `new-map("a" 1 "b" 2 "c" 3)` -- commas and whitespace are the same.
+
+
+print(fullMap ' <- should be {"b": 2, "c": 3, "a": 1}   --> this might come in a different order')
+
+// index get and set
+print(get(fullMap "c") " <- 3") // simple indexed get
+print(get(fullMap "c" "a" "b") " <- [3, 1, 2]  --> this must be in the same order") // multiple strings pick to make a new array
+print(fullMap("b") " <- 2") // function call as index
+
+//             +----> index
+//             | +--> new value
+//set(fullMap "a" 3)  // !!! This is a confusing syntax, so it's not recommended.
+set(fullMap("a") 4)  // Instead, the compiler will de-sugar the var-as-func syntax to the same
+
+set(emptyMap("zoom") fullMap("b"))
+print(emptyMap ' <- should be {"zoom": 2}')
+
+unset(emptyMap) // delete the whole map
+print(emptyMap ' <- should be empty')
+
+unset(fullMap("b")) // delete an entry
+print(fullMap ' <- should be {"c": 3, "a": 4}')
+
+print("done")

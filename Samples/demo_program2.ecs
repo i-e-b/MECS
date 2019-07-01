@@ -1,48 +1,83 @@
+set(i 0)
 
-// Loop and compare
-set(i 10)
-while ( not-equal(i 0)
-    if ( %(i)
-        print(i)
-    )
-    set(i -(i 1))
+set(x +(1 i))
+print("x is " x)
+
+print("This should say 5: " /(10 2))
+
+// Define a custom function
+def (
+    CustomSubroutine (param1 param2) ( // parameters can be modified, but don't affect the caller
+        set(localVar, 1)
+        
+        print("this is a custom subroutine.")
+        print(param1 ", " ()) // this should get the param1 value passed in. A `()` at the end of the param list prevents the newline
+        print(param2 ", " ()) // and this the second one.
+        print(param1) // should get the first one again
+        
+        set(param2, "done!")
+        print(param2) // and this the second one.
+        
+        if (isset(localVar)
+            print("The local variable is defined as " localVar)
+        )
+    ) // 'localVar', 'param1' and 'param2' go out of scope here
 )
 
+def (
+    FunctionThatReturns (pred) (
+        if (pred
+            print("You said 'true', I will return 10")
+            return(10)
+        )
+        print("You said 'false', I will return 20")
+        return(20) // if you comment this line out, you will see the failure to return behaviour
+    )
+)
 
-// Simple example of evaluation
-eval("print('Hello, world from eval') print('This is a program inside a program')")
+def (
+    weird-names-are-ok? () (
+        print("Complex names are \"fine\"")
+        print('string quoting?')
+    )
+)
 
+weird-names-are-ok? ()
 
-// 'Call' functionality
+/* while i < 10 */
+while ( not (=(10 i) ) // handles any quantity of white-space
+    print("Counter: "  i)
 
-set(i "print")
-call(i "Hello, world from call") // call print by name
+    if(=(i, 3)
+        // If i = 3, show this message.
+        print("this is 3.")
+        CustomSubroutine("one" "two") // call a custom function
+    )
+
+    // Increment i.
+    set(i, +(i 1))
+)
+
+// Demonstrate value returning functions:
+print("Calling with 'true': " ())
+set(i FunctionThatReturns(true))
+
+// This should *not* store a value, and should not push onto the stack (as it would be leaked)
+print("Calling with 'false': " ())
+FunctionThatReturns(false)
+
+print("'i' is now " i)
+
+// Check scopes:
+pick (
+    if (isset(localVar)
+        print("The local variable is still set. That's wrong!")
+    )
+    if (true
+        print("The local variable from the custom function is gone. That's correct!")
+    )
+)
+
+// Optional. Remove memory definition
 unset(i)
 
-
-// function defs
-def (
-    timesTwo (x) (
-        return( *(2 x) )
-    )
-)
-def (
-    meaning? () (
-        print("42")
-    )
-)
-
-// showing that return restrictions only count if you return *a value*
-def (
-    ok!(x) (
-        if ( x
-            print("You said true")
-            return()                // no value returned, so it's ok that not all paths have a return.
-        )
-        print("You said false")
-    )
-)
-
-print(timesTwo(4)) // "8"
-meaning?()         // "42"
-ok!(false)         // "You said false"

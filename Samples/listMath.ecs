@@ -18,7 +18,6 @@ def (
     )
 )
 
-
 print("Uniary math (one number)")
 print("------------------------")
 print("The negative of " x " is " show("-(x)") ) // -5
