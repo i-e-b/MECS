@@ -509,6 +509,7 @@ void TCW_Memory(TagCodeCache* tcc, char action, String* targetName, int paramCou
     if (tcc == NULL) return;
 
     // TODO: direct memory access if we can know we have scope / param name etc. (save a hash lookup)
+    // TODO: indexed get/set could use p3 instead of the custom op-codes
     uint32_t crush;
     switch (action) {
     case 's':

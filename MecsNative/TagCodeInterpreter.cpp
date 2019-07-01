@@ -952,13 +952,22 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
     }
     case 'u': // unset
     {
-        //Request to delete 'emptyMap (89CD6A71)' with 35277 parameters. <- should be empty
-        //Request to delete 'fullMap (3FFBA836)' with 16379 parameters. <- should be {"a": 1, "c": 3}
-
-        // ISSUE: we have no good paramCount here.
-        // can be an entry delete with a hash-map. Otherwise, it's a plain scope removal.
-        StringAppendFormat(is->_output, "\nRequest to delete '\x01' with \x02 parameters." , DbgStr(is, varRef), p3);
-        ScopeRemove(is->_variables, varRef);
+        //StringAppendFormat(is->_output, "\nRequest to delete '\x01' with \x02 parameters." , DbgStr(is, varRef), p3);
+        if (p3 < 1) { // remove a reference
+            ScopeRemove(is->_variables, varRef);
+        } else { // requesting to remove entries from a hash-map?
+            auto target = TryPopFromValueStack(is, is->_position);
+            //auto value = ScopeResolve(is->_variables, DecodeVariableRef(target));
+            auto container = ScopeResolve(is->_variables, varRef);
+            ResolveIndexIfRequired(is, &target); // if this is an index reference, resolve it before continuing
+            auto src = (HashMap*)InterpreterDeref(is, container);
+            if (src == NULL) {
+                return;
+            }
+            auto key = CastString(is, target);
+            auto ok = MapRemove_StringPtr_DataTag(src, key);
+            StringDeallocate(key);
+        }
         break;
     }
     case 'G': // indexed get
