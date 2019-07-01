@@ -352,13 +352,24 @@ void ResolveIndexIfRequired(InterpreterState* is, DataTag* tag) {
         return;
     }
 
+    case (int)DataType::HashtableEntryPtr:
+    {
+        // unpack pointer to tag into the actual tag
+        auto realTag = (DataTag*)InterpreterDeref(is, *tag);
+        tag->type = realTag->type;
+        tag->params = realTag->params;
+        tag->data = realTag->data;
+        return;
+
+    }
+
     default: return;
     }
 }
 
 // returns true if the tag is a vector-index or hash-entry.
 bool IsContainerIndex(DataTag tag) {
-    return (tag.type == (int)DataType::VectorIndex || tag.type == (int)DataType::HashtableKey);
+    return (tag.type == (int)DataType::VectorIndex || tag.type == (int)DataType::HashtableEntryPtr);
 }
 
 inline DataTag EvaluateFunctionCall(int* position, uint32_t functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
@@ -713,6 +724,16 @@ compiles to this:
             VecSet_DataTag(src, idx, valueToSet, NULL);
         }
 
+        return;
+    }
+    case (int)DataType::HashtablePtr:
+    {
+        auto src = (HashMap*)InterpreterDeref(is, container);
+        if (src == NULL) {
+            return;
+        }
+        auto key = CastString(is, indexValue); // this string becomes owned by the hashmap, so we don't deallocate it.
+        auto ok = MapPut_StringPtr_DataTag(src, key, valueToSet, true);
         return;
     }
     default:

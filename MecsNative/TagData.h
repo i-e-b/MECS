@@ -42,10 +42,10 @@ enum class DataType {
     Integer     = NUMERIC_TYPE + 1, // (65) Data is a 32-bit signed integer, Params are unused.
     Fraction    = NUMERIC_TYPE + 2, // (66) Data is a 16.16-bit pixed point fractional number. Params are unused (could be an extension to 40.16 or 28.28 in the future)
 
-    HashtablePtr = ALLOCATED_TYPE + 1,  // (129) Data is pointer to HashTable. Params not used. Can be collected by GC
-    VectorPtr    = ALLOCATED_TYPE + 2,  // (130) Data is pointer to Vector. Params not used. Can be collected by GC
-    VectorIndex  = 12,                  // Data is pointer to Vector, Params is index into vector.
-    HashtableKey = 13,                  // Data is pointer to another DataTag, Params not used.
+    HashtablePtr      = ALLOCATED_TYPE + 1,  // (129) Data is pointer to HashTable. Params not used. Can be collected by GC
+    VectorPtr         = ALLOCATED_TYPE + 2,  // (130) Data is pointer to Vector. Params not used. Can be collected by GC
+    VectorIndex       = 12,                  // Data is pointer to Vector, Params is index into vector.
+    HashtableEntryPtr = 13,                  // Data is pointer to another DataTag, Params not used.
 
     DebugStringPtr = 20,                           // A string debug pointer, used for symbols / tracing
     SmallString = 21,                              // A small string, no allocation. Params + Data contain up to 7 characters.

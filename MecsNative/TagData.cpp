@@ -143,7 +143,7 @@ DataTag VectorIndexTag(uint32_t vectorPtrTarget, int index) {
 DataTag HashTableValue(uint32_t dataTagPtr) {
     DataTag t;
     t.params = 0;
-    t.type = (char)DataType::HashtableKey;
+    t.type = (char)DataType::HashtableEntryPtr;
     t.data = dataTagPtr;
     return t;
 }

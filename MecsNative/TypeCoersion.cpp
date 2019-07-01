@@ -285,7 +285,7 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     case (int)DataType::HashtablePtr:
         return StringifyHashMap(is, encoded);
 
-    case (int)DataType::HashtableKey:
+    case (int)DataType::HashtableEntryPtr:
     {
         auto tag = (DataTag*)InterpreterDeref(is, encoded);
         if (tag == NULL) return StringNew("<value out of range: HashtableKey>");
