@@ -95,10 +95,12 @@ DataTag MustWait(uint32_t resumePosition);
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2);
 // Encode an op-code with 1x32 bit param
 DataTag EncodeLongOpcode(char codeClass, char codeAction, uint32_t p1);
+// Encode an op-code with 1x32 bit param, and an extra byte parameter
+DataTag EncodeWideLongOpcode(char codeClass, char codeAction, uint32_t p1, uint8_t p3);
 // Decode an op-code tag that uses up to 2x16 bit params
-void DecodeOpcode(DataTag encoded, char* codeClass, char* codeAction, uint16_t* p1, uint16_t* p2);
-// Decode an op-code that uses up to 1x32 bit param
-void DecodeLongOpcode(DataTag encoded, char* codeClass, char* codeAction, uint32_t* p1);
+void DecodeOpcode(DataTag encoded, char* codeClass, char* codeAction, uint16_t* p1, uint16_t* p2, uint8_t* p3);
+// Decode an op-code that uses 1x32 bit param
+void DecodeLongOpcode(DataTag encoded, char* codeClass, char* codeAction, uint32_t* p1, uint8_t* p3);
 
 // Crush and encode a name (such as a function or variable name) as a variable ref
 DataTag EncodeVariableRef(String* fullName, uint32_t* outCrushedName);

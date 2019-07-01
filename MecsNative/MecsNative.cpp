@@ -542,10 +542,11 @@ int TestTagData() {
     tag = EncodeOpcode('x', 'a', 1, 1);
 
     char p1, p2;
+    uint8_t p3;
     uint32_t param;
-    DecodeLongOpcode(tag, &p1, &p2, &param);
+    DecodeLongOpcode(tag, &p1, &p2, &param, &p3);
 
-    if (p1 == 'x' && p2 == 'a' && param == 0x00010001) { StringAppend(str, "OpCodes OK;"); }
+    if (p1 == 'x' && p2 == 'a' && param == 0x00010001 && p3 == 0) { StringAppend(str, "OpCodes OK;"); }
     else { StringAppend(str, "OPCODES FAILED;"); }
     WriteStr(str);
 

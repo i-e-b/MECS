@@ -535,7 +535,7 @@ void TCW_Memory(TagCodeCache* tcc, char action, String* targetName, int paramCou
     default: // for simple get/set, we encode the reference directly into the opcode
         EncodeVariableRef(targetName, &crush);                                  // get the crushed name
         TCW_AddSymbol(tcc, crush, targetName);                                  // add to symbols
-        VecPush_DataTag(tcc->_opcodes, EncodeLongOpcode('m', action, crush));   // add memory action
+        VecPush_DataTag(tcc->_opcodes, EncodeWideLongOpcode('m', action, crush, paramCount));   // add memory action
         break;
     }
 }

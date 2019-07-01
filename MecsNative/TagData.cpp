@@ -52,7 +52,7 @@ bool TagsAreEqual(DataTag a, DataTag b) {
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2) {
     return DataTag{
         (int)DataType::Opcode,
-        ((uint32_t)codeClass << 8) | (codeAction),
+        ((uint32_t)codeClass << 8) | (codeAction), // 16 bits, out of 24
         ((uint32_t)p1 << 16) | ((uint32_t)p2)
     };
 }
@@ -64,10 +64,20 @@ DataTag EncodeLongOpcode(char codeClass, char codeAction, uint32_t p1) {
         p1
     };
 }
+
+// Encode an op-code with 1x32 bit param, and an extra byte parameter
+DataTag EncodeWideLongOpcode(char codeClass, char codeAction, uint32_t p1, uint8_t p3) {
+    return DataTag{
+        (int)DataType::Opcode,
+        ((uint32_t)(p3 & 0xFF) << 16) |((uint32_t)(codeClass & 0xFF) << 8) | (codeAction & 0xFF),
+        p1
+    };
+}
+
 // Decode an op-code tag that uses up to 2x16 bit params
-void DecodeOpcode(DataTag encoded, char* codeClass, char* codeAction, uint16_t* p1, uint16_t* p2) {
+void DecodeOpcode(DataTag encoded, char* codeClass, char* codeAction, uint16_t* p1, uint16_t* p2, uint8_t* p3) {
     if (codeClass != NULL) {
-        *codeClass = encoded.params >> 8;
+        *codeClass = (encoded.params >> 8) & 0xFF;
     }
     if (codeAction != NULL) {
         *codeAction = encoded.params & 0xFF;
@@ -78,18 +88,24 @@ void DecodeOpcode(DataTag encoded, char* codeClass, char* codeAction, uint16_t* 
     if (p2 != NULL) {
         *p2 = encoded.data & 0xFFFF;
     }
+    if (p3 != NULL) {
+        *p3 = (encoded.params >> 16) & 0xFF;
+    }
 }
 
-// Decode an op-code that uses up to 1x32 bit param
-void DecodeLongOpcode(DataTag encoded, char* codeClass, char* codeAction, uint32_t* p1) {
+// Decode an op-code that uses 1x32 bit param
+void DecodeLongOpcode(DataTag encoded, char* codeClass, char* codeAction, uint32_t* p1, uint8_t* p3) {
     if (codeClass != NULL) {
-        *codeClass = encoded.params >> 8;
+        *codeClass = (encoded.params >> 8) & 0xFF;
     }
     if (codeAction != NULL) {
         *codeAction = encoded.params & 0xFF;
     }
     if (p1 != NULL) {
         *p1 = encoded.data;
+    }
+    if (p3 != NULL) {
+        *p3 = (encoded.params >> 16) & 0xFF;
     }
 }
 
@@ -220,6 +236,7 @@ void DecodeShortStr(DataTag token, String* target) {
 void DescribeTag(DataTag token, String* target, HashMap* symbols) {
     StringPtr *str = NULL;
     char c1, c2;
+    uint8_t p3;
 
     switch ((DataType)(token.type)) {
     case DataType::Invalid:  StringAppend(target, "Invalid token"); return;
@@ -229,12 +246,15 @@ void DescribeTag(DataTag token, String* target, HashMap* symbols) {
 
     case DataType::Opcode:
         StringAppend(target, "Opcode ");
-        DecodeLongOpcode(token, &c1, &c2, NULL);
+        DecodeLongOpcode(token, &c1, &c2, NULL, &p3);
         if (c1 == 'i') { // increment mode
             StringAppendFormat(target, "i (\x02) ", (char)c2);
         } else {
             StringAppendChar(target, c1);
             StringAppendChar(target, c2);
+            if (p3 > 0) {
+                StringAppendFormat(target, " +\x02 ", p3);
+            }
         }
         if (symbols != NULL && MapGet_int_StringPtr(symbols, token.data, &str)) {
             StringAppendFormat(target, " '\x01' ", *str);

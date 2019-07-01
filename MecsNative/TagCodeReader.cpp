@@ -35,15 +35,16 @@ bool TCR_FixByteOrder(Vector* v) {
     if (length < 1) return false;
     char codeClass, codeAction;
     uint32_t offset;
+    uint8_t p3;
 
     // Check we haven't already corrected:
-    DecodeLongOpcode(*VecGet_DataTag(v, 0), &codeClass, &codeAction, &offset);
+    DecodeLongOpcode(*VecGet_DataTag(v, 0), &codeClass, &codeAction, &offset, NULL);
     if (codeClass == 'c' && codeAction == 's') { return true; }
     
     // Correct and read the header
     TCR_Swizzle(v, 0); // Get the string jump
 
-    DecodeLongOpcode(*VecGet_DataTag(v, 0), &codeClass, &codeAction, &offset);
+    DecodeLongOpcode(*VecGet_DataTag(v, 0), &codeClass, &codeAction, &offset, &p3);
 
     if (codeClass != 'c' || codeAction != 's') {
         return false; // not valid
@@ -104,7 +105,7 @@ String* TCR_Describe(Vector* data, HashMap* symbols) {
 
     char codeClass, codeAction;
     uint32_t offset;
-    DecodeLongOpcode(*VecGet_DataTag(data, 0), &codeClass, &codeAction, &offset);
+    DecodeLongOpcode(*VecGet_DataTag(data, 0), &codeClass, &codeAction, &offset, NULL);
 
     if (codeClass != 'c' || codeAction != 's') {
         return StringNew("Invalid file: TagCode did not start with a data header.\n");
@@ -203,7 +204,7 @@ bool TCR_Read(Vector* v, uint32_t* outStartOfCode, uint32_t* outStartOfMemory) {
     if (!TCR_FixByteOrder(v)) return false;
 
 
-    DecodeLongOpcode(*VecGet_DataTag(v, 0), NULL, NULL, outStartOfCode);
+    DecodeLongOpcode(*VecGet_DataTag(v, 0), NULL, NULL, outStartOfCode, NULL);
     *outStartOfMemory = VecLength(v); // the vector can be extended by the interpreter-- this represents working memory
 
     return true;

@@ -921,7 +921,7 @@ inline int HandleCompoundCompare(int position, char codeAction, uint16_t argCoun
     return result;
 }
 
-inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint16_t paramCount, InterpreterState* is) {
+inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint16_t paramCount, uint8_t p3, InterpreterState* is) {
     switch (action)
     {
     case 'g': // get (adds a value to the stack, false if not set)
@@ -952,6 +952,12 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
     }
     case 'u': // unset
     {
+        //Request to delete 'emptyMap (89CD6A71)' with 35277 parameters. <- should be empty
+        //Request to delete 'fullMap (3FFBA836)' with 16379 parameters. <- should be {"a": 1, "c": 3}
+
+        // ISSUE: we have no good paramCount here.
+        // can be an entry delete with a hash-map. Otherwise, it's a plain scope removal.
+        StringAppendFormat(is->_output, "\nRequest to delete '\x01' with \x02 parameters." , DbgStr(is, varRef), p3);
         ScopeRemove(is->_variables, varRef);
         break;
     }
@@ -973,7 +979,7 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
 }
 
 // dispatch for op codes. valueStack is Vector<DataTag>, returnStack is Vector<int>
-inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, int* position, DataTag word, InterpreterState* is) {
+inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, uint8_t p3, int* position, DataTag word, InterpreterState* is) {
     uint32_t varRef;
     switch (codeClass)
     {
@@ -998,7 +1004,7 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
 
     case 'm': // Memory access - get|set|isset|unset
         varRef = p2 + (p1 << 16);
-        HandleMemoryAccess(position, codeAction, varRef, p1, is);
+        HandleMemoryAccess(position, codeAction, varRef, p1, p3, is);
         break;
 
     case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
@@ -1565,8 +1571,9 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
             // decode opcode and do stuff
             char codeClass, codeAction;
             uint16_t p1, p2;
-            DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2);
-            auto result = ProcessOpCode(codeClass, codeAction, p1, p2, &(is->_position), word, is);
+            uint8_t p3;
+            DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2, &p3);
+            auto result = ProcessOpCode(codeClass, codeAction, p1, p2, p3, &(is->_position), word, is);
             if (result == DataType::Exception) {
                 return FailureResult(is->_position);
             } else if (result == DataType::MustWait) {
