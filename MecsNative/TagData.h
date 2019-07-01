@@ -45,7 +45,7 @@ enum class DataType {
     HashtablePtr = ALLOCATED_TYPE + 1,  // (129) Data is pointer to HashTable. Params not used. Can be collected by GC
     VectorPtr    = ALLOCATED_TYPE + 2,  // (130) Data is pointer to Vector. Params not used. Can be collected by GC
     VectorIndex  = 12,                  // Data is pointer to Vector, Params is index into vector.
-    HashtableKey = 13,                  // ??? TODO: NOT YET DEFINED ???
+    HashtableKey = 13,                  // Data is pointer to another DataTag, Params not used.
 
     DebugStringPtr = 20,                           // A string debug pointer, used for symbols / tracing
     SmallString = 21,                              // A small string, no allocation. Params + Data contain up to 7 characters.
@@ -118,6 +118,8 @@ uint32_t DecodePointer(DataTag encoded);
 
 // Encode a reference to a value inside a vector
 DataTag VectorIndexTag(uint32_t vectorPtrTarget, int index);
+
+DataTag HashTableValue(uint32_t dataTagPtr);
 
 DataTag EncodeInt32(int32_t original);
 int32_t DecodeInt32(DataTag encoded);

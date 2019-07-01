@@ -275,15 +275,22 @@ String* CastString(InterpreterState* is, DataTag encoded) {
         auto idx = encoded.params; // grab the index
         encoded.type = (int)DataType::VectorPtr; // make this into a reference to the actual vector
         auto src = (Vector*)InterpreterDeref(is, encoded); // get the vector
-        if (src == NULL) return false;
+        if (src == NULL) return StringNew("<value out of range: VectorIndex 1>");
 
         auto tag = VectorGet_DataTag(src, idx);
-        if (tag == NULL) return false;
+        if (tag == NULL) return StringNew("<value out of range: VectorIndex 2>");
         return CastString(is, *tag);
     }
 
     case (int)DataType::HashtablePtr:
         return StringifyHashMap(is, encoded);
+
+    case (int)DataType::HashtableKey:
+    {
+        auto tag = (DataTag*)InterpreterDeref(is, encoded);
+        if (tag == NULL) return StringNew("<value out of range: HashtableKey>");
+        return CastString(is, *tag);
+    }
 
     default:
         return StringNew("<value out of range>");

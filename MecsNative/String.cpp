@@ -214,11 +214,17 @@ void StringAppendChar(String *str, char c) {
 
 void StringAppendChar(String *str, char c, int count) {
     str->hashval = 0;
-    for (int i = 0; i < count; i++)VPush_char(str->chars, c);
+    for (int i = 0; i < count; i++) VPush_char(str->chars, c);
 }
 
 // internal var-arg appender. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
 void vStringAppendFormat(String *str, const char* fmt, va_list args) {
+    if (str == NULL || fmt == NULL) return;
+    
+    // NOTE: When expanding this, the low-ascii points \x00, \x0A, \x0D are not to be used (null, lf, cr)
+    str->hashval = 0;
+    auto chars = str->chars;
+
     while (*fmt != '\0') {
         if (*fmt == '\x01') {
             String* s = va_arg(args, String*);
@@ -231,7 +237,7 @@ void vStringAppendFormat(String *str, const char* fmt, va_list args) {
             StringAppendInt32Hex(str, i);
         } else if (*fmt == '\x04') {
             char c = va_arg(args, char);
-            StringAppendChar(str, c);
+            VPush_char(chars, c);
         } else {
             StringAppendChar(str, *fmt);
         }

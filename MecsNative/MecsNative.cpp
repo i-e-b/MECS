@@ -694,6 +694,7 @@ int TestCompiler() {
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
+    WriteStr(pathOfInvalid);
     if (!FileLoadChunk(pathOfInvalid, vec, 0, 10000, &read)) {
         std::cout << "Failed to read file. Test inconclusive.\n";
         return -1;
@@ -718,6 +719,7 @@ int TestCompiler() {
 
     //###################################################################
     std::cout << "Reading a valid source code file: ";
+    WriteStr(pathOfValid);
     if (!FileLoadChunk(pathOfValid, vec, 0, 10000, &read)) {
         std::cout << "Failed to read file. Test inconclusive.\n";
         return -4;

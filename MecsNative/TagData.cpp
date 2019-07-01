@@ -140,6 +140,14 @@ DataTag VectorIndexTag(uint32_t vectorPtrTarget, int index) {
     return t;
 }
 
+DataTag HashTableValue(uint32_t dataTagPtr) {
+    DataTag t;
+    t.params = 0;
+    t.type = (char)DataType::HashtableKey;
+    t.data = dataTagPtr;
+    return t;
+}
+
 uint32_t DecodePointer(DataTag encoded) {
     return encoded.data;
 }

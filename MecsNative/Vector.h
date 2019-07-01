@@ -40,6 +40,9 @@ bool VectorPrealloc(Vector *v, unsigned int length);
 // Swaps the values at two positions in the vector
 bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2);
 
+// Reverse the order of all elements in the vector
+bool VectorReverse(Vector *v);
+
 // Sort the vector in-place using the given compare function.
 // Compare should return 0 if the two values are equal, negative if A should be before B, and positive if B should be before A.
 void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B));
@@ -60,6 +63,7 @@ int VectorElementSize(Vector *v);
 // These are invariant on type, but can be namespaced
 #define RegisterVectorStatics(nameSpace) \
     inline void nameSpace##Deallocate(Vector *v){ VectorDeallocate(v); }\
+    inline bool nameSpace##Reverse(Vector *v){ return VectorReverse(v); }\
     inline int nameSpace##Length(Vector *v){ return VectorLength(v); }\
     inline bool nameSpace##Prealloc(Vector *v, unsigned int length){ return VectorPrealloc(v, length); }\
     inline bool nameSpace##Swap(Vector *v, unsigned int index1, unsigned int index2){ return VectorSwap(v, index1, index2); }\

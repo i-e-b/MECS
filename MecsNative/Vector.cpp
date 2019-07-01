@@ -653,19 +653,48 @@ bool VectorPrealloc(Vector *v, unsigned int length) {
     return true;
 }
 
-bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2) {
+
+inline bool VectorSwapInternal(Vector *v, unsigned int index1, unsigned int index2, void* tmp, int bytes) {
     var A = PtrOfElem(v, index1);
     var B = PtrOfElem(v, index2);
 
     if (A == NULL || B == NULL) return false;
 
+    writeValue(tmp, 0, A, bytes); // tmp = A
+    writeValue(A, 0, B, bytes); // A = B
+    writeValue(B, 0, tmp, bytes); // B = tmp
+
+    return true;
+}
+
+bool VectorSwap(Vector *v, unsigned int index1, unsigned int index2) {
+    if (v == NULL) return false;
+
     var bytes = v->ElementByteSize;
     var tmp = VecAlloc(v, bytes);
     if (tmp == NULL) return false;
 
-    writeValue(tmp, 0, A, bytes); // tmp = A
-    writeValue(A, 0, B, bytes); // A = B
-    writeValue(B, 0, tmp, bytes); // B = tmp
+    auto res = VectorSwapInternal(v, index1, index2, tmp, bytes);
+
+    VecFree(v, tmp);
+
+    return true;
+}
+
+bool VectorReverse(Vector *v) {
+    // we could probably optimise this quite a lot
+    if (v == NULL) return false;
+
+    auto bytes = v->ElementByteSize;
+    auto tmp = VecAlloc(v, bytes);
+    if (tmp == NULL) return false;
+
+    auto end = v->_elementCount;
+    auto halfLength = end / 2;
+    for (int i = 0; i < halfLength; i++) {
+        end--;
+        auto res = VectorSwapInternal(v, i, end, tmp, bytes);
+    }
 
     VecFree(v, tmp);
 

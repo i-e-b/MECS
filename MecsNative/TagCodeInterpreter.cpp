@@ -13,6 +13,7 @@
 #include "CompilerCore.h"
 
 #define CODE_POS_ERR_STR(s)  __FILE__ s
+// ^ use this like:  StringAppendFormat(is->_output, CODE_POS_ERR_STR("; Line \x02 - My error description"), __LINE__ );
 
 #ifndef abs
 #define abs(x)  ((x < 0) ? (-(x)) : (x))
@@ -267,6 +268,7 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
             is->ErrorFlag = true;
             // this can happen if we have an unresolved name. Should be handled earlier.
             StringAppendFormat(is->_output, "\nInvalid value in parameters! Found when calling at position \x03 (\x02)\n", is->_position, is->_position);
+            //StringAppendFormat(is->_output, "Param index p \x02; Data = \x03", i, param[i].data);
             return NULL;
         }
     }
@@ -290,6 +292,28 @@ DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, 
     {
         // Return an encoding for the index. We don't actually resolve anything from the vector at this point (a get/set or use will do that)
         return VectorIndexTag(tag.data, CastInt(is, param[0]));
+    }
+    case (int)DataType::HashtablePtr:
+    {
+        // get table and key;
+        // look up pointer to value
+        // map to arena pointer
+        
+        auto offset = DecodePointer(tag);
+        auto src = (HashMap*)ArenaOffsetToPtr(is->_memory, offset);
+        if (src == NULL) return NonResult();
+
+        auto key = CastString(is, param[0]);
+        
+        DataTag* ptr = NULL;
+        auto found = HashMapGet(src, &key, (void**)&ptr);
+        StringDeallocate(key);
+
+        if (!found) return NonResult();
+
+        auto value_offset = ArenaPtrToOffset(is->_memory, ptr);
+        if (value_offset < 1) return NonResult();
+        return HashTableValue(value_offset);
     }
     default: return NonResult();
     }
@@ -532,6 +556,12 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
 
     case (int)DataType::VectorPtr:
     {
+        
+        if (paramCount < 1) { // Compiler Error: indexed get with no indexes.
+            is->ErrorFlag = true;
+            StringAppendFormat(is->_output, "Compiler error? Tried to get a vector entry with no indicies. Position: '\x02'", is->_position);
+        }
+
         auto src = (Vector*)InterpreterDeref(is, value);
         if (src == NULL) {
             VecPush_DataTag(is->_valueStack, NonResult());
@@ -576,8 +606,62 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
 
     case (int)DataType::HashtablePtr:
     {
-        is->ErrorFlag = true;
-        StringAppendFormat(is->_output, CODE_POS_ERR_STR("; Line \x02 - Hash table indexing not implemented"), __LINE__ );
+        if (paramCount < 1) { // Compiler Error: indexed get with no indexes.
+            is->ErrorFlag = true;
+            StringAppendFormat(is->_output, "Compiler error? Tried to get a hash entry with no keys. Position: '\x02'", is->_position);
+        }
+
+        auto src = (HashMap*)InterpreterDeref(is, value);
+        if (src == NULL) {
+            StringAppend(is->_output, "Failed to read target hashmap during an index get");
+            VecPush_DataTag(is->_valueStack, NonResult());
+            return;
+        }
+
+        // if we've asked for one index, we return the value directly:
+        if (paramCount == 1) {
+            auto key = CastString(is, TryPopFromValueStack(is, is->_position));
+            //StringAppendFormat(is->_output, "Indexing hashmap with '\x01' as the key\n", key);
+            DataTag *tag = NULL;
+            if (!MapGet_StringPtr_DataTag(src, key, &tag) || tag == NULL) {
+                // no such key or value
+                VecPush_DataTag(is->_valueStack, NonResult());
+                return;
+            }
+            VecPush_DataTag(is->_valueStack, *tag);
+            StringDeallocate(key);
+            return;
+        }
+
+        // More than one key. We build a new vector from the lookups. Any missing keys are not added.
+        
+        auto list = VecAllocateArena_DataTag(is->_memory);
+
+        // get indexes from stack order to index order
+        for (int i = 0; i < paramCount; i++) {
+            auto key = CastString(is, TryPopFromValueStack(is, is->_position));
+            //StringAppendFormat(is->_output, "Indexing hashmap with '\x01' as the key\n", key);
+            DataTag *tag = NULL;
+            if (!MapGet_StringPtr_DataTag(src, key, &tag) || tag == NULL) {
+                // no such key or value
+                continue;
+            }
+            VecPush_DataTag(list, *tag);
+            StringDeallocate(key);
+        }
+
+        // vector is in reverse order due to stack, so flip it
+        VecReverse(list);
+
+        uint32_t encPtr = ArenaPtrToOffset(is->_memory, list); // allows us to place a 32-bit ptr in 64-bit space
+        if (encPtr < 1) { // nonsense result from arena allocation
+            is->ErrorFlag = true;
+            VecPush_DataTag(is->_valueStack, _Exception(is, "Arena mapping failed in indexed get from hash table"));
+            return;
+        }
+
+        VecPush_DataTag(is->_valueStack, EncodePointer(encPtr, DataType::VectorPtr));
+
         return;
     }
 
@@ -1341,8 +1425,6 @@ DataTag GetOpcodeAtIndex(InterpreterState* is, uint32_t index) {
 
 // Convert a tag code offset into a physical memory location
 void* InterpreterDeref(InterpreterState* is, DataTag encodedPosition) {
-    if (!IsAllocated(encodedPosition)) return NULL; // should NOT have been called for this type
-
     auto offset = DecodePointer(encodedPosition);
     return ArenaOffsetToPtr(is->_memory, offset);
 }
