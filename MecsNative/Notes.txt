@@ -74,8 +74,9 @@ The machine:
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
-* [ ] Add IPC in/out (vector of strings, or special serialised format)* [x] Debug symbols file and reader
-* [ ] Value stack improvements (delete unused return values)
+* [ ] Add IPC in/out (vector of strings, or special serialised format)
+* [x] Debug symbols file and reader
+* [ ] Value stack improvements (delete unused return values. Maybe have a sentinel value.)
 
 
 Actor model stuff:
@@ -97,7 +98,7 @@ Garbage collector:
 Might want to use a 'copy' GC, to move referenced stuff to a new area on memory pressure.
 This would save us from having to track anything.
 
-* [ ] ~periodically look for 'potential garbage' names in the running scope. If not found, deallocate~
-* [ ] ~extend 'potential garbage' to hold a list instead of single refs~
+* [-] ~periodically look for 'potential garbage' names in the running scope. If not found, deallocate~
+* [-] ~extend 'potential garbage' to hold a list instead of single refs~
 * [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
 * [ ] maybe have 'destroy&recreate' for actors?

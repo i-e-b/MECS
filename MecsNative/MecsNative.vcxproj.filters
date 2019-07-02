@@ -94,6 +94,9 @@
     <ClCompile Include="ScopeMap.cpp">
       <Filter>Source Files\Containers</Filter>
     </ClCompile>
+    <ClCompile Include="DisplaySys.cpp">
+      <Filter>Source Files\System</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -164,6 +167,9 @@
     </ClInclude>
     <ClInclude Include="ScopeMap.h">
       <Filter>Source Files\Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="DisplaySys.h">
+      <Filter>Source Files\System</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
