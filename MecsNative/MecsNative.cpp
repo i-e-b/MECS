@@ -691,7 +691,7 @@ int TestCompiler() {
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
     //auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
-    auto pathOfValid = StringNew("hashmaps.ecs"); // should be valid source
+    auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
@@ -1001,22 +1001,23 @@ int TestProgramSuite() {
 
     int errs = 0;
 
-    errs += RunProgram("strings.ecs");
-
 #ifndef _DEBUG
     errs += RunProgram("stressTest.ecs"); // really slow in debug mode
 #endif
-    errs += RunProgram("nestedLoops.ecs");
 
+    errs += RunProgram("Importer.ecs");
     errs += RunProgram("demo_program2.ecs");
     errs += RunProgram("demo_program3.ecs");
     errs += RunProgram("fib.ecs");
-    errs += RunProgram("Importer.ecs");
     errs += RunProgram("getWithIndex.ecs");
+    errs += RunProgram("hashmaps.ecs");
     errs += RunProgram("listMath.ecs");
+    errs += RunProgram("lists.ecs");
+    errs += RunProgram("nestedLoops.ecs");
     errs += RunProgram("pick.ecs");
     errs += RunProgram("pick2.ecs");
     errs += RunProgram("stringSearch.ecs");
+    errs += RunProgram("strings.ecs");
 
     std::cout << "########## Error count = " << errs << " #########\n";
     return errs;
@@ -1078,10 +1079,8 @@ int main() {
     if (runit != 0) return runit;
     MMPop();
 
-    /*
-    auto suite = TestProgramSuite();
-    if (suite != 0) return suite;
-    */
+    //auto suite = TestProgramSuite();
+    //if (suite != 0) return suite;
 
     ShutdownManagedMemory();
 }

@@ -33,8 +33,6 @@ Scope* ScopeClone(Scope* source);
 // Delete a scope
 void ScopeDeallocate(Scope* s);
 
-// List all reference that have gone out of scope. Hashmap of (crushname -> DataTag)
-HashMap* ScopePotentialGarbage(Scope *s);
 // List all *visible* references (vector of ScopeReference) any shadowed references are not supplied.
 Vector* ScopeAllVisible(Scope* s);
 

@@ -15,8 +15,6 @@ RegisterVectorFor(ScopeMap_KVP, Vec)
 
 
 typedef struct Scope {
-    // Hashmap of Name->DataTag
-    HashMap* PotentialGarbage;
     // Vector of (Hashmap of Name->DataTag)
     Vector* _scopes; // this is currently critical in tight loops. Maybe de-vector it?
 } Scope;
@@ -29,11 +27,9 @@ Scope* ScopeAllocate() {
     auto firstMap = (MapPtr)ScopeMapAllocate();
     if (firstMap == NULL) { mfree(result); return NULL; }
 
-    // TODO: fix potential garbage
-    result->PotentialGarbage = NULL;//MapAllocate_Name_DataTag(1024);
     result->_scopes = VecAllocate_MapPtr();
 
-    if (/*result->PotentialGarbage == NULL ||*/ result->_scopes == NULL) {
+    if (result->_scopes == NULL) {
         ScopeDeallocate(result);
         return NULL;
     }
@@ -44,10 +40,7 @@ Scope* ScopeAllocate() {
 
 void ScopeDeallocate(Scope* s) {
     if (s == NULL) return;
-    if (s->PotentialGarbage != NULL) {
-        //MapDeallocate(s->PotentialGarbage);
-        s->PotentialGarbage = NULL;
-    }
+
     if (s->_scopes != NULL) {
         MapPtr map;
         while (VecPop_MapPtr(s->_scopes, &map)) {
@@ -73,11 +66,6 @@ Scope* ScopeClone(Scope* source) {
     }
 
     return result;
-}
-
-HashMap* ScopePotentialGarbage(Scope *s) {
-    if (s == NULL) return NULL;
-    return s->PotentialGarbage;
 }
 
 // List all *visible* references (vector of ScopeReference) any shadowed references are not supplied.
@@ -170,20 +158,6 @@ void ScopeDrop(Scope* s) {
     MapPtr last = NULL;
     VecPop_MapPtr(s->_scopes, &last);
     if (last == NULL) return;
-
-
-    // TODO: fix this
-    // add lost references to the potential garbage
-    // this could be done out-of-band to speed up function returns
-    /*auto refs = MapAllEntries(last);
-    Map_KVP_Name_DataTag lostReference;
-    while (VecPop_Map_KVP_Name_DataTag(refs, &lostReference)) {
-        if (IsAllocated(*lostReference.Value)) {
-            MapPut_Name_DataTag(s->PotentialGarbage, *lostReference.Key, *lostReference.Value, false); // NOTE: we could leak here. The potential garbage really needs to be Map< name, Vec<tag> >
-        }
-    }
-    VecDeallocate(refs);
-    MapDeallocate(last);*/
 }
 
 DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
@@ -219,12 +193,6 @@ void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
         }
 
         if (TagsAreEqual(newValue, *found)) return; // nothing needs doing
-
-        // we now need to replace an old value. If the OLD one is a reference type, add it to garbage
-        if (IsAllocated(*found)) {
-            // TODO: fix this
-            //MapPut_Name_DataTag(s->PotentialGarbage, crushedName, localCopy, true); // NOTE: we could leak here. The potential garbage really needs to be Map< name, Vec<tag> >
-        }
 
         // save the new value in scope and exit
         ScopeMapPut(scopeMap, crushedName, newValue);

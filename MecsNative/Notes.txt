@@ -1,6 +1,9 @@
 Components to do:
 =================
 
+Language features
+-----------------
+
 * [x] General vector
 * [x] Vector macros
 * [x] Hash map for pointer types
@@ -18,7 +21,7 @@ Components to do:
 * [x] String-to-num parsing
 * [x] Allow containers to have a target Arena embedded into them (optional)
 
-* [ ] Extended data types (vector and hash)
+* [x] Extended data types (vector and hash)
     * [x] Vector datatype
       * [x] vector-index type
       * [x] vector-as-function syntax
@@ -29,11 +32,11 @@ Components to do:
       * [x] push/pop/dequeue
       * [x] CastString / print
       * [x] Add list functions to main readme
-    * [ ] Hash datatype (always string-><any>)
+    * [x] Hash datatype (always string-><any>)
       * [x] hash-as-function syntax
       * [x] get/set/unset
       * [x] toString
-      * [ ] length
+      * [x] length
 
 This next -->
 * [x] Extend numeric types (use 56 bits of params+data for truncated `double`?)
@@ -59,6 +62,9 @@ Input handling:
 The machine:
 ------------
 
+* [ ] Graphics (native / win split)
+  * [ ] Syntax hiliting editor (caret in the parser and extended AST)
+
 * [x] Add readline / readkey support
 * [ ] Performance optimise
   * [x] Special hashmap for scope (like the c# side uses); use array rather than vector.
@@ -68,10 +74,7 @@ The machine:
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
-* [ ] Add IPC in/out (vector of strings, or special serialised format)
-* [ ] Graphics (native / win split)
-  * [ ] Syntax hiliting editor (caret in the parser and extended AST)
-* [x] Debug symbols file and reader
+* [ ] Add IPC in/out (vector of strings, or special serialised format)* [x] Debug symbols file and reader
 * [ ] Value stack improvements (delete unused return values)
 
 
@@ -91,7 +94,10 @@ Actor model stuff:
 Garbage collector:
 ------------------
 
-* [ ] periodically look for 'potential garbage' names in the running scope. If not found, deallocate
-* [ ] extend 'potential garbage' to hold a list instead of single refs
+Might want to use a 'copy' GC, to move referenced stuff to a new area on memory pressure.
+This would save us from having to track anything.
+
+* [ ] ~periodically look for 'potential garbage' names in the running scope. If not found, deallocate~
+* [ ] ~extend 'potential garbage' to hold a list instead of single refs~
 * [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
 * [ ] maybe have 'destroy&recreate' for actors?

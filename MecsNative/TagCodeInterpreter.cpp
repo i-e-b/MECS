@@ -182,19 +182,30 @@ void ReadOutput(InterpreterState* is, String* receiver) {
 }
 
 // pop items from the interpreter program until we see either EndOfProgram or EndOfSubProgram
-void RollBackSubProgram(InterpreterState* is) {
+int RollBackSubProgram(InterpreterState* is) {
     DataTag tag = {};
+    int rollBackCount = 0;
 
     bool found = VecPeek_DataTag(is->_program, &tag);
     // sanity check:
-    if (!found || tag.type != (int)DataType::EndOfSubProgram) return;
+    if (!found || tag.type != (int)DataType::EndOfSubProgram) {
+        StringAppend(is->_output, "Tried to rollback a sub program, but failed\n");
+        return rollBackCount;
+    }
 
     /*StringAppend(is->_output, "   /\\ "); // reverse order!!!
     DescribeTag(tag, is->_output, NULL);
     StringAppend(is->_output, "\r\n");*/
 
+    int s = VecLength(is->_program);
+
     while (true) {
-        VecPop_DataTag(is->_program, NULL);
+        rollBackCount++;
+        if (!VecPop_DataTag(is->_program, NULL)) {
+            is->ErrorFlag = true;
+            StringAppend(is->_output, "Tried to rollback a sub program. Never found the end marker.\n");
+            return rollBackCount;
+        }
         found = VecPeek_DataTag(is->_program, &tag);
 
         /*StringAppend(is->_output, "   /\\ "); // reverse order!!!
@@ -203,7 +214,9 @@ void RollBackSubProgram(InterpreterState* is) {
 
         if (!found
             || tag.type == (int)DataType::EndOfSubProgram
-            || tag.type == (int)DataType::EndOfProgram) return;
+            || tag.type == (int)DataType::EndOfProgram) {
+            return rollBackCount;
+        }
     }
 }
 
@@ -254,6 +267,7 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
     DataTag* param = (DataTag*)ArenaAllocate(is->_memory, nbParams * sizeof(DataTag));
     if (param == NULL) return NULL;
 
+    
     // Pop values from stack into a param cache, putting into source-code order
     for (int i = nbParams - 1; i >= 0; i--) {
         if (!VecPop_DataTag(is->_valueStack, &(param[i]))) {
@@ -751,7 +765,7 @@ inline DataType PrepareFunctionCall(int* position, uint16_t nbParams, Interprete
     VecPop_DataTag(is->_valueStack, &nameTag);
     auto functionNameHash = DecodeVariableRef(nameTag);
 
-    auto param = ReadParams(is, nbParams);
+    auto param = ReadParams(is, nbParams); // something wrong here? It's reading the same params over and over (in `eval`).
     if (param == NULL) {
         is->ErrorFlag = true;
         VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
@@ -815,8 +829,8 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
 inline void HandleReturn(InterpreterState* is) {
     if (is == NULL) return;
 
-
-    /*StringAppend(is->_output, "\r\nValue stack at end of program:\r\n");
+/*
+    StringAppend(is->_output, "\r\nValue stack at end of program:\r\n");
     auto vals = is->_valueStack;
     auto len = VecLength(vals);
     for (int i = 0; i < len; i++) {
@@ -824,8 +838,8 @@ inline void HandleReturn(InterpreterState* is) {
         StringAppend(is->_output, strVal);
         StringAppend(is->_output, "\r\n");
     }
-    StringAppend(is->_output, "###########################\r\n");*/
-
+    StringAppend(is->_output, "###########################\r\n");
+    */
 
     int result;
     if (!VecPop_int(is->_returnStack, &result)) {
@@ -1265,7 +1279,12 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
             auto vec = (Vector*)InterpreterDeref(is, param[0]);
             if (vec == NULL) return EncodeInt32(0);
             return EncodeInt32(VecLength(vec));
+        } else if (param[0].type == (int)DataType::HashtablePtr) {
+            auto map = (HashMap*)InterpreterDeref(is, param[0]);
+            if (map == NULL) return EncodeInt32(0);
+            return EncodeInt32(MapCount(map));
         }
+
 
         // anything else is stringified
         auto str = CastString(is, param[0]);
@@ -1337,9 +1356,10 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         // Static string pointers need an offset mechanism,
         // handled by the tag code writer.
 
-        MMPush(1 MEGABYTE);
+        MMPush(1 MEGABYTE); // Arena for COMPILING, not for running.
 
         auto code = CastString(is, param[0]);
+        //StringAppendFormat(is->_output, "\nEvaluating: [[\x01]]\n", code);
         auto compilableSyntaxTree = ParseSourceCode(code, false);
 
         auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
@@ -1594,7 +1614,8 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
         {
             // Delete back to the 'EndOfProgram' marker
             HandleReturn(is);
-            RollBackSubProgram(is);
+            highIndex -= RollBackSubProgram(is);
+            programEnd = VectorLength(is->_program);
             break;
         }
         case (int)DataType::EndOfProgram:
