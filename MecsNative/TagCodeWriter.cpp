@@ -509,36 +509,11 @@ void TCW_Memory(TagCodeCache* tcc, char action, String* targetName, int paramCou
     if (tcc == NULL) return;
 
     // TODO: direct memory access if we can know we have scope / param name etc. (save a hash lookup)
-    // TODO: indexed get/set could use p3 instead of the custom op-codes
+    // Indexed get/set could uses p3 instead of custom op-codes
     uint32_t crush;
-    switch (action) {
-    case 's':
-    {
-        if (paramCount > 1) { // set with index (for arrays, strings, maps, etc)
-            VecPush_DataTag(tcc->_opcodes, EncodeVariableRef(targetName, &crush));  // reference the name
-            TCW_AddSymbol(tcc, crush, targetName);                                  // add to symbols
-            VecPush_DataTag(tcc->_opcodes, EncodeOpcode('m', 'S', paramCount, 0));  // add memory action
-            break;
-        } else goto defaultCase;
-    }
-
-    case 'g':
-    {
-        if (paramCount > 0) { // get with index (for arrays, strings, maps, etc)
-            VecPush_DataTag(tcc->_opcodes, EncodeVariableRef(targetName, &crush));  // reference the name
-            TCW_AddSymbol(tcc, crush, targetName);                                  // add to symbols
-            VecPush_DataTag(tcc->_opcodes, EncodeOpcode('m', 'G', paramCount, 0));  // add memory action
-            break;
-        } else goto defaultCase;
-    }
-
-    defaultCase:
-    default: // for simple get/set, we encode the reference directly into the opcode
-        EncodeVariableRef(targetName, &crush);                                  // get the crushed name
-        TCW_AddSymbol(tcc, crush, targetName);                                  // add to symbols
-        VecPush_DataTag(tcc->_opcodes, EncodeWideLongOpcode('m', action, crush, paramCount));   // add memory action
-        break;
-    }
+    EncodeVariableRef(targetName, &crush);                                  // get the crushed name
+    TCW_AddSymbol(tcc, crush, targetName);                                  // add to symbols
+    VecPush_DataTag(tcc->_opcodes, EncodeWideLongOpcode('m', action, crush, paramCount));   // add memory action
 }
 
 void TCW_Memory(TagCodeCache* tcc, char action, uint32_t crushed) {
@@ -559,8 +534,15 @@ void TCW_Increment(TagCodeCache* tcc, int8_t incr, String* targetName) {
 void TCW_FunctionCall(TagCodeCache* tcc, String* functionName, int parameterCount) {
     if (tcc == NULL) return;
 
-    VecPush_DataTag(tcc->_opcodes, EncodeVariableRef(functionName, NULL));  // reference the function name
-    VecPush_DataTag(tcc->_opcodes, EncodeOpcode('f', 'c', (uint16_t)parameterCount, 0));  // call function
+    // Recent change: function call uses p3 for param count, and saves an opcode
+
+    //VecPush_DataTag(tcc->_opcodes, EncodeVariableRef(functionName, NULL));  // reference the function name
+    //VecPush_DataTag(tcc->_opcodes, EncodeOpcode('f', 'c', (uint16_t)parameterCount, 0));  // call function
+
+    uint32_t crush;
+    EncodeVariableRef(functionName, &crush);
+    TCW_AddSymbol(tcc, crush, functionName); // just in case it's an unknown function, we can give a better error message.
+    VecPush_DataTag(tcc->_opcodes, EncodeWideLongOpcode('f', 'c', crush, parameterCount));
 }
 
 void TCW_FunctionDefine(TagCodeCache* tcc, String* functionName, int argCount, int tokenCount) {

@@ -545,9 +545,8 @@ inline DataTag TryPopFromValueStack(InterpreterState* is, int position) {
     return tag;
 }
 
-void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
-    auto target = TryPopFromValueStack(is, is->_position);
-    auto value = ScopeResolve(is->_variables, DecodeVariableRef(target));
+void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
+    auto value = ScopeResolve(is->_variables, varRef);
 
     switch (value.type)
     {
@@ -693,13 +692,13 @@ void DoIndexedGet(InterpreterState* is, uint16_t paramCount) {
     default:
 
         is->ErrorFlag = true;
-        auto info = DbgStr(is, target.data);
+        auto info = DbgStr(is, varRef);
         StringAppendFormat(is->_output, "Tried to index the wrong kind of thing (\x01). position: '\x02'", info, is->_position);
         StringDeallocate(info);
     }
 }
 
-void DoIndexedSet(InterpreterState* is, uint16_t paramCount) {
+void DoIndexedSet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
     /*
 this code:
     set(fullList(1) 3)
@@ -713,15 +712,14 @@ compiles to this:
 
     if (paramCount != 2) {
         is->ErrorFlag = true;
-        StringAppendFormat(is->_output, "Index set with wrong number of parameters: '\x02'", is->_position);
+        StringAppendFormat(is->_output, "Index set with wrong number of parameters: \x02 at position '\x02'", paramCount, is->_position);
         return;
     }
-    auto target = TryPopFromValueStack(is, is->_position);
     auto valueToSet = TryPopFromValueStack(is, is->_position);
     ResolveIndexIfRequired(is, &valueToSet); // if this is an index reference, resolve it before continuing
     auto indexValue = TryPopFromValueStack(is, is->_position);
     
-    auto container = ScopeResolve(is->_variables, DecodeVariableRef(target));
+    auto container = ScopeResolve(is->_variables, varRef);
 
     switch (container.type)
     {
@@ -753,19 +751,17 @@ compiles to this:
     default:
 
         is->ErrorFlag = true;
-        auto info = DbgStr(is, target.data);
+        auto info = DbgStr(is, varRef);
         StringAppendFormat(is->_output, "Tried to set-by-index on the wrong kind of thing (\x01). position: '\x02'", info, is->_position);
         StringDeallocate(info);
     }
     // so var stack should have the target, then the value, then indexes in reverse order (should be exactly 1 at the moment)
 }
 
-inline DataType PrepareFunctionCall(int* position, uint16_t nbParams, InterpreterState* is) {
-    DataTag nameTag = {};
-    VecPop_DataTag(is->_valueStack, &nameTag);
-    auto functionNameHash = DecodeVariableRef(nameTag);
+inline DataType PrepareFunctionCall(int* position, uint32_t nameHash, uint16_t nbParams, InterpreterState* is) {
+    auto functionNameHash = nameHash;
 
-    auto param = ReadParams(is, nbParams); // something wrong here? It's reading the same params over and over (in `eval`).
+    auto param = ReadParams(is, nbParams);
     if (param == NULL) {
         is->ErrorFlag = true;
         VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
@@ -935,11 +931,15 @@ inline int HandleCompoundCompare(int position, char codeAction, uint16_t argCoun
     return result;
 }
 
-inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint16_t paramCount, uint8_t p3, InterpreterState* is) {
+inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint8_t paramCount, InterpreterState* is) {
     switch (action)
     {
     case 'g': // get (adds a value to the stack, false if not set)
     {
+        if (paramCount > 0) {
+            DoIndexedGet(is, varRef, paramCount);
+            break;
+        }
         auto tag = ScopeResolve(is->_variables, varRef);
         ResolveIndexIfRequired(is, &tag); // if this is an index reference, resolve it before continuing
         VecPush_DataTag(is->_valueStack, tag);
@@ -947,6 +947,10 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
     }
     case 's': // set
     {
+        if (paramCount > 1) {
+            DoIndexedSet(is, varRef, paramCount);
+            break;
+        }
         DataTag tag;
         if (!VecPop_DataTag(is->_valueStack, &tag)) {
             is->ErrorFlag = true;
@@ -967,7 +971,7 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
     case 'u': // unset
     {
         //StringAppendFormat(is->_output, "\nRequest to delete '\x01' with \x02 parameters." , DbgStr(is, varRef), p3);
-        if (p3 < 1) { // remove a reference
+        if (paramCount < 1) { // remove a reference
             ScopeRemove(is->_variables, varRef);
         } else { // requesting to remove entries from a hash-map?
             auto target = TryPopFromValueStack(is, is->_position);
@@ -984,14 +988,6 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
         }
         break;
     }
-    case 'G': // indexed get
-        DoIndexedGet(is, paramCount);
-        break;
-
-    case 'S': // indexed set
-        DoIndexedSet(is, paramCount);
-        break;
-
     default:
     {
         is->ErrorFlag = true;
@@ -1008,7 +1004,8 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
     {
     case 'f': // Function operations
         if (codeAction == 'c') {
-            return PrepareFunctionCall(position, p1, is);
+            varRef = p2 + (p1 << 16);
+            return PrepareFunctionCall(position, varRef, p3, is);
         } else if (codeAction == 'd') {
             HandleFunctionDefinition(position, p1, p2, is);
         }
@@ -1027,7 +1024,7 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
 
     case 'm': // Memory access - get|set|isset|unset
         varRef = p2 + (p1 << 16);
-        HandleMemoryAccess(position, codeAction, varRef, p1, p3, is);
+        HandleMemoryAccess(position, codeAction, varRef, p3, is);
         break;
 
     case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
