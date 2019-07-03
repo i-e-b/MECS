@@ -32,6 +32,7 @@ The `def` function defines custom functions
 ### Keywords:
 
 `true`, `false` (technically these are just string atoms at the moment)
+`get`, `set`, `isset`, `unset`, `def`.
 
 ### Reserved functions
 
@@ -39,6 +40,7 @@ The `def` function defines custom functions
 =    equals    >    <    <>    not-equal
 
 new-list  push     pop    dequeue
+new-map
 
 assert    random     eval        call     not    or
 and       readkey    readline    print    substring
@@ -317,12 +319,13 @@ The compiled output is encoded in NaN-valued 64-bit IEEE754 tags. Each tag has a
 The runtime has a value-stack, from where parameters are pulled, and return values added.
 There is also a return-stack for tracking function calls.
 
+Note: the C# code uses an older version of the definitions. It should be considered deprecated.
+
 ### VariableRef `[name hash: uint32]`
 Adds a variable reference to the value-stack. This can relate to functions (both built-in and custom), to variable name, or to function parameters
 
-### Opcode `[f][c] [param count: uint16]`
+### Opcode `[f][c] [param count: uint8] [name hash: uint32]`
 Call a function. The param count MUST be given, but can be zero.
-The function name-hash will be popped from the value-stack.
 Parameters will be popped from the value-stack in order (so the last pushed value will be the first parameter)
 Any values returned by the function will be pushed to the value-stack
 If this is a custom function (not reserved by the runtime) the exit position will be pushed to the return-stack.
@@ -352,17 +355,13 @@ Return from a function call. A absolute token position value is popped from the 
 Runtime error: Function exit without value.
 This is emitted by the compiler to trap functions where some but not all paths in a function return values
 
-### Opcode `[m][g] [name hash: uint32]`
+### Opcode `[m][g] [param count: uint8] [name hash: uint32]`
 Memory get. Looks up a variable with the given name-hash, pushes its value to the value-stack
+If param count is greater than zero, looks up a variable that using indexes. Pushes the returned value(s) to the value-stack.
 
-### Opcode `[m][s] [name hash: uint32]`
-Memory set. Pops a value from the value-stack. That value is stored against the variable with the given name-hash
-
-### Opcode `[m][G] [param count: uint16]`
-Extended get. Looks up a variable that uses indexes. Pushes the returned value to the value-stack
-
-### Opcode `[m][S] [param count: uint16]`
-Extended set. Sets a subvalue in a variable that uses indexes.
+### Opcode `[m][s] [param count: uint8] [name hash: uint32]`
+Memory set. Pops a value from the value-stack. That value is stored against the variable with the given name-hash.
+If param count is greater than one, sets a subvalue in a variable that uses indexes.
 
 ### Opcode `[m][i] [name hash: uint32]`
 Test varible scope.
