@@ -40,7 +40,7 @@ enum class DataType {
 
     // ##### Runtime data types ############
     Integer     = NUMERIC_TYPE + 1, // (65) Data is a 32-bit signed integer, Params are unused.
-    Fraction    = NUMERIC_TYPE + 2, // (66) Data is a 16.16-bit pixed point fractional number. Params are unused (could be an extension to 40.16 or 28.28 in the future)
+    Fraction    = NUMERIC_TYPE + 2, // (66) Data is a 56-bit floating point (the most significant 56 of a `double`)
 
     HashtablePtr      = ALLOCATED_TYPE + 1,  // (129) Data is pointer to HashTable. Params not used. Can be collected by GC
     VectorPtr         = ALLOCATED_TYPE + 2,  // (130) Data is pointer to Vector. Params not used. Can be collected by GC

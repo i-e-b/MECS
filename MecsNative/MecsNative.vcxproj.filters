@@ -97,6 +97,9 @@
     <ClCompile Include="DisplaySys.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
+    <ClCompile Include="Serialisation.cpp">
+      <Filter>Source Files\Encoding</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -170,6 +173,9 @@
     </ClInclude>
     <ClInclude Include="DisplaySys.h">
       <Filter>Source Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Serialisation.h">
+      <Filter>Source Files\Encoding</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -20,6 +20,7 @@ Language features
 * [x] Tagged data format reader for 32-bit cpu
 * [x] String-to-num parsing
 * [x] Allow containers to have a target Arena embedded into them (optional)
+* [x] Extend numeric types (use 56 bits of params+data for truncated `double`?)
 
 * [x] Extended data types (vector and hash)
     * [x] Vector datatype
@@ -39,8 +40,8 @@ Language features
       * [x] length
 
 This next -->
-* [x] Extend numeric types (use 56 bits of params+data for truncated `double`?)
-  * [ ] Handle parsing, including scientific notation
+* [ ] Deep-serialise a tag from runtime
+  * [ ] De-serialise into an arena (the original OR not the original)
 
 Input handling:
 ---------------
@@ -95,7 +96,7 @@ Actor model stuff:
 Garbage collector:
 ------------------
 
-Might want to use a 'copy' GC, to move referenced stuff to a new area on memory pressure.
+Might want to use a 'copy' GC, to move referenced stuff to a new arena on memory pressure.
 This would save us from having to track anything.
 
 * [-] ~periodically look for 'potential garbage' names in the running scope. If not found, deallocate~

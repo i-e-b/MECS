@@ -183,6 +183,7 @@
     <ClCompile Include="MemoryManager.cpp" />
     <ClCompile Include="Scope.cpp" />
     <ClCompile Include="ScopeMap.cpp" />
+    <ClCompile Include="Serialisation.cpp" />
     <ClCompile Include="SourceCodeTokeniser.cpp" />
     <ClCompile Include="String.cpp" />
     <ClCompile Include="TagCodeInterpreter.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="RawData.h" />
     <ClInclude Include="Scope.h" />
     <ClInclude Include="ScopeMap.h" />
+    <ClInclude Include="Serialisation.h" />
     <ClInclude Include="SourceCodeTokeniser.h" />
     <ClInclude Include="String.h" />
     <ClInclude Include="TagCodeInterpreter.h" />

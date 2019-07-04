@@ -413,7 +413,7 @@ int TestString() {
     WriteStr(str1);
 
     // Parsing strings
-    // FIXED POINT
+    // FLOATING POINT
     StringClear(str1);
     StringAppend(str1, "-110.001");
     double fix = 0;
