@@ -209,6 +209,24 @@ DataTag EncodeShortStr(String* str) {
     return result;
 }
 
+DataTag EncodeShortStr(const char* str) {
+    DataTag result = { (int)DataType::SmallString, 0, 0 };
+    if (str == NULL) return result;
+    int j = 0;
+
+    for (int i = 0; i < 3; i++) {
+        if (str[j] == 0) break;
+        result.params |= str[j] << (16 - (i*8));
+        j++;
+    }
+    for (int i = 0; i < 4; i++) {
+        if (str[j] == 0) break;
+        result.data |= str[j] << (24 - (i * 8));
+        j++;
+    }
+    return result;
+}
+
 DataTag EncodeShortStr(char c) {
     DataTag result = { (int)DataType::SmallString, 0, 0 };
     result.params |= c << 16;
@@ -248,7 +266,7 @@ void DescribeTag(DataTag token, String* target, HashMap* symbols) {
         StringAppend(target, "Opcode ");
         DecodeLongOpcode(token, &c1, &c2, NULL, &p3);
         if (c1 == 'i') { // increment mode
-            StringAppendFormat(target, "i (\x02) ", (char)c2);
+            StringAppendFormat(target, "incr \x02 ", (signed char)c2);
         } else {
             StringAppendChar(target, c1);
             StringAppendChar(target, c2);

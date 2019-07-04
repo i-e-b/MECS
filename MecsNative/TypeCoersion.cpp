@@ -87,6 +87,8 @@ double CastDouble(InterpreterState* is, DataTag encoded) {
     case (int)DataType::Integer:
         return encoded.data;
 
+    case (int)DataType::Fraction:
+        return DecodeDouble(encoded);
 
     case (int)DataType::VariableRef:
     {
@@ -240,9 +242,13 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     // IMPORTANT: this should NEVER send back an original string -- it will get deallocated!
     auto type = encoded.type;
     switch (type) {
-    case (int)DataType::Invalid: return StringEmpty();
+    case (int)DataType::Invalid: return StringNew("<invalid data tag>");
     case (int)DataType::Integer: return StringFromInt32(encoded.data); //encoded.ToString(CultureInfo.InvariantCulture);
-    case (int)DataType::Fraction: return StringNew("<fractional number>");
+    case (int)DataType::Fraction: {
+        auto str = StringEmpty();
+        StringAppendDouble(str, DecodeDouble(encoded));
+        return str;
+    }
     case (int)DataType::Opcode: return StringNew("<Op Code>");
 
     case (int)DataType::Not_a_Result: return StringEmpty();

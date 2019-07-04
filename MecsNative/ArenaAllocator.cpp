@@ -32,7 +32,7 @@ typedef struct Arena {
     int _zoneCount;
 } Arena;
 
-// Call to push a new arena to the manager stack. Size is the maximum size for the whole
+// Create a new arena for memory management. Size is the maximum size for the whole
 // arena. Fragmentation may make the usable size smaller. Size should be a multiple of ARENA_ZONE_SIZE
 Arena* NewArena(size_t size) {
     int expectedZoneCount = (int)(size / ARENA_ZONE_SIZE) + 1;

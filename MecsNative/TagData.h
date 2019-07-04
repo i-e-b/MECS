@@ -61,9 +61,13 @@ enum class DataType {
 
 // Fixed-size 64-bit operand for the runtime
 typedef struct DataTag {
+    // 8 bits / 1 byte: tag type; Value should match one from `DataType` enum
     uint32_t type : 8;
+
+    // 24 bits / 3 bytes: parameter data (meaning depends on type)
     uint32_t params : 24;
 
+    // 32 bits / 4 bytes: body data (meaning depends on type)
     uint32_t data;
 } DataTag;
 
@@ -134,8 +138,12 @@ bool DecodeBool(DataTag encoded);
 
 // append short string contents to a mutable string
 void DecodeShortStr(DataTag token, String* target);
+
 // Encode the first 7 characters of a string into a tag. The chars are removed from the original string.
 DataTag EncodeShortStr(String* str);
+
+// Encode the first 7 characters of a string into a tag. The chars are removed from the original string.
+DataTag EncodeShortStr(const char* str);
 
 // Encode a single character as a short string
 DataTag EncodeShortStr(char c);

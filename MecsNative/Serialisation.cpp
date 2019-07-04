@@ -20,15 +20,8 @@ The format:
 
 */
 
-// Write a data tag `source` in serialised form to the given BYTE vector `target`
-// The given interpreter state will be used to resolve contents of containers.
-// Any existing data in the target will be deleted
-bool FreezeToVector(DataTag source, InterpreterState* state, Vector* target) {
-    if (target == NULL) return false;
-    if (state == NULL) return false;
 
-    if (VectorElementSize(target) != 1) return false;
-
+bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
     // this switch should get pulled out to a recursion friendly internal function
     switch ((DataType)source.type) {
         // Simple small types
@@ -36,6 +29,13 @@ bool FreezeToVector(DataTag source, InterpreterState* state, Vector* target) {
     case DataType::Fraction:
     case DataType::SmallString:
         // write the tag into the vector
+        VecPush_byte(target, source.type);
+        for (int i = 2; i >= 0; i--) {
+            VecPush_byte(target, (source.params >> (i*8)) & 0xff);
+        }
+        for (int i = 3; i >= 0; i--) {
+            VecPush_byte(target, (source.data >> (i*8)) & 0xff);
+        }
         break;
 
         // String types
@@ -55,9 +55,8 @@ bool FreezeToVector(DataTag source, InterpreterState* state, Vector* target) {
 
         // empty types
     case DataType::Not_a_Result:
-    case DataType::Void:
-    case DataType::Unit:
         // write a byte for the type, and nothing else.
+        VecPush_byte(target, source.type);
         break;
 
         // indirect types
@@ -69,7 +68,20 @@ bool FreezeToVector(DataTag source, InterpreterState* state, Vector* target) {
         return false;
     }
 
-    return false;
+    return true;
+}
+
+// Write a data tag `source` in serialised form to the given BYTE vector `target`
+// The given interpreter state will be used to resolve contents of containers.
+// Any existing data in the target will be deleted
+bool FreezeToVector(DataTag source, InterpreterState* state, Vector* target) {
+    if (target == NULL) return false;
+    if (state == NULL) return false;
+
+    if (VectorElementSize(target) != 1) return false;
+    VectorClear(target);
+
+    return RecursiveWrite(source, state, target);
 }
 
 // Expand a byte vector that has been filled by `FreezeToVector` into an arena
@@ -82,6 +94,29 @@ bool DefrostFromVector(DataTag* dest, Arena* memory, Vector* source) {
     // This needs to take the raw bytes and put everything back together
     // Strings will be rolled out to their full containers (including static strings -- we don't assume code will be same)
     // Hash and Vector types will get built out.
+
+    // initially, just dealing with things as they are tested:
+    uint8_t type = 0;
+    uint8_t b=0;
+    auto ok = VecDequeue_byte(source, &type);
+    switch ((DataType)type) {
+        // Simple small types (don't need to write to arena)
+    case DataType::Integer:
+    case DataType::Fraction:
+    case DataType::SmallString:
+        // Unpack from serial form
+
+        dest->type = type;
+        for (int i = 2; i >= 0; i--) {
+            if (!VecDequeue_byte(source, &b)) return false; // vector too short
+            dest->params |= ((uint32_t)b) << (i*8);
+        }
+        for (int i = 3; i >= 0; i--) {
+            if (!VecDequeue_byte(source, &b)) return false; // vector too short
+            dest->data |= ((uint32_t)b) << (i*8);
+        }
+        break;
+    }
 
     return false;
 }

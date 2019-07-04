@@ -18,9 +18,10 @@
 
 typedef struct Arena Arena;
 
-// Call to push a new arena to the manager stack. Size is the maximum size for the whole
+// Create a new arena for memory management. Size is the maximum size for the whole
 // arena. Fragmentation may make the usable size smaller. Size should be a multiple of ARENA_ZONE_SIZE
 Arena* NewArena(size_t size);
+
 // Call to drop an arena, deallocating all memory it contains
 void DropArena(Arena** a);
 

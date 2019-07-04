@@ -13,6 +13,7 @@
 // Encoding:
 #include "TagData.h"
 #include "TagCodeReader.h"
+#include "Serialisation.h"
 
 // System abstractions
 #include "FileSys.h"
@@ -22,6 +23,7 @@
 #include "SourceCodeTokeniser.h"
 #include "CompilerCore.h"
 #include "TagCodeInterpreter.h"
+#include "TypeCoersion.h"
 
 
 typedef struct exampleElement {
@@ -558,6 +560,13 @@ int TestTagData() {
     StringAppend(str, "' (expected 'ShrtStr')");
     WriteStr(str);
 
+    StringClear(str);
+    tag = EncodeShortStr("Hello!");
+    StringAppend(str, "decoded: '");
+    DecodeShortStr(tag, str);
+    StringAppend(str, "' (expected 'Hello!')");
+    WriteStr(str);
+
     double origd = 123450.098765;
     StringClear(str);
     StringAppendDouble(str, origd);
@@ -681,6 +690,46 @@ int TestArenaAllocator() {
     DropArena(&arena2);
 
     // TODO: expand this when String/Vector/Hashtable etc can use the arena allocator
+
+    return 0;
+}
+
+int TestSerialisation() {
+    std::cout << "***************** SERIALISATION ******************\n";
+
+    auto fakeCode = VecAllocate_DataTag();
+    
+    auto interp = InterpAllocate(fakeCode, 1 MEGABYTE, NULL);
+
+    auto arena = InterpInternalMemory(interp);
+    auto vec = VecAllocateArena_char(arena);
+
+    // A simple, self-contained example
+    DataTag source = EncodeShortStr("Hello");
+    auto ok = FreezeToVector(source, /*InterpreterState*/interp, /*Vector<byte>*/vec);
+
+    if (!ok) {
+        std::cout << "Serialisation failed\n";
+        return -1;
+    }
+
+    std::cout << "Result bytes = " << std::hex;
+    int length = VecLength(vec);
+    for (int i = 0; i < length; i++) {
+        std::cout << (int)(*VecGet_char(vec, i)) << " ";
+    }
+    std::cout << std::dec << "\nSerialisation OK, trying deserialisation...\n";
+
+    // Try restore
+    auto targetArena = NewArena(1 MEGABYTE);
+    DataTag dest = {};
+    DefrostFromVector(&dest, targetArena, vec);
+    auto human = CastString(interp, dest);
+    WriteStr(human);
+    StringDeallocate(human);
+
+    InterpDeallocate(interp);
+    DropArena(&targetArena);
 
     return 0;
 }
@@ -1063,6 +1112,13 @@ int main() {
     auto tagres = TestTagData();
     if (tagres != 0) return tagres;
     MMPop();
+    
+    MMPush(1 MEGABYTE);
+    auto serdsres = TestSerialisation();
+    if (serdsres != 0) return serdsres;
+    MMPop();
+
+    return 0;
 
     MMPush(1 MEGABYTE);
     auto fsres = TestFileSystem();
