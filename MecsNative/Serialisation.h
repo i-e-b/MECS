@@ -15,6 +15,7 @@ bool FreezeToVector(DataTag source, InterpreterState* state, Vector* target);
 
 // Expand a byte vector that has been filled by `FreezeToVector` into an arena
 // The data tag that is the root of the resulting structure is passed through `dest`
+// Data in `source` will be consumed during deserialisation.
 bool DefrostFromVector(DataTag* dest, Arena* memory, Vector* source);
 
 #endif

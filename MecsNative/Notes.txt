@@ -42,6 +42,7 @@ Language features
 This next -->
 * [ ] Deep-serialise a tag from runtime
   * [ ] De-serialise into an arena (the original OR not the original)
+* [ ] Put all interpreter allocations inside it's own memory
 
 Input handling:
 ---------------

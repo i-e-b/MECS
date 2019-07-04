@@ -822,32 +822,20 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
     *position = *position + tokenCount + 1; // start + definition length + terminator token
 }
 
-inline void HandleReturn(InterpreterState* is) {
-    if (is == NULL) return;
-
-/*
-    StringAppend(is->_output, "\r\nValue stack at end of program:\r\n");
-    auto vals = is->_valueStack;
-    auto len = VecLength(vals);
-    for (int i = 0; i < len; i++) {
-        auto strVal = CastString(is, *VecGet_DataTag(vals, i));
-        StringAppend(is->_output, strVal);
-        StringAppend(is->_output, "\r\n");
-    }
-    StringAppend(is->_output, "###########################\r\n");
-    */
+inline DataType HandleReturn(InterpreterState* is) {
+    if (is == NULL) return DataType::Exception;
 
     int result;
     if (!VecPop_int(is->_returnStack, &result)) {
-        is->ErrorFlag = true;
-        StringAppendFormat(is->_output, "Return stack empty. Check program logic at position \x02", is->_position);
+        // This could be an error, but we're going to assume it's a return from inside the root of a program (or actor, etc.)
+        return DataType::EndOfProgram;
     }
 
     ScopeDrop(is->_variables);
     is->_position = result;
 }
 
-inline void HandleControlSignal(int* position, char codeAction, int opCodeCount, InterpreterState* is) {
+inline DataType HandleControlSignal(int* position, char codeAction, int opCodeCount, InterpreterState* is) {
     switch (codeAction)
     {
     // cmp - relative jump *DOWN* if top of stack is false
@@ -877,21 +865,20 @@ inline void HandleControlSignal(int* position, char codeAction, int opCodeCount,
     {
         is->ErrorFlag = true;
         StringAppendFormat(is->_output, "A function returned without setting a value. Did you miss a 'return' in a function? At position \x02", position);
-        return;
+        return DataType::Exception;
     }
     // ret - pop return stack and jump to absolute position
     case 'r':
-        HandleReturn(is);
-        break;
+        return HandleReturn(is);
 
     default:
     {
         is->ErrorFlag = true;
         StringAppendFormat(is->_output, "Unknown control signal '\x04'", codeAction);
-        return;
+        return DataType::Exception;
     }
     }
-
+    return DataType::Void;
 }
 
 inline int HandleCompoundCompare(int position, char codeAction, uint16_t argCount, uint16_t opCodeCount, InterpreterState* is) {
@@ -1014,7 +1001,7 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
     case 'c': // flow Control -- conditions, jumps etc
     {
         int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
-        HandleControlSignal(position, codeAction, opCodeCount, is);
+        return HandleControlSignal(position, codeAction, opCodeCount, is);
     }
     break;
 
@@ -1600,10 +1587,12 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
             uint8_t p3;
             DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2, &p3);
             auto result = ProcessOpCode(codeClass, codeAction, p1, p2, p3, &(is->_position), word, is);
-            if (result == DataType::Exception) {
+            if (result == DataType::Exception) { // program failed
                 return FailureResult(is->_position);
-            } else if (result == DataType::MustWait) {
+            } else if (result == DataType::MustWait) { // program is waiting for input, and is yielding
                 return WaitingExecutionResult();
+            } else if (result == DataType::EndOfProgram) { // program is exiting early (based on logic)
+                goto GOOD_EXIT;
             }
             break;
         }

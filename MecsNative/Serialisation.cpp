@@ -1,4 +1,5 @@
 #include "Serialisation.h"
+#include "TypeCoersion.h"
 
 #define byte uint8_t
 RegisterVectorStatics(Vec)
@@ -12,14 +13,31 @@ The format:
 [type:8]
     if unit/nar/void:  [empty:0]
     if simple:         [data: 56]
-    if string:         [entry count: 32] [data: n]
-    if map:            [entry count: 32] n*{ [key length:32][key data:n] [value type:8][value data:n] }
-    if vector:         [entry count: 32] n*{ [value type:8][value data:n] }
+    if string:         [entry count: uint 32] [characters: n]
+    if map:            [entry count: uint 32] n*{ [key length: uint 32][key characters:n] [value type:8][value data:n] }
+    if vector:         [entry count: uint 32] n*{ [value type:8][value data:n] }
 
     Values in the containers (map and vector) can be any of the above
 
 */
 
+inline void PushUInt32(uint32_t value, Vector* target) {
+    for (int i = 3; i >= 0; i--) {
+        VecPush_byte(target, (value >> (i * 8)) & 0xff);
+    }
+}
+
+inline bool DequeueUInt32(uint32_t* value, Vector* target) {
+    //if (value == NULL) return false;
+    uint32_t tmp = 0;
+    uint8_t b;
+    for (int i = 3; i >= 0; i--) {
+        if (!VecDequeue_byte(target, &b)) return false;
+        tmp |= ((uint32_t)b) << (i * 8);
+    }
+    *value = tmp;
+    return true;
+}
 
 bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
     // this switch should get pulled out to a recursion friendly internal function
@@ -28,22 +46,30 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
     case DataType::Integer:
     case DataType::Fraction:
     case DataType::SmallString:
+    {
         // write the tag into the vector
         VecPush_byte(target, source.type);
         for (int i = 2; i >= 0; i--) {
             VecPush_byte(target, (source.params >> (i*8)) & 0xff);
         }
-        for (int i = 3; i >= 0; i--) {
-            VecPush_byte(target, (source.data >> (i*8)) & 0xff);
-        }
+        PushUInt32(source.data, target);
         break;
+    }
 
         // String types
     case DataType::DebugStringPtr:
     case DataType::StaticStringPtr: // this one needs us to read from program memory. Arena won't be enough.
     case DataType::StringPtr:
+    {
         // get the string bytes, and write into vector as length+bytes
+        VecPush_byte(target, (int)DataType::StringPtr); // always a general string pointer once it's serialised
+        auto str = CastString(state, source);
+        PushUInt32(StringLength(str), target);
+        auto bvec = StringGetByteVector(str);
+        uint8_t b;
+        while (VecDequeue_byte(bvec, &b)) VecPush_byte(target, b);
         break;
+    }
 
         // Containers (here begins the recursion)
     case DataType::HashtablePtr:
@@ -115,7 +141,32 @@ bool DefrostFromVector(DataTag* dest, Arena* memory, Vector* source) {
             if (!VecDequeue_byte(source, &b)) return false; // vector too short
             dest->data |= ((uint32_t)b) << (i*8);
         }
-        break;
+        return true;
+
+    case DataType::StringPtr:
+    {
+        // Read string into arena, get offset, encode to output.
+        uint32_t len;
+        if (!DequeueUInt32(&len, source)) return false; // vector too short
+        auto str = StringEmptyInArena(memory);
+        auto offset = ArenaPtrToOffset(memory, str);
+        for (uint32_t i = 0; i < len; i++) {
+            if (!VecDequeue_byte(source, &b)) return false; // vector too short
+            StringAppendChar(str, b);
+        }
+        if (offset < 1) return false; // out of memory
+
+        auto result = EncodePointer(offset, DataType::StringPtr);
+        dest->type = result.type;
+        dest->params = result.params;
+        dest->data = result.data;
+
+        return true;
+    }
+
+        
+    default: // nothing else is supported yet
+        return false;
     }
 
     return false;

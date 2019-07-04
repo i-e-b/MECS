@@ -696,16 +696,23 @@ int TestArenaAllocator() {
 
 int TestSerialisation() {
     std::cout << "***************** SERIALISATION ******************\n";
-
-    auto fakeCode = VecAllocate_DataTag();
     
-    auto interp = InterpAllocate(fakeCode, 1 MEGABYTE, NULL);
+    // Compile some code and load it into an interpreter.
+    auto tagCode = VecAllocate_DataTag();
+    auto code = StringNew("return('Hello, world!')"); // returns pointer to static string
+    auto compilableSyntaxTree = ParseSourceCode(code, false); // Compiler doesn't like metadata!
+    auto compiled = CompileRoot(compilableSyntaxTree, false, false);
+    TCW_AppendToVector(compiled, tagCode);
 
+    auto interp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
     auto arena = InterpInternalMemory(interp);
+
+    // a new vector to write into. This is inside the interpreter's memory.
     auto vec = VecAllocateArena_char(arena);
 
-    // A simple, self-contained example
-    DataTag source = EncodeShortStr("Hello");
+    //////////////////////////////////////////////////
+    // A simple example of self-contained data
+    DataTag source = EncodeShortStr("Hello"); //EncodeInt32(123645); //EncodeDouble(2.718281828459045);
     auto ok = FreezeToVector(source, /*InterpreterState*/interp, /*Vector<byte>*/vec);
 
     if (!ok) {
@@ -716,20 +723,64 @@ int TestSerialisation() {
     std::cout << "Result bytes = " << std::hex;
     int length = VecLength(vec);
     for (int i = 0; i < length; i++) {
-        std::cout << (int)(*VecGet_char(vec, i)) << " ";
+        std::cout << (int)((uint8_t)*VecGet_char(vec, i)) << " ";
     }
     std::cout << std::dec << "\nSerialisation OK, trying deserialisation...\n";
 
     // Try restore
-    auto targetArena = NewArena(1 MEGABYTE);
+    
+    auto targetInterp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
+    auto targetArena = InterpInternalMemory(targetInterp);
     DataTag dest = {};
-    DefrostFromVector(&dest, targetArena, vec);
-    auto human = CastString(interp, dest);
+    ok = DefrostFromVector(&dest, targetArena, vec);
+    if (!ok) {
+        std::cout << "Deserialisation failed\n";
+        return -2;
+    }
+
+    // Show final result
+    auto human = CastString(targetInterp, dest);
+    WriteStr(human);
+    StringDeallocate(human);
+
+    //////////////////////////////////////////////////
+    // More complex stuff.
+    // We use a short program to help
+
+    // Run the program:
+    auto result = InterpRun(interp, 5000);
+    if (result.State != ExecutionState::Complete) {
+        std::cout << "Test program did not complete:\n\n";
+        auto outp = StringEmpty();
+        ReadOutput(interp, outp);
+        WriteStrInline(outp);
+        StringDeallocate(outp);
+        return -3;
+    }
+
+    // the output should be loaded into `result.Result`
+    // serialise it...
+    ok = FreezeToVector(result.Result, /*InterpreterState*/interp, /*Vector<byte>*/vec);
+    if (!ok) { std::cout << "Serialisation failed\n"; return -1; }
+
+    // display serialised data
+    std::cout << "Result bytes = " << std::hex;
+    length = VecLength(vec);
+    for (int i = 0; i < length; i++) { std::cout << (int)((uint8_t)*VecGet_char(vec, i)) << " "; }
+    std::cout << std::dec << "\nSerialisation OK.\n";
+
+    // deserialise
+    ok = DefrostFromVector(&dest, targetArena, vec);
+    if (!ok) { std::cout << "Deserialisation failed\n"; return -2; }
+
+    // Show final result
+    human = CastString(targetInterp, dest);
+    std::cout << "Deserialisation result = "; 
     WriteStr(human);
     StringDeallocate(human);
 
     InterpDeallocate(interp);
-    DropArena(&targetArena);
+    InterpDeallocate(targetInterp);
 
     return 0;
 }
