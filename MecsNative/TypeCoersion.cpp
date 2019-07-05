@@ -257,7 +257,7 @@ String* CastString(InterpreterState* is, DataTag encoded) {
 
     case (int)DataType::VariableRef:
     {   // Follow scope
-        auto next = ScopeResolve(InterpreterScope(is), encoded.data); //Variables.Resolve(NanTags.DecodeVariableRef(encoded));
+        auto next = ScopeResolve(InterpreterScope(is), encoded.data);
         return CastString(is, next);
     }
 

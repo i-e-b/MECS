@@ -4,6 +4,7 @@
 #define byte uint8_t
 RegisterVectorStatics(Vec)
 RegisterVectorFor(byte, Vec)
+RegisterVectorFor(DataTag, Vec)
 
 
 /*
@@ -68,7 +69,7 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
         auto bvec = StringGetByteVector(str);
         uint8_t b;
         while (VecDequeue_byte(bvec, &b)) VecPush_byte(target, b);
-        break;
+        return true;
     }
 
         // Containers (here begins the recursion)
@@ -76,8 +77,24 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
         // write a header, then each element. Keys are always strings.
         break;
     case DataType::VectorPtr:
+    {
         // write a header, then each element is handled
-        break;
+        // [entry count: uint 32] n*{ [value type:8][value data:n] }
+        VecPush_byte(target, (int)DataType::VectorPtr); // always a general string pointer once it's serialised
+        auto original = (Vector*)InterpreterDeref(state, source);
+        if (original == NULL) return false;
+
+        auto length = VectorLength(original);
+        PushUInt32(length, target);
+        for (int i = 0; i < length; i++) {
+            // each item, recurse
+            auto vecEntryPtr = VecGet_DataTag(original, i);
+            if (vecEntryPtr == NULL) return false; // broken vector entry
+            auto ok = RecursiveWrite(*vecEntryPtr, state, target);
+            if (!ok) return false; // error somewhere deeper
+        }
+        return true;
+    }
 
         // empty types
     case DataType::Not_a_Result:
@@ -88,13 +105,103 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
         // indirect types
     case DataType::VariableRef:
         // resolve to a real datatag, and use that. There is nothing written for the var-ref itself
-        break;
+        auto next = ScopeResolve(InterpreterScope(state), source.data);
+        return RecursiveWrite(next, state, target);
 
     default: // nothing else is supported yet
         return false;
     }
 
     return true;
+}
+
+bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
+
+    // This needs to take the raw bytes and put everything back together
+    // Strings will be rolled out to their full containers (including static strings -- we don't assume code will be same)
+    // Hash and Vector types will get built out.
+
+    // read the type header:
+    uint8_t type = 0;
+    uint8_t b=0;
+    auto ok = VecDequeue_byte(source, &type);
+    if (!ok) return false;
+
+    switch ((DataType)type) {
+        // Simple small types (don't need to write to arena)
+    case DataType::Integer:
+    case DataType::Fraction:
+    case DataType::SmallString:
+    {
+        // Unpack from serial form
+        dest->type = type;
+        for (int i = 2; i >= 0; i--) {
+            if (!VecDequeue_byte(source, &b)) return false; // vector too short
+            dest->params |= ((uint32_t)b) << (i*8);
+        }
+        for (int i = 3; i >= 0; i--) {
+            if (!VecDequeue_byte(source, &b)) return false; // vector too short
+            dest->data |= ((uint32_t)b) << (i*8);
+        }
+        return true;
+    }
+
+    case DataType::StringPtr:
+    {
+        // Read string into arena, get offset, encode to output.
+        uint32_t len;
+        if (!DequeueUInt32(&len, source)) return false; // vector too short
+        auto str = StringEmptyInArena(memory);
+        auto offset = ArenaPtrToOffset(memory, str);
+
+        // set outgoing tag first (helps tracing in case of an error)
+        auto result = EncodePointer(offset, DataType::StringPtr);
+        dest->type = result.type;
+        dest->params = result.params;
+        dest->data = result.data;
+
+        // fill the string
+        for (uint32_t i = 0; i < len; i++) {
+            if (!VecDequeue_byte(source, &b)) return false; // vector too short
+            StringAppendChar(str, b);
+        }
+        if (offset < 1) return false; // out of memory
+
+        return true;
+    }
+
+    case DataType::VectorPtr:
+    {
+        // [entry count: uint 32] n*{ [value type:8][value data:n] }
+        uint32_t length = 0;
+        auto ok = DequeueUInt32(&length, source);
+        if (!ok) return false;
+
+        // create new vector in target memory
+        auto container = VecAllocateArena_DataTag(memory);
+        auto offset = ArenaPtrToOffset(memory, container);
+        
+        // bind output
+        auto result = EncodePointer(offset, DataType::VectorPtr);
+        dest->type = result.type;
+        dest->params = result.params;
+        dest->data = result.data;
+
+        // Fill the vector
+        for (int i = 0; i < length; i++) {
+            DataTag element = {};
+            ok = RecursiveRead(&element, memory, source);
+            if (!ok) return false;
+            VecPush_DataTag(container, element);
+        }
+        return true;
+    }
+        
+    default: // nothing else is supported yet
+        return false;
+    }
+
+    return false;
 }
 
 // Write a data tag `source` in serialised form to the given BYTE vector `target`
@@ -117,57 +224,6 @@ bool DefrostFromVector(DataTag* dest, Arena* memory, Vector* source) {
     if (memory == NULL) return false;
     if (dest == NULL) return false;
 
-    // This needs to take the raw bytes and put everything back together
-    // Strings will be rolled out to their full containers (including static strings -- we don't assume code will be same)
-    // Hash and Vector types will get built out.
-
-    // initially, just dealing with things as they are tested:
-    uint8_t type = 0;
-    uint8_t b=0;
-    auto ok = VecDequeue_byte(source, &type);
-    switch ((DataType)type) {
-        // Simple small types (don't need to write to arena)
-    case DataType::Integer:
-    case DataType::Fraction:
-    case DataType::SmallString:
-        // Unpack from serial form
-
-        dest->type = type;
-        for (int i = 2; i >= 0; i--) {
-            if (!VecDequeue_byte(source, &b)) return false; // vector too short
-            dest->params |= ((uint32_t)b) << (i*8);
-        }
-        for (int i = 3; i >= 0; i--) {
-            if (!VecDequeue_byte(source, &b)) return false; // vector too short
-            dest->data |= ((uint32_t)b) << (i*8);
-        }
-        return true;
-
-    case DataType::StringPtr:
-    {
-        // Read string into arena, get offset, encode to output.
-        uint32_t len;
-        if (!DequeueUInt32(&len, source)) return false; // vector too short
-        auto str = StringEmptyInArena(memory);
-        auto offset = ArenaPtrToOffset(memory, str);
-        for (uint32_t i = 0; i < len; i++) {
-            if (!VecDequeue_byte(source, &b)) return false; // vector too short
-            StringAppendChar(str, b);
-        }
-        if (offset < 1) return false; // out of memory
-
-        auto result = EncodePointer(offset, DataType::StringPtr);
-        dest->type = result.type;
-        dest->params = result.params;
-        dest->data = result.data;
-
-        return true;
-    }
-
-        
-    default: // nothing else is supported yet
-        return false;
-    }
-
-    return false;
+    return RecursiveRead(dest, memory, source);
 }
+

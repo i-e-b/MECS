@@ -699,7 +699,12 @@ int TestSerialisation() {
     
     // Compile some code and load it into an interpreter.
     auto tagCode = VecAllocate_DataTag();
-    auto code = StringNew("return('Hello, world!')"); // returns pointer to static string
+    
+    // sample outputs for below
+    //auto code = StringNew("return('Hello, world!')"); // pointer to static string
+    auto code = StringNew("return(new-list(1 2 3))"); // list of numbers
+
+
     auto compilableSyntaxTree = ParseSourceCode(code, false); // Compiler doesn't like metadata!
     auto compiled = CompileRoot(compilableSyntaxTree, false, false);
     TCW_AppendToVector(compiled, tagCode);
@@ -758,6 +763,12 @@ int TestSerialisation() {
         return -3;
     }
 
+    // Show what we are expecting:
+    human = CastString(interp, result.Result);
+    std::cout << "Serialiser input = "; 
+    WriteStr(human);
+    StringDeallocate(human);
+
     // the output should be loaded into `result.Result`
     // serialise it...
     ok = FreezeToVector(result.Result, /*InterpreterState*/interp, /*Vector<byte>*/vec);
@@ -779,6 +790,7 @@ int TestSerialisation() {
     WriteStr(human);
     StringDeallocate(human);
 
+    // Clean up interpreters and their arenas
     InterpDeallocate(interp);
     InterpDeallocate(targetInterp);
 
