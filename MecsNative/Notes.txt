@@ -40,9 +40,9 @@ Language features
       * [x] length
 
 This next -->
-* [ ] Deep-serialise a tag from runtime
-  * [ ] De-serialise into an arena (the original OR not the original)
-* [ ] Put all interpreter allocations inside it's own memory
+* [x] Deep-serialise a tag from runtime
+  * [x] De-serialise into an arena (the original OR not the original)
+* [ ] Put ALL Interpreter allocations inside it's own memory
 
 Input handling:
 ---------------

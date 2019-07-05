@@ -133,10 +133,10 @@ bool Resize(HashMap * h, uint32_t newSize, bool autoSize) {
     auto oldCount = h->count;
     auto oldBuckets = h->buckets;
 
-    h->count = newSize;
     if (newSize > 0 && newSize < MIN_BUCKET_SIZE) newSize = MIN_BUCKET_SIZE;
     if (newSize > MAX_BUCKET_SIZE) newSize = MAX_BUCKET_SIZE;
 
+    h->count = newSize;
     h->countMod = newSize - 1;
 
     auto newBuckets = VectorAllocateArena(h->memory, sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
@@ -268,6 +268,16 @@ bool HashMapGet(HashMap* h, void* key, void** outValue) {
     return true;
 }
 
+inline HashMap_Entry* HashMapAllocEntry(HashMap* h) {
+    if (h->memory == NULL) return (HashMap_Entry*)mmalloc(sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
+    return (HashMap_Entry*)ArenaAllocateAndClear(h->memory, sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
+}
+
+inline void HashMapFreeEntry(HashMap* h, HashMap_Entry* e) {
+    if (h->memory == NULL) mfree(e);
+    else ArenaDereference(h->memory, e);
+}
+
 bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
     if (h == NULL) return false;
     // Check to see if we need to grow
@@ -279,7 +289,7 @@ bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
     if (safeHash == 0) safeHash = SAFE_HASH; // can't allow hash of zero
     
     // Write the entry into the hashmap
-    auto entry = (HashMap_Entry*)mmalloc(sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
+    auto entry = HashMapAllocEntry(h);
     if (entry == NULL) return false;
 
     entry->hash = safeHash;
@@ -288,7 +298,7 @@ bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
 
     auto OK = PutInternal(h, entry, canReplace, true);
 
-    mfree(entry);
+    HashMapFreeEntry(h, entry);
     return OK;
 }
 

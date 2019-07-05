@@ -1,11 +1,15 @@
 #include "Serialisation.h"
 #include "TypeCoersion.h"
+#include "HashMap.h"
+
 
 #define byte uint8_t
 RegisterVectorStatics(Vec)
 RegisterVectorFor(byte, Vec)
 RegisterVectorFor(DataTag, Vec)
 
+RegisterHashMapStatics(Map);
+RegisterHashMapFor(StringPtr, DataTag, HashMapStringKeyHash, HashMapStringKeyCompare, Map)
 
 /*
 
@@ -41,7 +45,6 @@ inline bool DequeueUInt32(uint32_t* value, Vector* target) {
 }
 
 bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
-    // this switch should get pulled out to a recursion friendly internal function
     switch ((DataType)source.type) {
         // Simple small types
     case DataType::Integer:
@@ -54,7 +57,7 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
             VecPush_byte(target, (source.params >> (i*8)) & 0xff);
         }
         PushUInt32(source.data, target);
-        break;
+        return true;
     }
 
         // String types
@@ -74,19 +77,53 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
 
         // Containers (here begins the recursion)
     case DataType::HashtablePtr:
+    {
         // write a header, then each element. Keys are always strings.
-        break;
+        auto original = (HashMap*)InterpreterDeref(state, source); // should always be <string => data tag>
+        if (original == NULL) return false;
+
+        VecPush_byte(target, (int)DataType::HashtablePtr);
+        auto allKeys = HashMapAllEntries(original); // Vector<  HashMap_KVP<string => data tag>  >
+
+        //[entry count: uint 32] n*{ [key length: uint 32][key characters:n] [value type:8][value data:n] }
+        auto length = VecLength(allKeys);
+        PushUInt32(length, target);
+
+        HashMap_KVP entry;
+        for (uint32_t i = 0; i < length; i++)
+        {
+            if (!VectorPop(allKeys, &entry)) return false; //internal failure
+            String* str =  *(String **)(entry.Key);
+            DataTag* valTag = (DataTag*)(entry.Value);
+
+            if (str == NULL || valTag == NULL) return false; // invalid hash map
+
+            // Write key (no type tag, it's always a string)
+            PushUInt32(StringLength(str), target);
+            auto bvec = StringGetByteVector(str);
+            uint8_t b;
+            while (VecDequeue_byte(bvec, &b)) VecPush_byte(target, b);
+
+            // Write the value (recursive)
+            auto ok = RecursiveWrite(*valTag, state, target);
+            if (!ok) return false; // error somewhere deeper
+        }
+
+        VecDeallocate(allKeys);
+        return true;
+    }
+
     case DataType::VectorPtr:
     {
         // write a header, then each element is handled
         // [entry count: uint 32] n*{ [value type:8][value data:n] }
-        VecPush_byte(target, (int)DataType::VectorPtr); // always a general string pointer once it's serialised
+        VecPush_byte(target, (int)DataType::VectorPtr);
         auto original = (Vector*)InterpreterDeref(state, source);
         if (original == NULL) return false;
 
         auto length = VectorLength(original);
         PushUInt32(length, target);
-        for (int i = 0; i < length; i++) {
+        for (uint32_t i = 0; i < length; i++) {
             // each item, recurse
             auto vecEntryPtr = VecGet_DataTag(original, i);
             if (vecEntryPtr == NULL) return false; // broken vector entry
@@ -100,6 +137,7 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
     case DataType::Not_a_Result:
         // write a byte for the type, and nothing else.
         VecPush_byte(target, source.type);
+        return true;
         break;
 
         // indirect types
@@ -111,8 +149,7 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
     default: // nothing else is supported yet
         return false;
     }
-
-    return true;
+    return false;
 }
 
 bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
@@ -128,6 +165,14 @@ bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
     if (!ok) return false;
 
     switch ((DataType)type) {
+    case DataType::Not_a_Result:
+    {
+        dest->type = (int)DataType::Not_a_Result;
+        dest->params = 0;
+        dest->data = 0;
+        return true;
+    }
+
         // Simple small types (don't need to write to arena)
     case DataType::Integer:
     case DataType::Fraction:
@@ -153,6 +198,7 @@ bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
         if (!DequeueUInt32(&len, source)) return false; // vector too short
         auto str = StringEmptyInArena(memory);
         auto offset = ArenaPtrToOffset(memory, str);
+        if (offset < 1) return false; // out of memory
 
         // set outgoing tag first (helps tracing in case of an error)
         auto result = EncodePointer(offset, DataType::StringPtr);
@@ -165,7 +211,6 @@ bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
             if (!VecDequeue_byte(source, &b)) return false; // vector too short
             StringAppendChar(str, b);
         }
-        if (offset < 1) return false; // out of memory
 
         return true;
     }
@@ -188,12 +233,56 @@ bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
         dest->data = result.data;
 
         // Fill the vector
-        for (int i = 0; i < length; i++) {
+        for (uint32_t i = 0; i < length; i++) {
             DataTag element = {};
             ok = RecursiveRead(&element, memory, source);
             if (!ok) return false;
             VecPush_DataTag(container, element);
         }
+        return true;
+    }
+
+    case DataType::HashtablePtr:
+    {
+        //[entry count: uint 32] n*{ [key length: uint 32][key characters:n] [value type:8][value data:n] }
+        uint32_t length = 0, keyLen = 0;
+        auto ok = DequeueUInt32(&length, source);
+        if (!ok) return false;
+
+        // create new map in target memory
+        auto container = MapAllocateArena_StringPtr_DataTag(length, memory);
+        auto offset = ArenaPtrToOffset(memory, container);
+
+        // read entries
+        uint32_t i,j;
+        String* keyStr = StringEmptyInArena(memory);
+        for (i = 0; i < length; i++) {
+            // read key
+            ok = DequeueUInt32(&keyLen, source);
+            if (!ok) return false; // invalid serialised form
+            if (keyLen < 1) return false; // invalid key
+            StringClear(keyStr);
+            for (j = 0; j < keyLen; j++) {
+                if (!VecDequeue_byte(source, &b)) return false; // vector too short
+                StringAppendChar(keyStr, b);
+            }
+
+            // read value
+            DataTag data = {};
+            ok = RecursiveRead(&data, memory, source);
+            if (!ok) return false;
+            
+            // write into map
+            ok = MapPut_StringPtr_DataTag(container, StringClone(keyStr), data, false);
+            if (!ok) return false; // internal error / out of memory
+        }
+        StringDeallocate(keyStr);
+        
+        // bind output
+        auto result = EncodePointer(offset, DataType::HashtablePtr);
+        dest->type = result.type;
+        dest->params = result.params;
+        dest->data = result.data;
         return true;
     }
         

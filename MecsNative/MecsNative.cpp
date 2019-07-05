@@ -702,7 +702,8 @@ int TestSerialisation() {
     
     // sample outputs for below
     //auto code = StringNew("return('Hello, world!')"); // pointer to static string
-    auto code = StringNew("return(new-list(1 2 3))"); // list of numbers
+    //auto code = StringNew("return(new-list(1 2 3 4 'Can I have a little more?' 5 6 7 8 9))"); // list of numbers
+    auto code = StringNew("return(new-map('a' 1, 'b' new-list(1 2 'x'), 'c' 'Hello, world!', 'd' 2))"); // map with heterogeneous list
 
 
     auto compilableSyntaxTree = ParseSourceCode(code, false); // Compiler doesn't like metadata!
@@ -1180,8 +1181,6 @@ int main() {
     auto serdsres = TestSerialisation();
     if (serdsres != 0) return serdsres;
     MMPop();
-
-    return 0;
 
     MMPush(1 MEGABYTE);
     auto fsres = TestFileSystem();
