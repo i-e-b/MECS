@@ -182,7 +182,6 @@
     <ClCompile Include="MecsNative.cpp" />
     <ClCompile Include="MemoryManager.cpp" />
     <ClCompile Include="Scope.cpp" />
-    <ClCompile Include="ScopeMap.cpp" />
     <ClCompile Include="Serialisation.cpp" />
     <ClCompile Include="SourceCodeTokeniser.cpp" />
     <ClCompile Include="String.cpp" />
@@ -209,7 +208,6 @@
     <ClInclude Include="MemoryManager.h" />
     <ClInclude Include="RawData.h" />
     <ClInclude Include="Scope.h" />
-    <ClInclude Include="ScopeMap.h" />
     <ClInclude Include="Serialisation.h" />
     <ClInclude Include="SourceCodeTokeniser.h" />
     <ClInclude Include="String.h" />

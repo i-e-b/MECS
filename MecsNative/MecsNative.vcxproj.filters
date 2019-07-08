@@ -91,9 +91,6 @@
     <ClCompile Include="Scope.cpp">
       <Filter>Source Files\Containers</Filter>
     </ClCompile>
-    <ClCompile Include="ScopeMap.cpp">
-      <Filter>Source Files\Containers</Filter>
-    </ClCompile>
     <ClCompile Include="DisplaySys.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
@@ -166,9 +163,6 @@
       <Filter>Source Files\Encoding</Filter>
     </ClInclude>
     <ClInclude Include="Scope.h">
-      <Filter>Source Files\Containers</Filter>
-    </ClInclude>
-    <ClInclude Include="ScopeMap.h">
       <Filter>Source Files\Containers</Filter>
     </ClInclude>
     <ClInclude Include="DisplaySys.h">

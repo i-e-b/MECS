@@ -122,7 +122,7 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     result->ErrorFlag = false;
 
     result->_program = tagCode;
-    result->_variables = ScopeAllocate();
+    result->_variables = ScopeAllocate(memory);
 
     result->_position = 0;
     result->_stepsTaken = 0;
