@@ -109,16 +109,20 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.
 InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* debugSymbols) {
     if (tagCode == NULL) return NULL;
-    auto result = (InterpreterState*)mmalloc(sizeof(InterpreterState));
+    auto memory = NewArena(memorySize);
+    
+    //auto result = (InterpreterState*)mmalloc(sizeof(InterpreterState));
+    auto result = (InterpreterState*)ArenaAllocateAndClear(memory, sizeof(InterpreterState));
     if (result == NULL) return NULL;
 
-    result->Functions = MapAllocate_Name_FunctionDefinition(100);
+    result->_memory = memory;
+
+    result->Functions = MapAllocateArena_Name_FunctionDefinition(100, result->_memory);
     result->DebugSymbols = debugSymbols; // ok if NULL
     result->ErrorFlag = false;
 
     result->_program = tagCode;
     result->_variables = ScopeAllocate();
-    result->_memory = NewArena(memorySize);
 
     result->_position = 0;
     result->_stepsTaken = 0;
@@ -127,8 +131,8 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     result->_returnStack = VecAllocateArena_int(result->_memory);
     result->_valueStack = VecAllocateArena_DataTag(result->_memory);
 
-    result->_input = StringEmpty();
-    result->_output = StringEmpty();
+    result->_input = StringEmptyInArena(result->_memory);
+    result->_output = StringEmptyInArena(result->_memory);
 
     if ((result->Functions == NULL)
         || (result->_returnStack == NULL)
@@ -152,15 +156,16 @@ void InterpDeallocate(InterpreterState* is) {
     if (is == NULL) return;
     
     is->ErrorFlag = true;
-    if (is->_input != NULL) StringDeallocate(is->_input);
+    /*if (is->_input != NULL) StringDeallocate(is->_input);
     if (is->_output != NULL) StringDeallocate(is->_output);
     if (is->Functions != NULL) MapDeallocate(is->Functions);
     if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
     if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
-    if (is->_variables != NULL) ScopeDeallocate(is->_variables);
-    if (is->_memory != NULL) DropArena(&(is->_memory));
+    if (is->_variables != NULL) ScopeDeallocate(is->_variables);*/
 
-    mfree(is);
+    //if (is->_memory != NULL) DropArena(&(is->_memory));
+
+    /*mfree(is);*/
 }
 
 // Add string data to the waiting input stream
