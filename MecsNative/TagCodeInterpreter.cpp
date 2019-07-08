@@ -111,7 +111,6 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     if (tagCode == NULL) return NULL;
     auto memory = NewArena(memorySize);
     
-    //auto result = (InterpreterState*)mmalloc(sizeof(InterpreterState));
     auto result = (InterpreterState*)ArenaAllocateAndClear(memory, sizeof(InterpreterState));
     if (result == NULL) return NULL;
 
@@ -120,9 +119,11 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     result->Functions = MapAllocateArena_Name_FunctionDefinition(100, result->_memory);
     result->DebugSymbols = debugSymbols; // ok if NULL
     result->ErrorFlag = false;
-
-    result->_program = tagCode;
     result->_variables = ScopeAllocate(memory);
+
+    //result->_program = tagCode;
+    // Copy program into this interpreter (non-destructively)
+    result->_program = VecClone(tagCode, memory);
 
     result->_position = 0;
     result->_stepsTaken = 0;
@@ -142,7 +143,6 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
         || (result->_memory == NULL)
         || (result->_output == NULL)) {
         InterpDeallocate(result);
-        mfree(result);
         return NULL;
     }
 
@@ -155,17 +155,11 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
 void InterpDeallocate(InterpreterState* is) {
     if (is == NULL) return;
     
-    is->ErrorFlag = true;
-    /*if (is->_input != NULL) StringDeallocate(is->_input);
-    if (is->_output != NULL) StringDeallocate(is->_output);
-    if (is->Functions != NULL) MapDeallocate(is->Functions);
-    if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
-    if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
-    if (is->_variables != NULL) ScopeDeallocate(is->_variables);*/
-
-    //if (is->_memory != NULL) DropArena(&(is->_memory));
-
-    /*mfree(is);*/
+    // All the allocations should be contained in the interpreter state's internal arena.
+    if (is->_memory != NULL) {
+        auto mr = is->_memory;
+        DropArena(&mr);
+    }
 }
 
 // Add string data to the waiting input stream
@@ -1520,7 +1514,7 @@ inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, in
     if (*programWindow != NULL && pos >= *low && pos <= *high) return true;
 
     // out of cached range. Re-cache
-    if (*programWindow != NULL) mfree(programWindow);
+    if (*programWindow != NULL) VecFreeCache(is->_program, programWindow);
     *low = pos - 200;
     *high = pos + 400; // bias forward of current position
     *programWindow = VecCacheRange_DataTag(is->_program, low, high);
@@ -1550,7 +1544,7 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
 
     while (true){
         if (localSteps >= maxCycles) {
-            mfree(programWindow);
+            VecFreeCache(is->_program, programWindow);
             return PausedExecutionResult();
         }
         if (is->ErrorFlag) {
@@ -1627,7 +1621,7 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
 GOOD_EXIT:
     // Exited the program. Cleanup and return value
 
-    mfree(programWindow);
+    VecFreeCache(is->_program, programWindow);
 
     if (VecLength(is->_valueStack) != 0) {
         VecPop_DataTag(is->_valueStack, &evalResult);

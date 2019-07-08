@@ -12,6 +12,8 @@ typedef struct Vector Vector;
 Vector *VectorAllocate(int elementSize);
 // Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
 Vector *VectorAllocateArena(Arena* a, int elementSize);
+// Clone a vector into a new arena
+Vector* VectorClone(Vector* source, Arena* a);
 // Check the vector is correctly allocated
 bool VectorIsValid(Vector *v);
 // Clear all elements out of the vector, but leave it valid
@@ -51,6 +53,8 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B));
 // this is for optimising multiple local accesses in algorithms.
 // `lowIndex` and `highIndex` will be updated to the actual range returned
 void* VectorCacheRange(Vector* v, int* lowIndex, int* highIndex);
+// Free cache memory
+void VectorFreeCache(Vector* v, void* cache);
 
 // Size of vector elements, in bytes
 int VectorElementSize(Vector *v);
@@ -66,7 +70,9 @@ int VectorElementSize(Vector *v);
     inline bool nameSpace##Reverse(Vector *v){ return VectorReverse(v); }\
     inline int nameSpace##Length(Vector *v){ return VectorLength(v); }\
     inline bool nameSpace##Prealloc(Vector *v, unsigned int length){ return VectorPrealloc(v, length); }\
+    inline Vector* nameSpace##Clone(Vector* source, Arena* a){ return VectorClone(source, a); }\
     inline bool nameSpace##Swap(Vector *v, unsigned int index1, unsigned int index2){ return VectorSwap(v, index1, index2); }\
+    inline void nameSpace##FreeCache(Vector *v, void *c) { VectorFreeCache(v, c); }\
     inline void nameSpace##Clear(Vector *v) { VectorClear(v); }\
 
 // These must be registered for each type, as they are type variant

@@ -89,7 +89,7 @@ void DropArena(Arena** a) {
         ptr->_limit = NULL;
     }
 
-    free(*a); // Free the arena reference itself
+    //free(*a); // Free the arena reference itself
     *a = NULL; // kill the arena reference
 }
 

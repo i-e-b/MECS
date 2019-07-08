@@ -1,8 +1,5 @@
 #include "Scope.h"
 
-#include "MemoryManager.h"
-
-
 typedef HashMap* MapPtr;
 typedef uint32_t Name;
 
@@ -19,6 +16,7 @@ typedef struct Scope {
     // Vector of (Hashmap of Name->DataTag)
     Vector* _scopes; // this is currently critical in tight loops. Maybe de-vector it?
 
+    // Arena for new allocations
     Arena* _memory;
 } Scope;
 

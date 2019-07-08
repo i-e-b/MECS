@@ -1015,6 +1015,8 @@ int TestRuntimeExec() {
 int RunProgram(const char* filename) {
     // Load, compile and  run a program inside an arena
 
+    size_t alloc, unalloc;
+    int objects;
     std::cout << "########## Attempting program: " << filename << " #########\n";
 
     MMPush(1 MEGABYTES);
@@ -1043,6 +1045,10 @@ int RunProgram(const char* filename) {
 
     // set-up
     auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
+    VecDeallocate(program);
+
+    ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
+    std::cout << "External memory before running:  " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
 
     auto inp = StringNew("xhello, world\nLine2\nLine3\n"); // some sample input
     WriteInput(is, inp);
@@ -1095,8 +1101,6 @@ int RunProgram(const char* filename) {
 
 
     // Check memory state
-    size_t alloc, unalloc;
-    int objects;
     ArenaGetState(InterpInternalMemory(is), &alloc, &unalloc, NULL, NULL, &objects, NULL);
     std::cout << "Runtime used in internal memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
     ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
