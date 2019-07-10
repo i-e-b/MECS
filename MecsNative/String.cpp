@@ -17,7 +17,8 @@ String * StringEmpty() {
     auto vec = VAllocate_char();
     if (!VectorIsValid(vec)) return NULL;
 
-    auto str = (String*)mcalloc(1, sizeof(String));
+    auto arena = VectorArena(vec);
+    auto str = (String*)ArenaAllocateAndClear(arena, sizeof(String));
     str->chars = vec;
     str->hashval = 0;
     str->isProxy = false;
@@ -31,7 +32,7 @@ String *StringEmptyInArena(Arena* a) {
     auto vec = VAllocateArena_char(a);
     if (!VectorIsValid(vec)) return NULL;
 
-    auto str = (String*)ArenaAllocateAndClear(a, sizeof(String));//mcalloc(1, sizeof(String));
+    auto str = (String*)ArenaAllocateAndClear(a, sizeof(String));
     str->chars = vec;
     str->hashval = 0;
     str->isProxy = false;
@@ -42,7 +43,8 @@ String *StringEmptyInArena(Arena* a) {
 String* StringProxy(String* original) {
     if (original == NULL) return NULL;
 
-    auto str = (String*)mcalloc(1, sizeof(String));
+    auto arena = VectorArena(original->chars);
+    auto str = (String*)ArenaAllocateAndClear(arena, sizeof(String)); // put the proxy in the same memory as the original
     str->chars = original->chars;
     str->hashval = 0;
     str->isProxy = true;
@@ -60,8 +62,11 @@ void StringClear(String *str) {
 
 void StringDeallocate(String *str) {
     if (str == NULL) return;
+
+    auto arena = VectorArena(str->chars);
     if (str->isProxy == false && VectorIsValid(str->chars) == true) VectorDeallocate(str->chars);
-    mfree(str);
+
+    ArenaDereference(arena, str);
 }
 
 bool StringIsValid(String *str) {

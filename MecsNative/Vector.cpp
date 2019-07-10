@@ -819,6 +819,10 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     VecFree(v, arr2);
 }
 
+Arena* VectorArena(Vector *v) {
+    return v->_arena;
+}
+
 // Clone a vector into a new arena
 Vector* VectorClone(Vector* source, Arena* a) {
     // this could be optimised, but we need to relocate all pointers properly if we do.

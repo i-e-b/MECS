@@ -59,6 +59,9 @@ void VectorFreeCache(Vector* v, void* cache);
 // Size of vector elements, in bytes
 int VectorElementSize(Vector *v);
 
+// Return the arena that contains this vector
+Arena* VectorArena(Vector *v);
+
 
 // Macros to create type-specific versions of the methods above.
 // If you want to use the typed versions, make sure you call `RegisterContainerFor(typeName, namespace)` for EACH type

@@ -1506,7 +1506,7 @@ DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
 
 String* ReadStaticString(InterpreterState* is, int position, int length) {
     if (is == NULL) return NULL;
-    return DecodeString(is->_program, position, length);
+    return DecodeString(is->_program, position, length, is->_memory);
 }
 
 inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, int* low, int* high) {

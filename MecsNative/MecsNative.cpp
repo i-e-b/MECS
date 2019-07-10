@@ -1054,7 +1054,7 @@ int RunProgram(const char* filename) {
     WriteInput(is, inp);
     StringDeallocate(inp);
 
-    TraceArena(MMCurrent()); // we shouldn't be allocating much outside the interpreter
+    //TraceArena(MMCurrent()); // we shouldn't be allocating much outside the interpreter
 
     // run
     auto startTime = SystemTime();
