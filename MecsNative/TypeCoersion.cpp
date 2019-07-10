@@ -188,10 +188,11 @@ int CastInt(InterpreterState* is, DataTag  encoded) {
 
 String* StringifyVector(InterpreterState* is, DataTag encoded) {
     auto original = (Vector*)InterpreterDeref(is, encoded);
+    auto arena = InterpInternalMemory(is);
 
-    if (original == NULL) return StringNew("<null>");
+    if (original == NULL) return StringNewInArena("<null>", arena);
 
-    auto output = StringNew('[');
+    auto output = StringNewInArena("[", arena);
     auto length = VectorLength(original);
     for (int i = 0; i < length; i++) {
         auto str = CastString(is, *VectorGet_DataTag(original, i));
@@ -209,10 +210,11 @@ String* StringifyVector(InterpreterState* is, DataTag encoded) {
 
 String* StringifyHashMap(InterpreterState* is, DataTag encoded) {
     auto original = (HashMap*)InterpreterDeref(is, encoded); // should always be <string => data tag>
+    auto arena = InterpInternalMemory(is);
 
-    if (original == NULL) return StringNew("<null>");
+    if (original == NULL) return StringNewInArena("<null>", arena);
 
-    auto output = StringNew('{');
+    auto output = StringNewInArena("{", arena);
     auto allKeys = HashMapAllEntries(original); // Vector<  HashMap_KVP<string => data tag>  >
     HashMap_KVP entry;
     
@@ -239,21 +241,26 @@ String* StringifyHashMap(InterpreterState* is, DataTag encoded) {
 // Get a resonable string representation from a value.
 // This should include stringifying non-string types (numbers, structures etc)
 String* CastString(InterpreterState* is, DataTag encoded) {
+    auto arena = InterpInternalMemory(is);
     // IMPORTANT: this should NEVER send back an original string -- it will get deallocated!
     auto type = encoded.type;
     switch (type) {
-    case (int)DataType::Invalid: return StringNew("<invalid data tag>");
-    case (int)DataType::Integer: return StringFromInt32(encoded.data); //encoded.ToString(CultureInfo.InvariantCulture);
+    case (int)DataType::Invalid: return StringNewInArena("<invalid data tag>", arena);
+    case (int)DataType::Integer: {
+        auto str = StringEmptyInArena(arena);
+        StringAppendInt32(str, encoded.data);
+        return str;
+    }
     case (int)DataType::Fraction: {
-        auto str = StringEmpty();
+        auto str = StringEmptyInArena(arena);
         StringAppendDouble(str, DecodeDouble(encoded));
         return str;
     }
-    case (int)DataType::Opcode: return StringNew("<Op Code>");
+    case (int)DataType::Opcode: return StringNewInArena("<Op Code>", arena);
 
-    case (int)DataType::Not_a_Result: return StringEmpty();
-    case (int)DataType::Unit: return StringEmpty();
-    case (int)DataType::Void: return StringEmpty();
+    case (int)DataType::Not_a_Result: return StringEmptyInArena(arena);
+    case (int)DataType::Unit: return StringEmptyInArena(arena);
+    case (int)DataType::Void: return StringEmptyInArena(arena);
 
     case (int)DataType::VariableRef:
     {   // Follow scope
@@ -263,7 +270,7 @@ String* CastString(InterpreterState* is, DataTag encoded) {
 
     case (int)DataType::SmallString:
     {
-        auto str = StringEmpty();
+        auto str = StringEmptyInArena(arena);
         DecodeShortStr(encoded, str);
         return str;
     }
@@ -281,10 +288,10 @@ String* CastString(InterpreterState* is, DataTag encoded) {
         auto idx = encoded.params; // grab the index
         encoded.type = (int)DataType::VectorPtr; // make this into a reference to the actual vector
         auto src = (Vector*)InterpreterDeref(is, encoded); // get the vector
-        if (src == NULL) return StringNew("<value out of range: VectorIndex 1>");
+        if (src == NULL) return StringNewInArena("<value out of range: VectorIndex 1>", arena);
 
         auto tag = VectorGet_DataTag(src, idx);
-        if (tag == NULL) return StringNew("<value out of range: VectorIndex 2>");
+        if (tag == NULL) return StringNewInArena("<value out of range: VectorIndex 2>", arena);
         return CastString(is, *tag);
     }
 
@@ -294,12 +301,12 @@ String* CastString(InterpreterState* is, DataTag encoded) {
     case (int)DataType::HashtableEntryPtr:
     {
         auto tag = (DataTag*)InterpreterDeref(is, encoded);
-        if (tag == NULL) return StringNew("<value out of range: HashtableKey>");
+        if (tag == NULL) return StringNewInArena("<value out of range: HashtableKey>", arena);
         return CastString(is, *tag);
     }
 
     default:
-        return StringNew("<value out of range>");
+        return StringNewInArena("<value out of range>", arena);
     }
 }
 

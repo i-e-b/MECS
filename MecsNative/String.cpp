@@ -74,8 +74,8 @@ bool StringIsValid(String *str) {
     return VectorIsValid(str->chars);
 }
 
-String * StringNew(const char * str) {
-    auto result = StringEmpty();
+String* StringNewInArena(const char* str, Arena* a) {
+    auto result = (a == NULL) ? StringEmpty() : StringEmptyInArena(a);
     if (result == NULL) return NULL;
     if (VectorIsValid(result->chars) == false) return NULL;
 
@@ -84,6 +84,10 @@ String * StringNew(const char * str) {
         str++;
     }
     return result;
+}
+
+String* StringNew(const char * str) {
+    return StringNewInArena(str, NULL);
 }
 
 String *StringNew(char c) {
@@ -303,7 +307,9 @@ String *StringSlice(String* str, int startIdx, int length) {
     auto len = StringLength(str);
     if (len < 1) return NULL;
 
-    String *result = StringEmpty();
+    auto arena = VectorArena(str->chars);
+
+    String *result = StringEmptyInArena(arena);
     while (startIdx < 0) { startIdx += len; }
     if (length < 0) { length += len; length -= startIdx - 1; }
 
@@ -336,14 +342,25 @@ char *StringToCStr(String *str) {
     return result;
 }
 
-char *StringToCStr(String *str, int start) {
+char *StringToCStrInArena(String *str, Arena* a) {
+    auto len = StringLength(str);
+    auto result = (char*)ArenaAllocate(a, 1 + (sizeof(char) * len)); // need extra byte for '\0'
+    for (unsigned int i = 0; i < len; i++) {
+        result[i] = *VGet_char(str->chars, i);
+    }
+    result[len] = 0;
+    return result;
+}
+
+char *SubstringToCStr(String *str, int start, Arena* a) {
     auto len = StringLength(str);
     if (start < 0) { // from end
         start += len;
     }
     if (len > start) { len -= start; }
+    if (a == NULL) a = MMCurrent();
 
-    auto result = (char*)mmalloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
+    auto result = (char*)ArenaAllocate(a, 1 + (sizeof(char) * len)); // need extra byte for '\0'
     for (unsigned int i = 0; i < len; i++) {
         char *cp = VGet_char(str->chars, i + start);
         if (cp == NULL) {
@@ -487,6 +504,7 @@ bool StringAreEqual(String* a, const char* b) {
     return i == limit;
 }
 
+
 bool StringFind(String* haystack, String* needle, unsigned int start, unsigned int* outPosition) {
     // get a few special cases out of the way
     if (haystack == NULL) return false;
@@ -499,12 +517,14 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
     if (start < 0) { // from end
         start += hayLen;
     }
+    
+    auto arena = VectorArena(haystack->chars);
 
     // Rabin–Karp method, but using sum rather than hash (more false positives, but much cheaper on average)
     // get a hash of the 'needle', and try to find somewhere in the haystack that matches.
     // double-check if we find one.
-    char *matchStr = StringToCStr(needle);
-    char *scanStr = StringToCStr(haystack, start);
+    char *matchStr = StringToCStrInArena(needle, arena);
+    char *scanStr = SubstringToCStr(haystack, start, arena);
 
     // make sum of the needle, and an initial sum of the scan hash
     int match = 0;
@@ -596,7 +616,10 @@ String* StringReplace(String* haystack, String* needle, String* replacement) {
 
     // use `StringFind` to get to the next occurance.
     // for each occurance, copy across the chars up to that point, then copy across replacement, then skip the occurance
-    auto result = StringEmpty();
+    
+    auto arena = VectorArena(haystack->chars);
+
+    String *result = StringEmptyInArena(arena);
     if (result == NULL) return NULL;
 
     int length = StringLength(haystack);

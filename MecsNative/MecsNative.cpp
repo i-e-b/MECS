@@ -1054,20 +1054,23 @@ int RunProgram(const char* filename) {
     WriteInput(is, inp);
     StringDeallocate(inp);
 
-    //TraceArena(MMCurrent()); // we shouldn't be allocating much outside the interpreter
+    TraceArena(MMCurrent(), true); // we shouldn't be allocating much outside the interpreter
 
     // run
     auto startTime = SystemTime();
     auto result = InterpRun(is, 5000);
     while (result.State == ExecutionState::Paused) {
-        //std::cout << ".";
+        TraceArena(MMCurrent(), false);
         auto str = StringEmpty();
         ReadOutput(is, str);
         WriteStrInline(str);
         StringDeallocate(str);
+        TraceArena(MMCurrent(), true);
         result = InterpRun(is, 5000);
     }
     auto endTime = SystemTime();
+
+    TraceArena(MMCurrent(), false);
 
     auto str = StringEmpty();
     int errState = 0;

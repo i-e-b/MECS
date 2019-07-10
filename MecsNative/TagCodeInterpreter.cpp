@@ -259,7 +259,7 @@ String* DbgStr(InterpreterState* is, uint32_t hash)
 
 String* DiagnosticString(DataTag tag, InterpreterState* is) {
     // TODO: Diagnostic string
-    return StringEmpty();
+    return StringEmptyInArena(is->_memory);
 }
 
 DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
@@ -556,7 +556,7 @@ void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
         // out-of-range is ignored
         auto src = CastString(is, value);
         auto srcLength = StringLength(src);
-        auto dst = StringEmpty();
+        auto dst = StringEmptyInArena(is->_memory);
         auto indexes = VecAllocateArena_int(is->_memory);
 
         for (int i = 0; i < paramCount; i++) { // get indexes from stack order to index order
@@ -1036,7 +1036,7 @@ void InterpAddIPC(InterpreterState*is, Vector* ipcMessages) {
 }
 
 String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterState* is) {
-    auto str = StringEmpty();
+    auto str = StringEmptyInArena(is->_memory);
     for (int i = startIndex; i < nbParams; i++) {
         StringAppend(str, CastString(is, param[i]));
     }
@@ -1081,7 +1081,7 @@ DataTag ChainRemainder(InterpreterState* is, int nbParams, DataTag* param) {
 
 DataTag ConcatStrings(int nbParams, InterpreterState * is, DataTag * param)
 {
-    auto str = StringEmpty();
+    auto str = StringEmptyInArena(is->_memory);
 
     for (int i = 0; i < nbParams; i++) {
         auto s = CastString(is, param[i]);
@@ -1213,7 +1213,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         uint32_t pos = 0;
         if (!StringFind(is->_input, '\n', 0, &pos)) return MustWait(is->_position);
 
-        auto str = StringEmpty();
+        auto str = StringEmptyInArena(is->_memory);
         for (int i = 0; i < pos; i++) {
             StringAppendChar(str, StringDequeue(is->_input));
         }

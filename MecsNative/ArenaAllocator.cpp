@@ -106,9 +106,9 @@ void DropArena(Arena** a) {
     *a = NULL; // kill the arena reference
 }
 
-void TraceArena(Arena* a) {
+void TraceArena(Arena* a, bool traceOn) {
 #ifdef ARENA_DEBUG
-    a->_marked = true;
+    a->_marked = traceOn;
 #endif
 }
 

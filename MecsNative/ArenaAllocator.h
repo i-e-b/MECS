@@ -60,6 +60,6 @@ void ArenaGetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes, i
 
 // Set a flag on this arena instance to help with debugging
 // The ARENA_DEBUG flag must also be defined
-void TraceArena(Arena* a);
+void TraceArena(Arena* a, bool traceOn);
 
 #endif
