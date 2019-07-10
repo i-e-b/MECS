@@ -554,8 +554,8 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
             }
 
             // OK, this is a match
-            mfree(matchStr);
-            mfree(scanStr);
+            ArenaDereference(arena, matchStr);
+            ArenaDereference(arena, scanStr);
             return true;
         }
 
@@ -564,8 +564,8 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
     }
 
     // Clean up.
-    mfree(matchStr);
-    mfree(scanStr);
+    ArenaDereference(arena, matchStr);
+    ArenaDereference(arena, scanStr);
     return false;
 }
 
