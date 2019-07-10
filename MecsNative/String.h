@@ -28,6 +28,8 @@ String* StringClone(String *str);
 
 // Create an empty string in a specific memory arena
 String *StringEmptyInArena(Arena* a);
+// Create a mutable string from a c-string in a specific memory arena
+String *StringNewInArena(const char *str, Arena* a);
 
 // Make a shallow copy of a string. Can be deallocated without affecting the original.
 // But all other operations affect the original
@@ -71,6 +73,8 @@ char StringDequeue(String* str);
 uint32_t StringHash(String* str);
 // Alloc and copy a new c-string from a mutable string. The result must be deallocated with `free()`
 char *StringToCStr(String *str);
+// Alloc and copy a new c-string from a mutable string. The result is stored in the target arena
+char *StringToCStrInArena(String *str, Arena* a);
 // Access the underlying byte vector of the string
 Vector* StringGetByteVector(String* str);
 

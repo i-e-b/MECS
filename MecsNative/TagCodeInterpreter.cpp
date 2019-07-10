@@ -109,16 +109,21 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.
 InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* debugSymbols) {
     if (tagCode == NULL) return NULL;
-    auto result = (InterpreterState*)mmalloc(sizeof(InterpreterState));
+    auto memory = NewArena(memorySize);
+    
+    auto result = (InterpreterState*)ArenaAllocateAndClear(memory, sizeof(InterpreterState));
     if (result == NULL) return NULL;
 
-    result->Functions = MapAllocate_Name_FunctionDefinition(100);
+    result->_memory = memory;
+
+    result->Functions = MapAllocateArena_Name_FunctionDefinition(100, result->_memory);
     result->DebugSymbols = debugSymbols; // ok if NULL
     result->ErrorFlag = false;
+    result->_variables = ScopeAllocate(memory);
 
-    result->_program = tagCode;
-    result->_variables = ScopeAllocate();
-    result->_memory = NewArena(memorySize);
+    //result->_program = tagCode;
+    // Copy program into this interpreter (non-destructively)
+    result->_program = VecClone(tagCode, memory);
 
     result->_position = 0;
     result->_stepsTaken = 0;
@@ -127,8 +132,8 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
     result->_returnStack = VecAllocateArena_int(result->_memory);
     result->_valueStack = VecAllocateArena_DataTag(result->_memory);
 
-    result->_input = StringEmpty();
-    result->_output = StringEmpty();
+    result->_input = StringEmptyInArena(result->_memory);
+    result->_output = StringEmptyInArena(result->_memory);
 
     if ((result->Functions == NULL)
         || (result->_returnStack == NULL)
@@ -138,7 +143,6 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
         || (result->_memory == NULL)
         || (result->_output == NULL)) {
         InterpDeallocate(result);
-        mfree(result);
         return NULL;
     }
 
@@ -151,16 +155,11 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
 void InterpDeallocate(InterpreterState* is) {
     if (is == NULL) return;
     
-    is->ErrorFlag = true;
-    if (is->_input != NULL) StringDeallocate(is->_input);
-    if (is->_output != NULL) StringDeallocate(is->_output);
-    if (is->Functions != NULL) MapDeallocate(is->Functions);
-    if (is->_returnStack != NULL) VecDeallocate(is->_returnStack);
-    if (is->_valueStack != NULL) VecDeallocate(is->_valueStack);
-    if (is->_variables != NULL) ScopeDeallocate(is->_variables);
-    if (is->_memory != NULL) DropArena(&(is->_memory));
-
-    mfree(is);
+    // All the allocations should be contained in the interpreter state's internal arena.
+    if (is->_memory != NULL) {
+        auto mr = is->_memory;
+        DropArena(&mr);
+    }
 }
 
 // Add string data to the waiting input stream
@@ -260,7 +259,7 @@ String* DbgStr(InterpreterState* is, uint32_t hash)
 
 String* DiagnosticString(DataTag tag, InterpreterState* is) {
     // TODO: Diagnostic string
-    return StringEmpty();
+    return StringEmptyInArena(is->_memory);
 }
 
 DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
@@ -557,7 +556,7 @@ void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
         // out-of-range is ignored
         auto src = CastString(is, value);
         auto srcLength = StringLength(src);
-        auto dst = StringEmpty();
+        auto dst = StringEmptyInArena(is->_memory);
         auto indexes = VecAllocateArena_int(is->_memory);
 
         for (int i = 0; i < paramCount; i++) { // get indexes from stack order to index order
@@ -1037,7 +1036,7 @@ void InterpAddIPC(InterpreterState*is, Vector* ipcMessages) {
 }
 
 String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterState* is) {
-    auto str = StringEmpty();
+    auto str = StringEmptyInArena(is->_memory);
     for (int i = startIndex; i < nbParams; i++) {
         StringAppend(str, CastString(is, param[i]));
     }
@@ -1082,7 +1081,7 @@ DataTag ChainRemainder(InterpreterState* is, int nbParams, DataTag* param) {
 
 DataTag ConcatStrings(int nbParams, InterpreterState * is, DataTag * param)
 {
-    auto str = StringEmpty();
+    auto str = StringEmptyInArena(is->_memory);
 
     for (int i = 0; i < nbParams; i++) {
         auto s = CastString(is, param[i]);
@@ -1214,7 +1213,7 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         uint32_t pos = 0;
         if (!StringFind(is->_input, '\n', 0, &pos)) return MustWait(is->_position);
 
-        auto str = StringEmpty();
+        auto str = StringEmptyInArena(is->_memory);
         for (int i = 0; i < pos; i++) {
             StringAppendChar(str, StringDequeue(is->_input));
         }
@@ -1507,7 +1506,7 @@ DataTag StoreStringAndGetReference(InterpreterState* is, String* str) {
 
 String* ReadStaticString(InterpreterState* is, int position, int length) {
     if (is == NULL) return NULL;
-    return DecodeString(is->_program, position, length);
+    return DecodeString(is->_program, position, length, is->_memory);
 }
 
 inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, int* low, int* high) {
@@ -1515,7 +1514,7 @@ inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, in
     if (*programWindow != NULL && pos >= *low && pos <= *high) return true;
 
     // out of cached range. Re-cache
-    if (*programWindow != NULL) mfree(programWindow);
+    if (*programWindow != NULL) VecFreeCache(is->_program, programWindow);
     *low = pos - 200;
     *high = pos + 400; // bias forward of current position
     *programWindow = VecCacheRange_DataTag(is->_program, low, high);
@@ -1545,7 +1544,7 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
 
     while (true){
         if (localSteps >= maxCycles) {
-            mfree(programWindow);
+            VecFreeCache(is->_program, programWindow);
             return PausedExecutionResult();
         }
         if (is->ErrorFlag) {
@@ -1622,7 +1621,7 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
 GOOD_EXIT:
     // Exited the program. Cleanup and return value
 
-    mfree(programWindow);
+    VecFreeCache(is->_program, programWindow);
 
     if (VecLength(is->_valueStack) != 0) {
         VecPop_DataTag(is->_valueStack, &evalResult);

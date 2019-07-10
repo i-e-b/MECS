@@ -1,39 +1,41 @@
 #include "Scope.h"
 
-#include "ScopeMap.h"
-#include "MemoryManager.h"
-
-
-typedef ScopeMap* MapPtr;
+typedef HashMap* MapPtr;
 typedef uint32_t Name;
 
 RegisterVectorStatics(Vec)
 RegisterVectorFor(MapPtr, Vec)
 RegisterVectorFor(DataTag, Vec)
 RegisterVectorFor(ScopeReference, Vec)
-RegisterVectorFor(ScopeMap_KVP, Vec)
+RegisterVectorFor(HashMap_KVP, Vec)
 
+RegisterHashMapStatics(Map)
+RegisterHashMapFor(Name, DataTag, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 typedef struct Scope {
     // Vector of (Hashmap of Name->DataTag)
     Vector* _scopes; // this is currently critical in tight loops. Maybe de-vector it?
+
+    // Arena for new allocations
+    Arena* _memory;
 } Scope;
 
 
-Scope* ScopeAllocate() {
-    auto result = (Scope*)mmalloc(sizeof(Scope));
+Scope* ScopeAllocate(Arena* arena) {
+    auto result = (Scope*)ArenaAllocateAndClear(arena, sizeof(Scope));
     if (result == NULL) return NULL;
 
-    auto firstMap = (MapPtr)ScopeMapAllocate();
-    if (firstMap == NULL) { mfree(result); return NULL; }
+    auto firstMap = (MapPtr)MapAllocateArena_Name_DataTag(64, arena);
+    if (firstMap == NULL) { ArenaDereference(arena, result); return NULL; }
 
-    result->_scopes = VecAllocate_MapPtr();
+    result->_scopes = VecAllocateArena_MapPtr(arena);
 
     if (result->_scopes == NULL) {
         ScopeDeallocate(result);
         return NULL;
     }
 
+    result->_memory = arena;
     VecPush_MapPtr(result->_scopes, firstMap);
     return result;
 }
@@ -44,16 +46,18 @@ void ScopeDeallocate(Scope* s) {
     if (s->_scopes != NULL) {
         MapPtr map;
         while (VecPop_MapPtr(s->_scopes, &map)) {
-            ScopeMapDeallocate(map);
+            MapDeallocate(map);
         }
         VecDeallocate(s->_scopes);
         s->_scopes = NULL;
     }
-    mfree(s);
+    auto mem = s->_memory;
+    ArenaDereference(mem, s);
+    //mfree(s);
 }
 
-Scope* ScopeClone(Scope* source) {
-    auto result = ScopeAllocate();
+Scope* ScopeClone(Scope* source, Arena* arena) {
+    auto result = ScopeAllocate(arena);
     if (source == NULL) return result;
 
     auto toCopy = ScopeAllVisible(source);
@@ -62,7 +66,7 @@ Scope* ScopeClone(Scope* source) {
     auto globalScope = *VecGet_MapPtr(result->_scopes, 0);
     ScopeReference entry;
     while (VecPop_ScopeReference(toCopy, &entry)) {
-        ScopeMapPut(globalScope, entry.crushedName, entry.value);
+        MapPut_Name_DataTag(globalScope, entry.crushedName, entry.value, true);
     }
 
     return result;
@@ -112,11 +116,11 @@ void ScopePurge(Scope * s) {
 void ScopePush(Scope* s, Vector* parameters) {
     if (s == NULL) return;
 
-    auto newLevel = ScopeMapAllocate();
+    auto newLevel = MapAllocateArena_Name_DataTag(64, s->_memory);
     if (newLevel == NULL) return;
 
     if (s->_scopes == NULL) {
-        s->_scopes = VecAllocate_MapPtr(); // THIS SHOULD NOT HAPPEN!
+        s->_scopes = VecAllocateArena_MapPtr(s->_memory); // THIS SHOULD NOT HAPPEN!
     }
     VecPush_MapPtr(s->_scopes, newLevel);
 
@@ -125,25 +129,25 @@ void ScopePush(Scope* s, Vector* parameters) {
     int length = VecLength(parameters);
     for (int i = 0; i < length; i++) {
         auto val = VecGet_DataTag(parameters, i);
-        ScopeMapPut(newLevel, ScopeNameForPosition(i), *val);
+        MapPut_Name_DataTag(newLevel, ScopeNameForPosition(i), *val, true);
     }
 }
 
 void ScopePush(Scope* s, DataTag* parameters, uint32_t paramCount) {
     if (s == NULL) return;
 
-    auto newLevel = ScopeMapAllocate();
+    auto newLevel = MapAllocateArena_Name_DataTag(64, s->_memory);
     if (newLevel == NULL) return;
 
     if (s->_scopes == NULL) {
-        s->_scopes = VecAllocate_MapPtr(); // THIS SHOULD NOT HAPPEN!
+        s->_scopes = VecAllocateArena_MapPtr(s->_memory); // THIS SHOULD NOT HAPPEN!
     }
     VecPush_MapPtr(s->_scopes, newLevel);
 
     if (parameters == NULL) return;
 
     for (int i = 0; i < paramCount; i++) {
-        ScopeMapPut(newLevel, ScopeNameForPosition(i), parameters[i]);
+        MapPut_Name_DataTag(newLevel, ScopeNameForPosition(i), parameters[i], true);
     }
 }
 
@@ -168,7 +172,7 @@ DataTag ScopeResolve(Scope* s, uint32_t crushedName) {
     DataTag* found = NULL;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scopeMap = VecGet_MapPtr(s->_scopes, i);
-        if (ScopeMapGet(*scopeMap, crushedName, &found)) {
+        if (MapGet_Name_DataTag(*scopeMap, crushedName, &found)) {
             return *found;
         }
     }
@@ -188,14 +192,14 @@ void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
     DataTag* found = NULL;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scopeMap = *VecGet_MapPtr(s->_scopes, i);
-        if ( ! ScopeMapGet(scopeMap, crushedName, &found)) {
+        if ( ! MapGet_Name_DataTag(scopeMap, crushedName, &found)) {
             continue; // not in this scope
         }
 
         if (TagsAreEqual(newValue, *found)) return; // nothing needs doing
 
         // save the new value in scope and exit
-        ScopeMapPut(scopeMap, crushedName, newValue);
+        MapPut_Name_DataTag(scopeMap, crushedName, newValue, true);
         return;
     }
 
@@ -203,7 +207,7 @@ void ScopeSetValue(Scope* s, uint32_t crushedName, DataTag newValue) {
     // We now save a new value in the inner-most scope
     MapPtr innerScope = NULL;
     VecPeek_MapPtr(s->_scopes, &innerScope);
-    ScopeMapPut(innerScope, crushedName, newValue);
+    MapPut_Name_DataTag(innerScope, crushedName, newValue, true);
 }
 
 bool ScopeCanResolve(Scope* s, uint32_t crushedName) {
@@ -217,9 +221,9 @@ void ScopeRemove(Scope* s, uint32_t crushedName) {
 
     // Only works in inner-most or global scope -- global first
     MapPtr scope = *VecGet_MapPtr(s->_scopes, 0);
-    if (ScopeMapRemove(scope, crushedName)) return;
+    if (MapRemove_Name_DataTag(scope, crushedName)) return;
     VecPeek_MapPtr(s->_scopes, &scope);
-    ScopeMapRemove(scope, crushedName);
+    MapRemove_Name_DataTag(scope, crushedName);
 }
 
 bool InScope(Scope* s, uint32_t crushedName) {
@@ -227,7 +231,7 @@ bool InScope(Scope* s, uint32_t crushedName) {
 
     MapPtr scope = NULL;
     VecPeek_MapPtr(s->_scopes, &scope);
-    return ScopeMapGet(scope, crushedName, NULL);
+    return MapGet_Name_DataTag(scope, crushedName, NULL);
 }
 
 uint32_t ScopeNameForPosition(int i) {
@@ -246,7 +250,7 @@ void ScopeMutateNumber(Scope* s, uint32_t crushedName, int8_t increment) {
     DataTag* found = NULL;
     for (int i = currentScopeIdx; i >= 0; i--) {
         auto scopeMap = VecGet_MapPtr(s->_scopes, i);
-        if (ScopeMapGet(*scopeMap, crushedName, &found)) {
+        if (MapGet_Name_DataTag(*scopeMap, crushedName, &found)) {
 
             // we have a pointer direct to the stored value, so can change it in place...
             // NOTE: we are currently assuming the data is an int32_t. In the future, we need to handle number conversion.

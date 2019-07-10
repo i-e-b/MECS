@@ -30,6 +30,6 @@ HashMap* TCR_ReadSymbols(Vector* v);
 String* TCR_Describe(Vector* data, HashMap* symbols);
 
 // Read a string out of the tag code data
-String* DecodeString(Vector* data, int position, int length);
+String* DecodeString(Vector* data, int position, int length, Arena* storage);
 
 #endif

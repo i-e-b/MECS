@@ -3,6 +3,10 @@
 
 #include <stdlib.h>
 
+#ifdef ARENA_DEBUG
+#include <iostream>
+#endif
+
 static volatile Vector* MEMORY_STACK = NULL;
 static volatile int LOCK = 0;
 
@@ -156,6 +160,10 @@ void mfree(void* ptr) {
         }
     }
     // never found it. Either bad call or we've leaked some memory
+
+#ifdef ARENA_DEBUG
+    std::cout << "mfree failed. Memory leaked.\n";
+#endif
 
     LOCK = 0;
 }

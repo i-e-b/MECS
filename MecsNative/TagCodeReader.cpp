@@ -73,12 +73,12 @@ bool TCR_FixByteOrder(Vector* v) {
     return true;
 }
 
-String* DecodeString(Vector* data, int position, int length) {
+String* DecodeString(Vector* data, int position, int length, Arena* storage) {
     int block = 0;
     char c = 0;
 
     int chunk = position;
-    auto str = StringEmpty();
+    auto str = (storage == NULL) ? StringEmpty() : StringEmptyInArena(storage);
     char* raw = (char*)VecGet_DataTag(data, chunk);
     while (length-- > 0) {
         c = *raw;
@@ -127,7 +127,7 @@ String* TCR_Describe(Vector* data, HashMap* symbols) {
         auto step = (len / 8) + ((len % 8 == 0) ? 0 : 1);
 
         if (step > 0) {
-            auto str = DecodeString(data, i, len);
+            auto str = DecodeString(data, i, len, NULL);
             StringAppendFormat(tagStr, "    \x02: (\x02) [[\x01]]\n", i-1, len, str);
             StringDeallocate(str);
             i += step;

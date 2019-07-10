@@ -6,10 +6,19 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#ifdef ARENA_DEBUG
+#include <iostream>
+#endif
+
 // maximum number of references in a zone before we give up.
 #define ZONE_MAX_REFS 65000
 
 typedef struct Arena {
+#ifdef ARENA_DEBUG
+    // Diagnostic marker
+    bool _marked;
+#endif
+
     // Bottom of free memory (after arena management is taken up)
     void* _start;
 
@@ -49,6 +58,10 @@ Arena* NewArena(size_t size) {
 
     result->_start = realMemory;
     result->_limit = byteOffset(realMemory, size - 1);
+    
+#ifdef ARENA_DEBUG
+    result->_marked = false;
+#endif
 
     // with 64KB arenas (ushort) and 1GB of RAM, we get 16384 arenas.
     // recording only heads and refs would take 64KB of management space
@@ -69,7 +82,7 @@ Arena* NewArena(size_t size) {
     auto zptr = result->_headsPtr;
     while (zptr < result->_start) {
         writeUshort(zptr, 0, 0);
-        zptr += sizeof(uint16_t);
+        zptr += 1;
     }
 
     return result;
@@ -91,6 +104,12 @@ void DropArena(Arena** a) {
 
     free(*a); // Free the arena reference itself
     *a = NULL; // kill the arena reference
+}
+
+void TraceArena(Arena* a, bool traceOn) {
+#ifdef ARENA_DEBUG
+    a->_marked = traceOn;
+#endif
 }
 
 // Copy arena data out to system-level memory. Use this for very long-lived data
@@ -138,6 +157,12 @@ void SetRefCount(Arena* a, int zoneIndex, uint16_t val) {
 void* ArenaAllocate(Arena* a, size_t byteCount) {
     if (byteCount > ARENA_ZONE_SIZE) return NULL; // Invalid allocation -- beyond max size.
     if (a == NULL) return NULL;
+
+#ifdef ARENA_DEBUG
+    if (a->_marked == true) {
+        std::cout << "A@" << a->_headsPtr << ";S" << byteCount << "\n";
+    }
+#endif
 
     auto maxOff = ARENA_ZONE_SIZE - byteCount;
     auto zoneCount = a->_zoneCount;
@@ -195,6 +220,12 @@ bool ArenaDereference(Arena* a, void* ptr) {
     if (a == NULL) return false;
     if (ptr == NULL) return false;
 
+#ifdef ARENA_DEBUG
+    if (a->_marked == true) {
+        std::cout << "D@" << a->_headsPtr << "\n";
+    }
+#endif
+
     auto zone = ZoneForPtr(a, ptr);
     if (zone < 0) return false;
 
@@ -216,6 +247,12 @@ bool ArenaDereference(Arena* a, void* ptr) {
 bool ArenaReference(Arena* a, void* ptr) {
     if (a == NULL) return false;
     if (ptr == NULL) return false;
+
+#ifdef ARENA_DEBUG
+    if (a->_marked == true) {
+        std::cout << "R@" << a->_headsPtr << "\n";
+    }
+#endif
 
     auto zone = ZoneForPtr(a, ptr);
     if (zone < 0) return false;

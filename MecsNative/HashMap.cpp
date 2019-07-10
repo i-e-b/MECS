@@ -303,7 +303,7 @@ bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {
 }
 
 Vector *HashMapAllEntries(HashMap* h) {
-    auto result = VectorAllocate(sizeof(HashMap_KVP));
+    auto result = VectorAllocateArena(h->memory, sizeof(HashMap_KVP));
     if (!VectorIsValid(h->buckets)) return result;
 
     for (uint32_t i = 0; i < h->count; i++) {

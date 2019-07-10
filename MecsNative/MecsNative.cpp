@@ -1015,51 +1015,61 @@ int TestRuntimeExec() {
 int RunProgram(const char* filename) {
     // Load, compile and  run a program inside an arena
 
+    size_t alloc, unalloc;
+    int objects;
     std::cout << "########## Attempting program: " << filename << " #########\n";
 
-    MMPush(1 MEGABYTES);
+    MMPush(1 MEGABYTE); // this is arena is used to read out the results to the console. Most memory allocations should stay inside the interpreter.
     auto program = VecAllocate_DataTag();
 
     // Compile and load
     MMPush(10 MEGABYTES);
-    auto code = StringEmpty();
-    auto fileName = StringNew(filename);
-    auto vec = StringGetByteVector(code);
-    uint64_t read = 0;
-    if (!FileLoadChunk(fileName, vec, 0, 10000, &read)) {
-        std::cout << "Failed to read file. Test inconclusive.\n";
-        return 1;
-    }
-    StringDeallocate(fileName);
-    auto compilableSyntaxTree = ParseSourceCode(code, false);
-    auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
+        auto code = StringEmpty();
+        auto fileName = StringNew(filename);
+        auto vec = StringGetByteVector(code);
+        uint64_t read = 0;
+        if (!FileLoadChunk(fileName, vec, 0, 10000, &read)) {
+            std::cout << "Failed to read file. Test inconclusive.\n";
+            return 1;
+        }
+        StringDeallocate(fileName);
+        auto compilableSyntaxTree = ParseSourceCode(code, false);
+        auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
 
-    auto nextPos = TCW_AppendToVector(tagCode, program);
+        auto nextPos = TCW_AppendToVector(tagCode, program);
 
-    StringDeallocate(code);
-    DeallocateAST(compilableSyntaxTree);
-    TCW_Deallocate(tagCode);
+        StringDeallocate(code);
+        DeallocateAST(compilableSyntaxTree);
+        TCW_Deallocate(tagCode);
     MMPop();
 
     // set-up
     auto is = InterpAllocate(program, 1 MEGABYTE, NULL);
+    VecDeallocate(program);
+
+    ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
 
     auto inp = StringNew("xhello, world\nLine2\nLine3\n"); // some sample input
     WriteInput(is, inp);
     StringDeallocate(inp);
 
+    TraceArena(MMCurrent(), true); // we shouldn't be allocating outside the interpreter
+
     // run
     auto startTime = SystemTime();
     auto result = InterpRun(is, 5000);
     while (result.State == ExecutionState::Paused) {
-        //std::cout << ".";
+        TraceArena(MMCurrent(), false);
         auto str = StringEmpty();
         ReadOutput(is, str);
         WriteStrInline(str);
         StringDeallocate(str);
+        TraceArena(MMCurrent(), true);
         result = InterpRun(is, 5000);
     }
     auto endTime = SystemTime();
+
+    TraceArena(MMCurrent(), false);
 
     auto str = StringEmpty();
     int errState = 0;
@@ -1095,8 +1105,6 @@ int RunProgram(const char* filename) {
 
 
     // Check memory state
-    size_t alloc, unalloc;
-    int objects;
     ArenaGetState(InterpInternalMemory(is), &alloc, &unalloc, NULL, NULL, &objects, NULL);
     std::cout << "Runtime used in internal memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
     ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);

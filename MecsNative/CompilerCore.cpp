@@ -3,6 +3,7 @@
 #include "CompilerOptimisations.h"
 #include "Desugar.h"
 
+#include "MemoryManager.h"
 #include "Vector.h"
 #include "FileSys.h"
 #include "TimingSys.h"
@@ -32,7 +33,7 @@ TagCodeCache* CompileRoot(TreeNode* root, bool debug, bool isSubprogram) {
         TCW_Comment(wr, header);
     }
 
-    auto parameterNames = ScopeAllocate(); // renaming for local parameters
+    auto parameterNames = ScopeAllocate(MMCurrent()); // renaming for local parameters
     auto includedFiles = MapAllocate_StringPtr_bool(32); // used to prevent multiple includes
 
     // The implementation of `Compile` is way down at the bottom

@@ -16,6 +16,9 @@
 #define MEGABYTE * 1048576
 #define GIGABYTE * 1073741824UL
 
+// Enable diagnostics
+#define ARENA_DEBUG 1
+
 typedef struct Arena Arena;
 
 // Create a new arena for memory management. Size is the maximum size for the whole
@@ -55,5 +58,8 @@ void* ArenaOffsetToPtr(Arena* a, uint32_t offset);
 // Read statistics for this Arena. Pass `NULL` for anything you're not interested in.
 void ArenaGetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes, int* occupiedZones, int* emptyZones, int* totalReferenceCount, size_t* largestContiguous);
 
+// Set a flag on this arena instance to help with debugging
+// The ARENA_DEBUG flag must also be defined
+void TraceArena(Arena* a, bool traceOn);
 
 #endif

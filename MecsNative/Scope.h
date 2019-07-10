@@ -26,10 +26,10 @@ typedef struct ScopeReference {
 typedef struct Scope Scope;
 
 // Create a new empty scope
-Scope* ScopeAllocate();
+Scope* ScopeAllocate(Arena* arena);
 // Create a new scope, copying data from an existing one.
 // All visible values from the source become globals in the result. Shadowed values are not copied
-Scope* ScopeClone(Scope* source);
+Scope* ScopeClone(Scope* source, Arena* arena);
 // Delete a scope
 void ScopeDeallocate(Scope* s);
 

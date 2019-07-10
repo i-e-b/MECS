@@ -447,6 +447,10 @@ void* VectorGet(Vector *v, int index) {
     return PtrOfElem(v, index);
 }
 
+// Free cache memory
+void VectorFreeCache(Vector* v, void* cache) {
+    VecFree(v, cache);
+}
 
 void* VectorCacheRange(Vector* v, int* lowIndex, int* highIndex) {
     if (v == NULL || v->_elementCount < 1) return NULL;
@@ -813,6 +817,32 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     // clean up
     VecFree(v, arr1);
     VecFree(v, arr2);
+}
+
+Arena* VectorArena(Vector *v) {
+    return v->_arena;
+}
+
+// Clone a vector into a new arena
+Vector* VectorClone(Vector* source, Arena* a) {
+    // this could be optimised, but we need to relocate all pointers properly if we do.
+    if (source == NULL) return NULL;
+    if (a == NULL) a = MMCurrent();
+
+    auto len = VectorLength(source);
+    auto elemSize = VectorElementSize(source);
+    auto result = VectorAllocateArena(a, elemSize);
+    VectorPrealloc(result, len);
+    for (size_t i = 0; i < len; i++) {
+        var src = PtrOfElem(source, i);
+        if (src == NULL) continue;
+
+        var dst = PtrOfElem(result, i);
+        if (dst == NULL) continue;
+
+        writeValue(dst, 0, src, elemSize);
+    }
+    return result;
 }
 
 int VectorElementSize(Vector * v) {
