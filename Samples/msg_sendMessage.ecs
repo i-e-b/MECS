@@ -1,0 +1,22 @@
+
+// Listen registers a 'target' name against this runtime.
+// From now on, for any message sent to this target, we will get a copy.
+// We can also 'wait' for a message to show up.
+// Once the program has completed, we will no longer get copies of any message,
+// so if you want to continually get messages, you have to run 'wait' in a loop.
+listen("keyboard")
+
+print("Press a key to continue")
+set(key wait("keyboard")) // We will get a run-time error if we haven't listened first?
+                           // not sure if we want to name the target, or add a timeout?
+print("You pressed" key)
+
+set(myMessage new-map("type" "line", "x0" 1, "x1" 150, "y0" 10, "y1" 200))
+
+// send( target object )
+// This exports a serialised copy of the object to the messaging system
+// and returns the interpreter in a paused state
+send("screen" myMessage)
+print("I sent a message")
+
+

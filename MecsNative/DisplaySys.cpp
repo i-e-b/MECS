@@ -1,8 +1,6 @@
 
-
 #include "DisplaySys.h"
 
-// Using MM restricts us to 64K path lengths. Should be OK for now.
 //#include <stdlib.h>
 
 

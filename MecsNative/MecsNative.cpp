@@ -1012,6 +1012,37 @@ int TestRuntimeExec() {
     return 0;
 }
 
+
+
+int AppendFinishState (ExecutionState state, String* str) {
+	int errState = 0;
+    switch (state) {
+    case ExecutionState::Complete:
+        StringAppend(str, "\r\nProgram Complete\r\n");
+        break;
+    case ExecutionState::Paused:
+        StringAppend(str, "\r\nProgram paused without finishing\r\n");
+        break;
+    case ExecutionState::Waiting:
+        StringAppend(str, "\r\nProgram waiting for input\r\n");
+        break;
+    case ExecutionState::ErrorState:
+        errState = 1;
+        StringAppend(str, "\r\nProgram ERRORED\r\n");
+        break;
+    case ExecutionState::Running:
+        errState = 1;
+        StringAppend(str, "\r\nProgram still running?\r\n");
+        break;
+    default:
+        errState = 1;
+        StringAppend(str, "\r\nUnknown State!\r\n");
+        break;
+        break;
+    }
+	return errState;
+}
+
 int RunProgram(const char* filename) {
     // Load, compile and  run a program inside an arena
 
@@ -1072,31 +1103,7 @@ int RunProgram(const char* filename) {
     TraceArena(MMCurrent(), false);
 
     auto str = StringEmpty();
-    int errState = 0;
-    switch (result.State) {
-    case ExecutionState::Complete:
-        StringAppend(str, "\r\nProgram Complete\r\n");
-        break;
-    case ExecutionState::Paused:
-        StringAppend(str, "\r\nProgram paused without finishing\r\n");
-        break;
-    case ExecutionState::Waiting:
-        StringAppend(str, "\r\nProgram waiting for input\r\n");
-        break;
-    case ExecutionState::ErrorState:
-        errState = 1;
-        StringAppend(str, "\r\nProgram ERRORED\r\n");
-        break;
-    case ExecutionState::Running:
-        errState = 1;
-        StringAppend(str, "\r\nProgram still running?\r\n");
-        break;
-    default:
-        errState = 1;
-        StringAppend(str, "\r\nUnknown State!\r\n");
-        break;
-        break;
-    }
+	int errState = AppendFinishState(result.State, str);
 
     ReadOutput(is, str);
     WriteStr(str);
@@ -1142,6 +1149,86 @@ int TestProgramSuite() {
 
     std::cout << "########## Error count = " << errs << " #########\n";
     return errs;
+}
+
+Vector* Compile(const char* filename) {
+	// Load and compile
+	auto program = VecAllocate_DataTag();
+
+	// Compile and load
+	MMPush(10 MEGABYTES);
+	auto code = StringEmpty();
+	auto fileName = StringNew(filename);
+	auto vec = StringGetByteVector(code);
+	uint64_t read = 0;
+	if (!FileLoadChunk(fileName, vec, 0, 10000, &read)) {
+		std::cout << "Failed to read file. Test inconclusive.\n";
+		return NULL;
+	}
+	StringDeallocate(fileName);
+	auto compilableSyntaxTree = ParseSourceCode(code, false);
+	auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
+
+	auto nextPos = TCW_AppendToVector(tagCode, program);
+
+	StringDeallocate(code);
+	DeallocateAST(compilableSyntaxTree);
+	TCW_Deallocate(tagCode);
+	MMPop();
+
+	return program;
+}
+
+int TestMultipleRuntimes () {
+	
+    std::cout << "***************** MULTIPLE RUNTIMES ******************\n";
+
+	auto code1 = Compile("demo_program2.ecs");
+	auto code2 = Compile("demo_program3.ecs");
+	
+    auto prog1 = InterpAllocate(code1, 1 MEGABYTE, NULL);
+    auto prog2 = InterpAllocate(code2, 1 MEGABYTE, NULL);
+
+    VecDeallocate(code1);
+    VecDeallocate(code2);
+
+
+	// alternate between running two programs
+	ExecutionResult result1, result2;
+	bool run1 = true;
+	bool run2 = true;
+	while (run1 || run2) {
+		
+		if (run1) {
+			result1 = InterpRun(prog1, 5);
+			std::cout << "1";
+		}
+		if (result1.State != ExecutionState::Paused && result1.State != ExecutionState::Waiting) run1 = false;
+		
+		if (run2) {
+			result2 = InterpRun(prog2, 5);
+			std::cout << "2";
+		}
+		if (result2.State != ExecutionState::Paused && result2.State != ExecutionState::Waiting) run2 = false;
+	}
+	
+    auto str = StringEmpty();
+	StringAppend(str, "\r\n Program 1:\r\n");
+	int errState = AppendFinishState(result1.State, str);
+    ReadOutput(prog1, str);
+
+	StringAppend(str, "\r\n Program 2:\r\n");
+	errState += AppendFinishState(result2.State, str);
+    ReadOutput(prog2, str);
+
+    WriteStr(str);
+    StringDeallocate(str);
+
+	
+    InterpDeallocate(prog1);
+    InterpDeallocate(prog2);
+
+	return 0;
 }
 
 int main() {
@@ -1207,6 +1294,11 @@ int main() {
 
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
+	
+    MMPush(10 MEGABYTES);
+    auto multi = TestMultipleRuntimes();
+    if (multi != 0) return multi;
+    MMPop();
 
     ShutdownManagedMemory();
 }

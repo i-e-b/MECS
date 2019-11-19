@@ -24,25 +24,9 @@ Language features
 
 * [x] Extended data types (vector and hash)
     * [x] Vector datatype
-      * [x] vector-index type
-      * [x] vector-as-function syntax
-      * [x] indexed get
-      * [x] set on a vector-index type
-      * [x] length
-      * [x] concat
-      * [x] push/pop/dequeue
-      * [x] CastString / print
-      * [x] Add list functions to main readme
     * [x] Hash datatype (always string-><any>)
-      * [x] hash-as-function syntax
-      * [x] get/set/unset
-      * [x] toString
-      * [x] length
-
-This next -->
 * [x] Deep-serialise a tag from runtime
   * [x] De-serialise into an arena (the original OR not the original)
-* [ ] Put ALL Interpreter allocations inside it's own memory
 
 Input handling:
 ---------------
@@ -67,6 +51,7 @@ The machine:
 * [ ] Graphics (native / win split)
   * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 
+* [x] Put ALL Interpreter allocations inside it's own memory
 * [x] Add readline / readkey support
 * [x] Performance optimise
   * [x] Special hashmap for scope (like the c# side uses); use array rather than vector.
@@ -90,8 +75,11 @@ Actor model stuff:
     * [x] Per-instance arenas for containers? (so we can be thread safe-ish)
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
+    * [ ] multiple available interpreter sessions
+    * [ ] `send`, `listen` and `wait` built-in functions with target on send and register.
+	* [ ] routing/mapping/storage between interpreter sessions (maybe a hash-map per interpreter state?)
 * [ ] Scheduler
-* [ ] Make sure all allocations for interpreter are inside its own memory space
+* [x] Make sure all allocations for interpreter are inside its own memory space
   * [ ] Suspend & resume (including suspend-to-disk)
 
 Garbage collector:
@@ -104,3 +92,4 @@ This would save us from having to track anything.
 * [-] ~extend 'potential garbage' to hold a list instead of single refs~
 * [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
 * [ ] maybe have 'destroy&recreate' for actors?
+* [ ] Avoid stop-the-world where possible.
