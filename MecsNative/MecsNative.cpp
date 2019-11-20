@@ -804,7 +804,7 @@ int TestCompiler() {
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
     //auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
-    auto pathOfValid = StringNew("hashmaps.ecs"); // should be valid source
+    auto pathOfValid = StringNew("msg_sendMessage.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
@@ -970,6 +970,7 @@ int TestRuntimeExec() {
     auto endTime = SystemTime();
     str = StringEmpty();
     ReadOutput(interp, str);
+	int resultState = 0;
     switch (result.State) {
     case ExecutionState::Complete:
         StringAppend(str, "\r\nProgram Complete");
@@ -983,9 +984,11 @@ int TestRuntimeExec() {
     case ExecutionState::ErrorState:
         StringAppend(str, "\r\nProgram ERRORED: ");
         DescribeTag(result.Result, str, symbolMap);
+		resultState = 1;
         break;
     case ExecutionState::Running:
         StringAppend(str, "\r\nProgram still running?");
+		resultState = 2;
         break;
     }
     WriteStr(str);
@@ -1009,7 +1012,7 @@ int TestRuntimeExec() {
     std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
 
 
-    return 0;
+    return resultState;
 }
 
 
@@ -1237,7 +1240,6 @@ int main() {
 
     StartManagedMemory();
 
-	/*
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1282,7 +1284,7 @@ int main() {
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
     MMPop();
-*/
+
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
@@ -1292,7 +1294,7 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-	/*
+
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
 	
@@ -1300,6 +1302,6 @@ int main() {
     auto multi = TestMultipleRuntimes();
     if (multi != 0) return multi;
     MMPop();
-	*/
+
     ShutdownManagedMemory();
 }

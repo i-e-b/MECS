@@ -101,6 +101,8 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
     add("new-list", FuncDef::NewList); add("push", FuncDef::Push);
     add("pop", FuncDef::Pop); add("dequeue", FuncDef::Dequeue);
 
+	add("listen", FuncDef::Listen); add("wait", FuncDef::Wait); add("send", FuncDef::Send);
+
     add("()", FuncDef::UnitEmpty); // empty value marker
 #undef add;
 }
@@ -1484,6 +1486,24 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
         if (!VecDequeue_DataTag(vec, &result)) { return NonResult(); }
         return result;
     }
+
+	case FuncDef::Listen:
+	{
+        return _Exception(is, "Built-in not implemented: `listen`");
+
+	}
+
+	case FuncDef::Wait:
+	{
+        return _Exception(is, "Built-in not implemented: `wait`");
+
+	}
+
+	case FuncDef::Send:
+	{
+        return _Exception(is, "Built-in not implemented: `send`");
+
+	}
 
     default:
         return _Exception(is, "Unrecognised built-in!", StringNewFormat(" Type = \x02\n", ((int)kind)));

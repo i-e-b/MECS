@@ -56,6 +56,10 @@ enum class FuncDef {
     Pop,
     Dequeue,
 
+	Send,
+	Listen,
+	Wait,
+
     UnitEmpty
 };
 

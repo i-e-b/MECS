@@ -8,11 +8,6 @@
 #include "FileSys.h"
 #include "TimingSys.h"
 
-
-
-#include <iostream>
-#include <stdio.h>
-
 // Up this if you have files over 1MB. Or write better code.
 #define MAX_IMPORT_SIZE 0xFFFFF
 
