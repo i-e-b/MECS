@@ -71,7 +71,7 @@ char StringDequeue(String* str);
 
 // Generate a hash-code for a string. Guaranteed to be non-zero for valid strings.
 uint32_t StringHash(String* str);
-// Alloc and copy a new c-string from a mutable string. The result must be deallocated with `free()`
+// Alloc and copy a new c-string from a mutable string. The result must be deallocated with `mfree()`
 char *StringToCStr(String *str);
 // Alloc and copy a new c-string from a mutable string. The result is stored in the target arena
 char *StringToCStrInArena(String *str, Arena* a);

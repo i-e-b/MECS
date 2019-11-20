@@ -39,6 +39,7 @@ enum NodeType {
     CaretRight = 107
 };
 
+// This is the body structure of each tree node produced by `ParseSourceCode()`
 typedef struct SourceNode {
     // Semantic class of the node
     NodeType NodeType;

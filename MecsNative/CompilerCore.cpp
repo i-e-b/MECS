@@ -8,6 +8,11 @@
 #include "FileSys.h"
 #include "TimingSys.h"
 
+
+
+#include <iostream>
+#include <stdio.h>
+
 // Up this if you have files over 1MB. Or write better code.
 #define MAX_IMPORT_SIZE 0xFFFFF
 
@@ -377,6 +382,30 @@ bool AllChildrenAreLeaves(TreeNode* node) {
     return true;
 }
 
+
+int CountRealFunctionParameters(TreeNode* node) {
+	int nodeCount = TreeCountChildren(node);
+
+	if (nodeCount == 0) return 0;
+
+	// any node that is function-like, has a text of "()" [that is, it has no function name] and is NOT a scope delimiter [thus is not a leaf node]
+	// this is a chain call, and should not be counted as a function parameter.
+	// Examples:
+	//     print()                     <-- zero params
+	//     print("hello" ())           <-- 2 params
+	//     print( mymap("key") )       <-- 1 param
+	//     print( mymap("k")("sub") )  <-- 1 param
+	auto childChain = TreeChild(node);
+	
+	int filteredCount = 0;
+	while (childChain != NULL) {
+		auto nodeData = TreeReadBody_SourceNode(childChain);
+		if (!StringAreEqual(nodeData->Text, "()") || !TreeCountChildren(childChain) > 0) filteredCount++; // not a chain extension
+		childChain = TreeSibling(childChain);
+	}
+	return filteredCount;
+}
+
 void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
     // 1) Compile the func to a temporary string
     // 2) Inject a new 'def' op-code, that names the function and does an unconditional jump over it.
@@ -470,7 +499,7 @@ bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, TreeNode* node
 
     TCW_Merge(wr, Compile(node, level + 1, debug, parameterNames, NULL, Context::Default));
 
-    int nodeChildCount = TreeCountChildren(node);
+    int nodeChildCount = CountRealFunctionParameters(node);
     if (debug) { TCW_Comment(wr, StringNewFormat("// Function : '\x01' with \x02 parameter(s)", funcName, nodeChildCount)); }
 
     if (StringAreEqual(funcName, "return")) { 

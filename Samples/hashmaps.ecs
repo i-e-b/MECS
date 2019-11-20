@@ -42,7 +42,8 @@ print("Now my map has " length(fullMap) " entries.")
 print(fullMap ' <- should be {"c": 3, "a": 4}')
 
 // Map containing a map
+print("Try deep decompose")
 set(mapception new-map("a" new-map("a" "failure", "b" "success")))
-print("This test is a " mapception("a")("b")) // <-- might need compiler support?
+print("This test is a " mapception("a")("b"))
 
 print("done")
