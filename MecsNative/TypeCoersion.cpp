@@ -65,6 +65,13 @@ bool CastBoolean(InterpreterState* is, DataTag encoded) {
         return CastBoolean(is, *tag);
     }
 
+	case (int)DataType::HashtableEntryPtr:
+	{
+		// if the entry exists in the hash table, we return true. Else false.
+        auto tag = (DataTag*)InterpreterDeref(is, encoded);
+        return (tag != NULL);
+	}
+
     // All the things that can't be meaningfully cast are 'false'
     default: return false;
     }

@@ -950,6 +950,9 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
     }
     case 'i': // is set? (adds a bool to the stack)
     {
+		// TODO: need to resolve index if required? This currently doesn't work with var-as-func syntax.
+		// The compiler will try to pick a single symbol to target. If the code is passing an expression,
+		// that needs to push to stack and resolve in a different way.
         auto val = EncodeBool(ScopeCanResolve(is->_variables, varRef));
         VecPush_DataTag(is->_valueStack, val);
         break;

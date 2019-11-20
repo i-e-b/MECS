@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2026
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29503.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Info", "_Info", "{3EBC1FDE-D82F-4162-A000-E31BC8B3FE47}"
 	ProjectSection(SolutionItems) = preProject
@@ -14,6 +14,33 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VisualREPL", "VisualREPL\VisualREPL.csproj", "{693ED452-AA9F-440F-9ABC-5197B650A6A0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MecsNative", "MecsNative\MecsNative.vcxproj", "{DB8506DE-61EA-42BE-8821-C85EE53CDD97}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Samples", "_Samples", "{C5334D69-CB06-4B64-BBAC-19328B49B3A1}"
+	ProjectSection(SolutionItems) = preProject
+		Samples\_todo_macros.ecs = Samples\_todo_macros.ecs
+		Samples\_unindented.ecs = Samples\_unindented.ecs
+		Samples\assertions.ecs = Samples\assertions.ecs
+		Samples\demo_program.ecs = Samples\demo_program.ecs
+		Samples\demo_program1.ecs = Samples\demo_program1.ecs
+		Samples\demo_program2.ecs = Samples\demo_program2.ecs
+		Samples\demo_program3.ecs = Samples\demo_program3.ecs
+		Samples\fib.ecs = Samples\fib.ecs
+		Samples\fib_rec.ecs = Samples\fib_rec.ecs
+		Samples\getWithIndex.ecs = Samples\getWithIndex.ecs
+		Samples\hashmaps.ecs = Samples\hashmaps.ecs
+		Samples\Importer.ecs = Samples\Importer.ecs
+		Samples\ImportMeUnit.ecs = Samples\ImportMeUnit.ecs
+		Samples\listMath.ecs = Samples\listMath.ecs
+		Samples\lists.ecs = Samples\lists.ecs
+		Samples\msg_sendMessage.ecs = Samples\msg_sendMessage.ecs
+		Samples\nestedLoops.ecs = Samples\nestedLoops.ecs
+		Samples\pick.ecs = Samples\pick.ecs
+		Samples\pick2.ecs = Samples\pick2.ecs
+		Samples\stressTest.ecs = Samples\stressTest.ecs
+		Samples\strings.ecs = Samples\strings.ecs
+		Samples\stringSearch.ecs = Samples\stringSearch.ecs
+		Samples\test.txt = Samples\test.txt
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -46,6 +46,8 @@ assert    random     eval        call     not    or
 and       readkey    readline    print    substring
 length    replace    concat      return
 
+listen send wait
+
 +    -    *    /    %
 ()
 ```
@@ -311,6 +313,41 @@ outside of the `eval`. The last value on the value-stack will be returned from t
 set(i "print")
 call(i "Hello, world")
 ```
+
+### `listen` (1+ params)
+(IPC) Set the list of event targets that should be routed to this program.
+```javascript
+listen("keyboard" "mouse")
+wait("keyboard")
+listen("mouse") // no longer listening to the keyboard event stream
+```
+
+### `send` (2 params)
+(IPC) Send an object to a named event stream. You do not need to be listening for any events to send one.
+If you send an event to a target you listen for, you will get your own event back.
+```javascript
+send("draw" new-map("type" "line", "x0" 1, "x1" 150, "y0" 10, "y1" 200))
+```
+
+### `wait` (1+ params)
+(IPC) Pause execution of the program until an event is ready on one of the streams listed.
+Program execution is always halted when wait is called, even if an event is already waiting.
+The program will be continued based on schedule.
+The call returns a map with a single key, equal to the event being returned. The value of that key depends on the event (it can be any value)
+```javascript
+listen("keyboard" "mouse")
+set(event wait("keyboard" "mouse"))
+pick(
+	if ( event("keyboard")
+		print("a key was pressed")
+	)
+
+	if ( event("mouse")
+		print("the mouse was moved")
+	)
+)
+```
+
 
 
 ## Byte code

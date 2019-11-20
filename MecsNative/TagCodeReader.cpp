@@ -128,18 +128,18 @@ String* TCR_Describe(Vector* data, HashMap* symbols) {
 
         if (step > 0) {
             auto str = DecodeString(data, i, len, NULL);
-            StringAppendFormat(tagStr, "    \x02: (\x02) [[\x01]]\n", i-1, len, str);
+			StringAppendFormat(tagStr, "\x03: (\x02) [[\x01]]\n", i - 1, len, str);
             StringDeallocate(str);
             i += step;
         } else {
-            StringAppendFormat(tagStr, "    \x02: (\x02) <empty>\n", i-1, len);
+			StringAppendFormat(tagStr, "\x03: (\x02) <empty>\n", i - 1, len);
         }
     }
 
     // Output the opcodes
     int opCount = VecLength(data);
     for (i = offset + 1; i < opCount; i++) {
-        StringAppendFormat(tagStr, "\x02  ", i);
+        StringAppendFormat(tagStr, "\x03  ", i);
         DataTag opcode = *VecGet_DataTag(data, i);
         DescribeTag(opcode, tagStr, symbols);
         StringAppendChar(tagStr, '\n');

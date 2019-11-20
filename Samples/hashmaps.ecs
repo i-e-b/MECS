@@ -24,7 +24,23 @@ print(emptyMap ' <- should be {"zoom": 2}')
 unset(emptyMap) // delete the whole map
 print(emptyMap ' <- should be empty')
 
+// Checking keys
+print("Should be 'true' " isset(fullMap("b")))
+print("Should be 'false' " isset(fullMap("x")))
+if ( fullMap("b")
+	print("You should see this message")
+)
+if ( fullMap("x")
+	print("But not this one")
+)
+
+print("My map contains " length(fullMap) " entries. I will delete one.")
 unset(fullMap("b")) // delete an entry
+print("Now my map has " length(fullMap) " entries.")
 print(fullMap ' <- should be {"c": 3, "a": 4}')
+
+// Map containing a map
+set(mapception new-map("a" new-map("b" "success")))
+print("This test is a " mapception("a")("b")) // <-- might need compiler support?
 
 print("done")

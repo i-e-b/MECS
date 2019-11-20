@@ -335,7 +335,9 @@ void DescribeTag(DataTag token, String* target, HashMap* symbols) {
     case DataType::StaticStringPtr:
         StringAppend(target, "Static string ptr [");
         StringAppendInt32Hex(target, token.data);
-        StringAppendChar(target, ']');
+        StringAppend(target, "] \"");
+
+        StringAppendChar(target, '"');
         return;
 
     case DataType::StringPtr:
