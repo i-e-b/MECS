@@ -950,12 +950,24 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
     }
     case 'i': // is set? (adds a bool to the stack)
     {
-		// TODO: need to resolve index if required? This currently doesn't work with var-as-func syntax.
-		// The compiler will try to pick a single symbol to target. If the code is passing an expression,
-		// that needs to push to stack and resolve in a different way.
-        auto val = EncodeBool(ScopeCanResolve(is->_variables, varRef));
-        VecPush_DataTag(is->_valueStack, val);
-        break;
+		if (paramCount < 1) { // check a reference is in scope
+			auto val = EncodeBool(ScopeCanResolve(is->_variables, varRef));
+			VecPush_DataTag(is->_valueStack, val);
+		} else {
+			// check if a key is present in a hash-map
+            auto target = TryPopFromValueStack(is, is->_position);
+            auto container = ScopeResolve(is->_variables, varRef);
+            ResolveIndexIfRequired(is, &target); // if this is an index reference, resolve it before continuing
+			auto src = (HashMap*)InterpreterDeref(is, container);
+            if (src == NULL) {
+				VecPush_DataTag(is->_valueStack, EncodeBool(false)); // not a valid container
+                return;
+            }
+            auto key = CastString(is, target);
+			auto found = MapGet_StringPtr_DataTag(src, key, NULL);
+			VecPush_DataTag(is->_valueStack, EncodeBool(found));
+		}
+		break;
     }
     case 'u': // unset
     {
@@ -964,7 +976,6 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
             ScopeRemove(is->_variables, varRef);
         } else { // requesting to remove entries from a hash-map?
             auto target = TryPopFromValueStack(is, is->_position);
-            //auto value = ScopeResolve(is->_variables, DecodeVariableRef(target));
             auto container = ScopeResolve(is->_variables, varRef);
             ResolveIndexIfRequired(is, &target); // if this is an index reference, resolve it before continuing
             auto src = (HashMap*)InterpreterDeref(is, container);

@@ -207,8 +207,10 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
         return;
     }
 
+	auto isAccessRequest = (StringAreEqual(nodeData->Text, "get") || StringAreEqual(nodeData->Text, "isset"));
+
     // prevent implicit `get` inside explicit `get`
-    auto context = StringAreEqual(nodeData->Text, "get") ? Context::MemoryAccess : Context::Default;
+    auto context = isAccessRequest ? Context::MemoryAccess : Context::Default;
 
     // 1. First parameter gets any child nodes expanded/compiled (excluding any `fc` from var-as-func indexing)
     // 2. Subsequent parameters get compiled as normal
@@ -229,7 +231,7 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
     auto childData = TreeReadBody_SourceNode(child);
 
     // this special case around `get` is probably an artefact of `TreePivot`
-    if (!StringAreEqual(nodeData->Text, "get") || paramCount > 0) {
+    if (!isAccessRequest || paramCount > 0) {
         TCW_Merge(wr, Compile(child, level + 1, debug, parameterNames, NULL, context));
     }
 

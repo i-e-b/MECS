@@ -25,13 +25,15 @@ unset(emptyMap) // delete the whole map
 print(emptyMap ' <- should be empty')
 
 // Checking keys
+print("Key check syntax")
+print("Should be 'true' " isset(fullMap))
 print("Should be 'true' " isset(fullMap("b")))
 print("Should be 'false' " isset(fullMap("x")))
 if ( fullMap("b")
-	print("You should see this message")
+	print("You should see this message, but not the other one")
 )
 if ( fullMap("x")
-	print("But not this one")
+	print("You should not see this message")
 )
 
 print("My map contains " length(fullMap) " entries. I will delete one.")
@@ -40,7 +42,7 @@ print("Now my map has " length(fullMap) " entries.")
 print(fullMap ' <- should be {"c": 3, "a": 4}')
 
 // Map containing a map
-set(mapception new-map("a" new-map("b" "success")))
+set(mapception new-map("a" new-map("a" "failure", "b" "success")))
 print("This test is a " mapception("a")("b")) // <-- might need compiler support?
 
 print("done")

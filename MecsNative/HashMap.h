@@ -25,7 +25,7 @@ void HashMapDeallocate(HashMap *h);
 // Do some basic sanity checks on the hash map
 bool HashMapIsValid(HashMap *h);
 
-// Returns true if value found. If so, it's pointer is copied to `*outValue`
+// Returns true if value found. If so, it's pointer is copied to `*outValue`. If outValue is null, no value is copied.
 bool HashMapGet(HashMap *h, void* key, void** outValue);
 // Add a key/value pair to the map. If `canReplace` is true, conflicts replace existing data. if false, existing data survives
 bool HashMapPut(HashMap *h, void* key, void* value, bool canReplace);
