@@ -66,7 +66,7 @@ The machine:
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
-* [ ] Add IPC in/out (vector of strings, or special serialised format)
+* [ ] Add IPC in/out (vector of strings, or special serialised format -- see Message queues below)
 * [x] Debug symbols file and reader
 * [ ] Value stack improvements (delete unused return values. Maybe have a sentinel value.)
 
@@ -80,7 +80,8 @@ Actor model stuff:
     * [x] Per-instance arenas for containers? (so we can be thread safe-ish)
 * [ ] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
-    * [ ] multiple available interpreter sessions
+    * [ ] multiple available interpreter sessions with sequencer
+	    * [ ] could load balance between cores based on idle time
     * [ ] `send`, `listen` and `wait` built-in functions with target on send and register.
 	* [ ] routing/mapping/storage between interpreter sessions (maybe a hash-map per interpreter state?)
 * [ ] Scheduler

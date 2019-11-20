@@ -9,7 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Info", "_Info", "{3EBC1FDE
 		Transcript.txt = Transcript.txt
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MecsCore", "MecsCore\MecsCore.csproj", "{9D58D57E-3979-426B-B894-F1295CE8A632}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MecsDotNet", "MecsCore\MecsDotNet.csproj", "{9D58D57E-3979-426B-B894-F1295CE8A632}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VisualREPL", "VisualREPL\VisualREPL.csproj", "{693ED452-AA9F-440F-9ABC-5197B650A6A0}"
 EndProject

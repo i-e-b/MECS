@@ -79,9 +79,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MecsCore\MecsCore.csproj">
+    <ProjectReference Include="..\MecsCore\MecsDotNet.csproj">
       <Project>{9D58D57E-3979-426B-B894-F1295CE8A632}</Project>
-      <Name>MecsCore</Name>
+      <Name>MecsDotNet</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
