@@ -292,19 +292,15 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
 // Defined at bottom
 DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataTag* param, InterpreterState* is);
 
-// Try to resolve a variable name being called as if it were a function
-// for vectors and hashmaps, this gets a proxy to the held value (or a NaR)
-// for everything else, it's an error
-DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, int nbParams, DataTag* param) {
-    auto tag = ScopeResolve(is->_variables, functionNameHash);
-
+// Read a value out of a container based on index parameters
+DataTag DecomposeContainer(InterpreterState* is, DataTag container, int nbParams, DataTag* param) {
     if (nbParams != 1) return NonResult();
 
-    switch (tag.type) {
+    switch (container.type) {
     case (int)DataType::VectorPtr:
     {
         // Return an encoding for the index. We don't actually resolve anything from the vector at this point (a get/set or use will do that)
-        return VectorIndexTag(tag.data, CastInt(is, param[0]));
+        return VectorIndexTag(container.data, CastInt(is, param[0]));
     }
     case (int)DataType::HashtablePtr:
     {
@@ -312,7 +308,7 @@ DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, 
         // look up pointer to value
         // map to arena pointer
         
-        auto offset = DecodePointer(tag);
+        auto offset = DecodePointer(container);
         auto src = (HashMap*)ArenaOffsetToPtr(is->_memory, offset);
         if (src == NULL) return NonResult();
 
@@ -332,10 +328,20 @@ DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, 
     }
 }
 
+// Try to resolve a variable name being called as if it were a function
+// for vectors and hashmaps, this gets a proxy to the held value (or a NaR)
+// for everything else, it's an error
+DataTag ResolveValueAsFunction(InterpreterState* is, uint32_t functionNameHash, int nbParams, DataTag* param) {
+    auto tag = ScopeResolve(is->_variables, functionNameHash);
+
+	return DecomposeContainer(is, tag, nbParams, param);
+}
+
 // Check to see if the tag is a vector-index or hash-entry.
 // if so, we resolve it to the stored value. Otherwise, we do nothing.
-void ResolveIndexIfRequired(InterpreterState* is, DataTag* tag) {
-    if (tag == NULL) return;
+// returns true iff an index was resolved
+bool ResolveIndexIfRequired(InterpreterState* is, DataTag* tag) {
+    if (tag == NULL) return false;
     switch (tag->type) {
     case (int)DataType::VectorIndex:
     {
@@ -348,7 +354,7 @@ void ResolveIndexIfRequired(InterpreterState* is, DataTag* tag) {
             tag->type = (int)DataType::Not_a_Result;
             tag->params = 0;
             tag->data = 0;
-            return; 
+            return false; 
         }
 
         auto newtag = VecGet_DataTag(src, idx);
@@ -356,13 +362,13 @@ void ResolveIndexIfRequired(InterpreterState* is, DataTag* tag) {
             tag->type = (int)DataType::Not_a_Result;
             tag->params = 0;
             tag->data = 0;
-            return;
+            return false;
         }
 
         tag->type = newtag->type;
         tag->params = newtag->params;
         tag->data = newtag->data;
-        return;
+        return true;
     }
 
     case (int)DataType::HashtableEntryPtr:
@@ -372,17 +378,22 @@ void ResolveIndexIfRequired(InterpreterState* is, DataTag* tag) {
         tag->type = realTag->type;
         tag->params = realTag->params;
         tag->data = realTag->data;
-        return;
+        return true;
 
     }
 
-    default: return;
+    default: return false;
     }
 }
 
 // returns true if the tag is a vector-index or hash-entry.
 bool IsContainerIndex(DataTag tag) {
     return (tag.type == (int)DataType::VectorIndex || tag.type == (int)DataType::HashtableEntryPtr);
+}
+
+// returns true if the tag is a vector or hash-map.
+bool IsContainerType(DataTag tag) {
+    return (tag.type == (int)DataType::VectorPtr || tag.type == (int)DataType::HashtablePtr);
 }
 
 inline DataTag EvaluateFunctionCall(int* position, uint32_t functionNameHash, int nbParams, DataTag* param, InterpreterState* is) {
@@ -1321,8 +1332,21 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
     }
 
     case FuncDef::UnitEmpty:
-    { // valueless marker (like an empty object)
-        return UnitReturn();
+	{
+		if (nbParams > 0) {
+			// decompose the last value on the stack (for container types)
+            auto target = TryPopFromValueStack(is, is->_position);
+			ResolveIndexIfRequired(is, &target);
+
+			if (!IsContainerType(target)) {
+				return _Exception(is, "Attempted to decompose a non-container type. ", StringNewFormat("passed a '\x02' at \x02\n", target.type, position));
+			}
+
+			return DecomposeContainer(is, target, nbParams, param);
+		} else {
+			// valueless marker (like an empty object)
+			return UnitReturn();
+		}
     }
 
 

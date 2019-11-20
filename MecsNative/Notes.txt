@@ -28,7 +28,9 @@ Language features
 * [x] Deep-serialise a tag from runtime
   * [x] De-serialise into an arena (the original OR not the original)
 
-* [ ] Nice syntax for deconstructing deep maps and lists (need to extend the `()` function)
+* [ ] Nice syntax for deconstructing deep maps and lists
+  * [x] Extend the `()` function to take parameters and decompose
+  * [ ] Fix param counting for `()` with params -- it should not be counted.
 * [x] Var-as-func truthyness for map keys
 
 Input handling:
