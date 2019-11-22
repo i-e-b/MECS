@@ -24,10 +24,15 @@ RegisterHashMapStatics(Map)
 RegisterHashMapFor(Name, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 RegisterHashMapFor(Name, FunctionDefinition, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 RegisterHashMapFor(StringPtr, DataTag, HashMapStringKeyHash, HashMapStringKeyCompare, Map)
+RegisterHashMapFor(StringPtr, VectorPtr, HashMapStringKeyHash, HashMapStringKeyCompare, Map)
+RegisterHashMapFor(StringPtr, bool, HashMapStringKeyHash, HashMapStringKeyCompare, Map)
 
 RegisterVectorStatics(Vec)
 RegisterVectorFor(DataTag, Vec)
 RegisterVectorFor(int, Vec)
+RegisterVectorFor(char, Vec)
+RegisterVectorFor(VectorPtr, Vec)
+RegisterVectorFor(HashMap_KVP, Vec)
 
 // the smallest difference considered for float equality
 const float ComparisonPrecision = 1e-10;
@@ -42,9 +47,9 @@ typedef struct InterpreterState {
     String* _input;
     String* _output;
 
-    // If the `ErrorFlag` is true, the interpreter will stop as soon as it can
-    // and return an error result.
-    bool ErrorFlag;
+	// The last known state of the interpreter. This is used for IPC and signalling errors.
+    // If the value is `ErrorState`, the interpreter should stop as soon as it can.
+	ExecutionState State;
 
     // the string table and opcodes
     Vector* _program; // Vector<DataTag> (read only)
@@ -54,6 +59,10 @@ typedef struct InterpreterState {
     // Functions that have been defined at run-time
     HashMap* Functions; // Map<CrushName -> FunctionDefinition>
     HashMap* DebugSymbols; // Map<CrushName -> String>
+
+	// Inter-Program Communication
+	HashMap* IPC_Queues; // Map<TargetName -> Vector< datavec > >; where datavec is Vector<byte>
+	HashMap* IPC_Queue_WaitFlags; // Map<TargetName -> bool>; `true` means the interpreter is waiting for this message
 
     // number of byte codes interpreted (also used for random number generation)
     int _stepsTaken;
@@ -120,7 +129,7 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
 
     result->Functions = MapAllocateArena_Name_FunctionDefinition(100, result->_memory);
     result->DebugSymbols = debugSymbols; // ok if NULL
-    result->ErrorFlag = false;
+    result->State = ExecutionState::Paused;
     result->_variables = ScopeAllocate(memory);
 
     //result->_program = tagCode;
@@ -203,7 +212,7 @@ int RollBackSubProgram(InterpreterState* is) {
     while (true) {
         rollBackCount++;
         if (!VecPop_DataTag(is->_program, NULL)) {
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             StringAppend(is->_output, "Tried to rollback a sub program. Never found the end marker.\n");
             return rollBackCount;
         }
@@ -272,7 +281,7 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
     // Pop values from stack into a param cache, putting into source-code order
     for (int i = nbParams - 1; i >= 0; i--) {
         if (!VecPop_DataTag(is->_valueStack, &(param[i]))) {
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             StringAppendFormat(is->_output, "\nValue stack underflow at position \x03 (\x02)\n", is->_position, is->_position);
             return NULL;
         }
@@ -280,7 +289,7 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
         // TODO: hunt down where invalid values are coming in.
         // Either fix, or replace with NaR. Then put this code back in.
         if (param[i].type == 0) { // invalid value!
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             // this can happen if we have an unresolved name. Should be handled earlier.
             StringAppendFormat(is->_output, "\nInvalid value in parameters! Found when calling at position \x03 (\x02)\n", is->_position, is->_position);
             //StringAppendFormat(is->_output, "Param index p \x02; Data = \x03", i, param[i].data);
@@ -402,7 +411,7 @@ inline DataTag EvaluateFunctionCall(int* position, uint32_t functionNameHash, in
     FunctionDefinition* fun = NULL;
     
     if (!MapIsValid(is->Functions)) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Function hash map has been damaged at position \x02\n", *position);
         return RuntimeError(is->_position);
     }
@@ -417,7 +426,7 @@ inline DataTag EvaluateFunctionCall(int* position, uint32_t functionNameHash, in
         }
 
         // Nope, just an error
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output,
             "Tried to call an undefined function '\x01' at position \x02\n", DbgStr(is, functionNameHash), *position);
         return RuntimeError(is->_position);
@@ -550,7 +559,7 @@ bool FoldLessThan(int nbParams, DataTag* param, InterpreterState* is) {
 inline DataTag TryPopFromValueStack(InterpreterState* is, int position) {
     DataTag tag;
     if (!VecPop_DataTag(is->_valueStack, &tag)) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Value stack underflow at position \x02", position);
         return InvalidTag();
     }
@@ -594,7 +603,7 @@ void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
     {
         
         if (paramCount < 1) { // Compiler Error: indexed get with no indexes.
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             StringAppendFormat(is->_output, "Compiler error? Tried to get a vector entry with no indicies. Position: '\x02'", is->_position);
         }
 
@@ -631,7 +640,7 @@ void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
 
         uint32_t encPtr = ArenaPtrToOffset(is->_memory, list); // allows us to place a 32-bit ptr in 64-bit space
         if (encPtr < 1) { // nonsense result from arena allocation
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             VecPush_DataTag(is->_valueStack, _Exception(is, "Arena mapping failed in indexed get from list"));
             return;
         }
@@ -643,7 +652,7 @@ void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
     case (int)DataType::HashtablePtr:
     {
         if (paramCount < 1) { // Compiler Error: indexed get with no indexes.
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             StringAppendFormat(is->_output, "Compiler error? Tried to get a hash entry with no keys. Position: '\x02'", is->_position);
         }
 
@@ -691,7 +700,7 @@ void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
 
         uint32_t encPtr = ArenaPtrToOffset(is->_memory, list); // allows us to place a 32-bit ptr in 64-bit space
         if (encPtr < 1) { // nonsense result from arena allocation
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             VecPush_DataTag(is->_valueStack, _Exception(is, "Arena mapping failed in indexed get from hash table"));
             return;
         }
@@ -703,7 +712,7 @@ void DoIndexedGet(InterpreterState* is, uint32_t varRef, uint16_t paramCount) {
 
     default:
 
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         auto info = DbgStr(is, varRef);
         StringAppendFormat(is->_output, "Tried to index the wrong kind of thing (\x01). position: '\x02'", info, is->_position);
         StringDeallocate(info);
@@ -723,7 +732,7 @@ compiles to this:
     */
 
     if (paramCount != 2) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Index set with wrong number of parameters: \x02 at position '\x02'", paramCount, is->_position);
         return;
     }
@@ -762,7 +771,7 @@ compiles to this:
     }
     default:
 
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         auto info = DbgStr(is, varRef);
         StringAppendFormat(is->_output, "Tried to set-by-index on the wrong kind of thing (\x01). position: '\x02'", info, is->_position);
         StringDeallocate(info);
@@ -775,7 +784,7 @@ inline DataType PrepareFunctionCall(int* position, uint32_t nameHash, uint16_t n
 
     auto param = ReadParams(is, nbParams);
     if (param == NULL) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
         return DataType::Exception;
     }
@@ -785,7 +794,7 @@ inline DataType PrepareFunctionCall(int* position, uint32_t nameHash, uint16_t n
     ArenaDereference(is->_memory, param);
 
     if (evalResult.type == (int)DataType::Exception) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         VecPush_DataTag(is->_valueStack, evalResult);
         return DataType::Exception;
     }
@@ -794,7 +803,7 @@ inline DataType PrepareFunctionCall(int* position, uint32_t nameHash, uint16_t n
     }
 
     if (evalResult.type == 0) { // something gave a totally invalid result
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
         return DataType::Exception;
     }
@@ -812,7 +821,7 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
 
     DataTag tag;
     if (!VecPop_DataTag(is->_valueStack, &tag)) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Value stack underflow during function definition at position \x02", *position);
         return;
     }
@@ -820,7 +829,7 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
 
     FunctionDefinition* original;
     if (MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &original)) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Function '\x01' redefined at \x02. Original at \x02.", functionNameHash, *position, original->StartPosition);
         return;
     }
@@ -875,7 +884,7 @@ inline DataType HandleControlSignal(int* position, char codeAction, int opCodeCo
     // ct - call term - a function that returns values ended without returning
     case 't':
     {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "A function returned without setting a value. Did you miss a 'return' in a function? At position \x02", position);
         return DataType::Exception;
     }
@@ -885,7 +894,7 @@ inline DataType HandleControlSignal(int* position, char codeAction, int opCodeCo
 
     default:
     {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Unknown control signal '\x04'", codeAction);
         return DataType::Exception;
     }
@@ -897,7 +906,7 @@ inline int HandleCompoundCompare(int position, char codeAction, uint16_t argCoun
     auto param = ReadParams(is, argCount);
 
     if (param == NULL) {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppend(is->_output, "Out of memory?");
         return -1;
     }
@@ -919,7 +928,7 @@ inline int HandleCompoundCompare(int position, char codeAction, uint16_t argCoun
         break;
     default:
     {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Unknown compound compare at position \x02", position);
         result = -1;
         break;
@@ -952,7 +961,7 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
         }
         DataTag tag;
         if (!VecPop_DataTag(is->_valueStack, &tag)) {
-            is->ErrorFlag = true;
+			is->State = ExecutionState::ErrorState;
             StringAppendFormat(is->_output, "There were no values to save. Did you forget a `return` in a function? Position:  \x02", *position);
             return;
         }
@@ -1003,7 +1012,7 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
     }
     default:
     {
-        is->ErrorFlag = true;
+		is->State = ExecutionState::ErrorState;
         StringAppendFormat(is->_output, "Unknown memory opcode: '\x04'", action);
         return;
     }
@@ -1057,9 +1066,65 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
 }
 
 
-// Add IPC messages to an InterpreterState (only when it's not running)
-void InterpAddIPC(InterpreterState*is, Vector* ipcMessages) {
+// Try to add an incoming IPC message to an InterpreterState.
+// Only call when the program is in a wait state.
+// The call will ignore the request if it is not interested in the target type
+// Returns false iff there is an error storing the message. Successful stores AND ignored messages return true.
+bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageData) {
+	if (is == NULL || targetName == NULL || ipcMessageData == NULL) return true; // invalid
+	if (is->IPC_Queues == NULL) return true; // no bindings
+	
+	VectorPtr *queue;
+	bool mapped = MapGet_StringPtr_VectorPtr(is->IPC_Queues, targetName, &queue);
+	if (!mapped) return true; // this one not bound
 
+	// `queue` is a vector of byte-vectors. We want to import a *copy* of the incoming data
+	// migrated into the interpreter's arena.
+
+	auto newMsg = VecClone(ipcMessageData, is->_memory); // what to do if we run out of memory?
+	if (newMsg == NULL) return false;
+	auto ok = VectorPush(*queue, newMsg);
+
+	// set a ready state if we're waiting for a message we have.
+	if (is->State == ExecutionState::IPC_Wait) {
+		bool *flag;
+		if (MapGet_StringPtr_bool(is->IPC_Queue_WaitFlags, targetName, &flag)) {
+			if (flag != NULL && *flag == true) {
+				is->State = ExecutionState::IPC_Ready;
+			}
+		}
+	}
+
+	return ok;
+}
+
+// Clear all wait flags for IPC targets
+void ResetIPCWaits(InterpreterState* is) {
+	if (is == NULL || is->IPC_Queue_WaitFlags == NULL) return;
+
+	MapClear(is->IPC_Queue_WaitFlags); // just nuke everything
+}
+
+// Add an IPC target to our wait state, and ensure any data structures are in place.
+void AddWaitFlag(InterpreterState* is, String* target) {
+	if (is == NULL || target == NULL) return;
+
+	// Check we have a queue map ready:
+	if (is->IPC_Queues == NULL) { is->IPC_Queues = MapAllocateArena_StringPtr_VectorPtr(5, is->_memory); }
+
+	// check there is a message queue for the specific target:
+	VectorPtr *msgQueue;
+	if (!MapGet_StringPtr_VectorPtr(is->IPC_Queues, target, &msgQueue)) {
+		auto newQueue = VecAllocateArena_VectorPtr(is->_memory);
+		MapPut_StringPtr_VectorPtr(is->IPC_Queues, target, newQueue, true);
+		msgQueue = &newQueue;
+	}
+
+	// check we have a queue wait map:
+	if (is->IPC_Queue_WaitFlags == NULL) { is->IPC_Queue_WaitFlags = MapAllocateArena_StringPtr_bool(5, is->_memory); }
+
+	// Finally, set the wait flag:
+	MapPut_StringPtr_bool(is->IPC_Queue_WaitFlags, target, true, true);
 }
 
 String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterState* is) {
@@ -1489,20 +1554,26 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
 	case FuncDef::Listen:
 	{
+		// Here we would add a hook into our `is` IPC map
         return _Exception(is, "Built-in not implemented: `listen`");
-
 	}
 
 	case FuncDef::Wait:
 	{
+		// Kick back to the interpreter with a special status code, and set an IPC flag for ourselves.
+		// When we resume, we should be able to read our IPC map into the value stack before continuing
         return _Exception(is, "Built-in not implemented: `wait`");
-
 	}
 
 	case FuncDef::Send:
 	{
+		// Serialise object on the stack, and place it in our IPC outbox.
+		// Then kick back to the interpreter with a special status code. The interpreter should then have
+		// access to that data and the target name. It should then distribute the message to all running
+		// programs with a matching key in their IPC map.
+		// This program can be resumed at any time without special warm-up.
+		// Senders have no idea how many (if any) programs got their message.
         return _Exception(is, "Built-in not implemented: `send`");
-
 	}
 
     default:
@@ -1587,9 +1658,49 @@ inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, in
     return true;
 }
 
+// Read a byte vector into an interpreter object, and push that to the value stack.
+bool DeserialiseIPCData(InterpreterState* is, VectorPtr ipcData, StringPtr target){
+	not yet implemented
+}
+
+// Load a message from program's queues based on that programs wait state
+bool LoadIPCData(InterpreterState *is) {
+	// We match any keys in `is->IPC_Queue_WaitFlags` with data available in `is->IPC_Queues`
+	// The first match we find, we deserialise the data into `is->_valueStack`, wrapped in a
+	// map, whose key is the matching IPC target.
+
+	if (is->IPC_Queues == NULL || is->IPC_Queue_WaitFlags == NULL) return false;
+
+	VectorPtr vecWait = MapAllEntries(is->IPC_Queue_WaitFlags); // Vector<HashMap_KVP>
+
+	bool ok = false;
+	// For each message we're waiting for...
+	HashMap_KVP waitEntry;
+	while (VecPop_HashMap_KVP(vecWait, &waitEntry)) {
+		StringPtr target = *((StringPtr*)waitEntry.Key);
+		bool set = *((bool*)waitEntry.Value);
+
+		// ... see if we have data ...
+		VectorPtr *vecData;
+		bool found = MapGet_StringPtr_VectorPtr(is->IPC_Queues, target, &vecData);
+		if (!found || vecData == NULL) continue; // no queue?
+		if (VecLength(*vecData) < 1) continue; // empty queue
+
+		VectorPtr ipcObject;
+		if (!VecDequeue_VectorPtr(*vecData, &ipcObject)) continue; // failed to read object?
+
+		ok = DeserialiseIPCData(is, ipcObject, target);
+		VecDeallocate(ipcObject); // we will have copied the data by deserialising.
+		break; // only load one message at a time
+	}
+	VecDeallocate(vecWait);
+
+	return ok;
+}
+
 // Run the interpreter until end or cycle count (whichever comes first)
-// Remember to check execution state afterward
-ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
+// This is the internal call. The public one is below (it sets the last state of the interpreter)
+ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
     if (is == NULL) {
         return FailureResult(0);
     }
@@ -1597,15 +1708,26 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
     auto programEnd = VectorLength(is->_program);
     int localSteps = 0;
 
+
+	// TODO: if we are coming out of an IPC wait state, we need to load the message data onto the value stack here.
+	if (is->State == ExecutionState::IPC_Ready) {
+		auto ok = LoadIPCData(is);
+		if (!ok) {
+			_Exception(is, "Failed to load IPC data");
+			return FailureResult(0);
+		}
+	}
+
     DataTag* programWindow = NULL;
     int lowIndex = -1, highIndex = -1;
+	is->State = ExecutionState::Running;
 
     while (true){
         if (localSteps >= maxCycles) {
             VecFreeCache(is->_program, programWindow);
             return PausedExecutionResult();
         }
-        if (is->ErrorFlag) {
+        if (is->State == ExecutionState::ErrorState) {
             uint32_t errPos = 0;
             // try to read exception position
             if (VecPop_DataTag(is->_valueStack, &evalResult)) { if (evalResult.type == (int)DataType::Exception) errPos = evalResult.data; }
@@ -1693,5 +1815,14 @@ GOOD_EXIT:
     VecClear(is->_valueStack);
     is->_position = 0;
 
-    return CompleteExecutionResult(evalResult);
+	return CompleteExecutionResult(evalResult);
 }
+
+// Run the interpreter until end or cycle count (whichever comes first)
+// Remember to check execution state afterward
+ExecutionResult InterpRun(InterpreterState* is, int maxCycles) {
+	auto result = InterpRunInternal(is, maxCycles);
+	is->State = result.State;
+	return result;
+}
+

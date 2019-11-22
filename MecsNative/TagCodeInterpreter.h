@@ -10,22 +10,33 @@
 enum class ExecutionState {
     // Program could continue, but stopped by request (debug, step, etc.)
     Paused,
-    // Program stopped its own to wait for input (messages, console in, etc.)
+    // Program stopped to wait for console input
     Waiting,
     // Program ran to completion
     Complete,
     // Program is currently running
     Running,
     // Program failed with an error
-    ErrorState
+    ErrorState,
+
+	// Program is waiting for an IPC message
+	IPC_Wait,
+	// Program wants to send an IPC message
+	IPC_Send,
+	// Program can continue after IPC_Wait state
+	IPC_Ready
 };
 typedef struct ExecutionResult {
     // If/how the interpreter stopped
     ExecutionState State;
     // If completed, the result of execution
     DataTag Result;
-    // If not null, the execution sent messages in this vector (TODO)
-    Vector* IPC;
+
+	// To send a message, the execution state must be `IPC_Send`, and both `IPC_Out_Target` and `IPC_Out_Data` must be set.
+	// If not null, the target name for an outgoing message.
+	String* IPC_Out_Target;
+    // If not null, the serialised data to be send to other programs
+    Vector* IPC_Out_Data;
 } ExecutionResult;
 
 // Runtime state and stack for the interpreter
@@ -43,8 +54,11 @@ void InterpDeallocate(InterpreterState* is);
 // Remember to check execution state afterward
 ExecutionResult InterpRun(InterpreterState* is, int maxCycles);
 
-// Add IPC messages to an InterpreterState (only when it's not running)
-void InterpAddIPC(InterpreterState* is, Vector* ipcMessages);
+// Try to add an incoming IPC message to an InterpreterState.
+// Only call when the program is in a wait state.
+// The call will ignore the request if it is not interested in the target type
+// returns false if there was not enough memory to store the event.
+bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageData);
 
 // Add string data to the waiting input stream
 void WriteInput(InterpreterState* is, String* str);

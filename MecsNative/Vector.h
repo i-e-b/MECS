@@ -7,6 +7,7 @@
 // Generalised auto-sizing vector
 // Can be used as a stack or array
 typedef struct Vector Vector;
+typedef Vector* VectorPtr;
 
 // Create a new dynamic vector with the given element size (must be fixed per vector)
 Vector *VectorAllocate(int elementSize);

@@ -78,14 +78,14 @@ Actor model stuff:
     * [x] Remove stdlib malloc/free and replace 
     * [x] Fix arena/zone naming consistency in the allocator code
     * [x] Per-instance arenas for containers? (so we can be thread safe-ish)
-* [ ] Serialisation & hashing (will help escape arenas)
+* [x] Serialisation & hashing (will help escape arenas)
 * [ ] Message queues
     * [ ] multiple available interpreter sessions with sequencer
 	    * [ ] could load balance between cores based on idle time
     * [ ] `send`, `listen` and `wait` built-in functions with target on send and register.
 	* [ ] routing/mapping/storage between interpreter sessions (maybe a hash-map per interpreter state?)
 * [ ] Scheduler
-  * [ ] start new process -- maybe by sending a specific message? (`send("start" "myprog.ecs")`)
+  * [ ] start new process -- maybe by sending a specific message? (`send("start" "myprog.ecs")`) or a new built-in (`run-prog("myprog.ecs")`)
 * [x] Make sure all allocations for interpreter are inside its own memory space
   * [ ] Suspend & resume (including suspend-to-disk)
 
