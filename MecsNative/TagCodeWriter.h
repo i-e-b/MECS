@@ -58,11 +58,15 @@ int TCW_AppendToStream(TagCodeCache* tcc, Vector* existing);
 // this is mainly for use with 'eval' runtime code generation. Returns start of code index.
 int TCW_AppendToVector(TagCodeCache* tcc, Vector* existing);
 
-// Add a symbol set to the known symbols table
+// Input a symbol set to the known symbols table
 bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym);
 
-// Return the original names of variable references we've hashed. Keys are the Variable Ref byte codes
+// Return the original names of variable references we've hashed. Keys are the Variable Ref byte codes (Map<uint32 -> StringPtr>)
 HashMap* TCW_GetSymbols(TagCodeCache* tcc);
+
+// Read the symbols from this tag code writer into an existing Map<uint32->StringPtr>
+// The arena will be used to store copies of the string data.
+void TCW_GetSymbolsTo(TagCodeCache* tcc, HashMap* sym, Arena* strMem);
 
 // Adds a symbol map to a BYTE vector.
 bool TCW_WriteSymbolsToStream(TagCodeCache* tcc, Vector* existing);

@@ -25,6 +25,8 @@ String* StringFromInt32(int32_t i);
 void StringClear(String *str);
 // Make a copy of a string (copies storage, so you can edit one without affecting the other)
 String* StringClone(String *str);
+// Make a copy of a string in a new arena
+String* StringClone(String *str, Arena* a);
 
 // Create an empty string in a specific memory arena
 String *StringEmptyInArena(Arena* a);

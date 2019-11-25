@@ -97,6 +97,9 @@
     <ClCompile Include="Serialisation.cpp">
       <Filter>Source Files\Encoding</Filter>
     </ClCompile>
+    <ClCompile Include="RuntimeScheduler.cpp">
+      <Filter>Source Files\Runtime</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -170,6 +173,9 @@
     </ClInclude>
     <ClInclude Include="Serialisation.h">
       <Filter>Source Files\Encoding</Filter>
+    </ClInclude>
+    <ClInclude Include="RuntimeScheduler.h">
+      <Filter>Source Files\Runtime</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

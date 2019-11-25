@@ -201,6 +201,13 @@ void StringAppend(String *first, String *second) {
     first->hashval = 0;
 }
 
+String* StringClone(String *str, Arena* a) {
+	if (str == NULL || a == NULL) return NULL;
+	auto outp = StringEmptyInArena(a);
+	StringAppend(outp, str);
+	return outp;
+}
+
 String* StringClone(String *str) {
     auto outp = StringEmpty();
     StringAppend(outp, str);

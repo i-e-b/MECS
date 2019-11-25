@@ -41,6 +41,7 @@ typedef struct ExecutionResult {
 
 // Runtime state and stack for the interpreter
 typedef struct InterpreterState InterpreterState;
+typedef InterpreterState* InterpreterStatePtr;
 
 // Start up an interpreter.
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.

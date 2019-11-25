@@ -24,6 +24,7 @@
 #include "CompilerCore.h"
 #include "TagCodeInterpreter.h"
 #include "TypeCoersion.h"
+#include "RuntimeScheduler.h"
 
 
 typedef struct exampleElement {
@@ -804,7 +805,7 @@ int TestCompiler() {
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
     //auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
-    auto pathOfValid = StringNew("msg_sendMessage.ecs"); // should be valid source
+    auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
@@ -1037,8 +1038,9 @@ int TestRuntimeExec() {
 
 
 
-int AppendFinishState (ExecutionState state, String* str) {
+int AppendFinishState (InterpreterState* is, ExecutionResult result, String* str) {
 	int errState = 0;
+	auto state = result.State;
     switch (state) {
     case ExecutionState::Complete:
         StringAppend(str, "\r\nProgram Complete\r\n");
@@ -1057,10 +1059,25 @@ int AppendFinishState (ExecutionState state, String* str) {
         errState = 1;
         StringAppend(str, "\r\nProgram still running?\r\n");
         break;
-    default:
-        errState = 1;
-        StringAppend(str, "\r\nUnknown State!\r\n");
-        break;
+	case ExecutionState::IPC_Send:
+		StringAppend(str, "\r\nProgram wants to send '");
+		StringAppend(str, result.IPC_Out_Target);
+		StringAppendFormat(str, "' with \x02 bytes of data", VectorLength(result.IPC_Out_Data));
+		break;
+	case ExecutionState::IPC_Wait:
+		{
+			StringAppend(str, "\r\nProgram wants is waiting for IPC data: ");
+			auto waits = InterpWaitingIPC(is);
+			StringPtr targ;
+			while (VecPop_StringPtr(waits, &targ)) {
+				StringAppend(str, targ);
+				StringAppend(str, "; ");
+			}
+		}
+		break;
+
+	default:
+		StringAppendFormat(str, "\r\nUNKNOWN STOP STATE \x03", (int)result.State);
         break;
     }
 	return errState;
@@ -1126,7 +1143,7 @@ int RunProgram(const char* filename) {
     TraceArena(MMCurrent(), false);
 
     auto str = StringEmpty();
-	int errState = AppendFinishState(result.State, str);
+	int errState = AppendFinishState(is, result, str);
 
     ReadOutput(is, str);
     WriteStr(str);
@@ -1237,11 +1254,11 @@ int TestMultipleRuntimes () {
 	
     auto str = StringEmpty();
 	StringAppend(str, "\r\n Program 1:\r\n");
-	int errState = AppendFinishState(result1.State, str);
+	int errState = AppendFinishState(prog1, result1, str);
     ReadOutput(prog1, str);
 
 	StringAppend(str, "\r\n Program 2:\r\n");
-	errState += AppendFinishState(result2.State, str);
+	errState += AppendFinishState(prog2, result2, str);
     ReadOutput(prog2, str);
 
     WriteStr(str);
@@ -1252,6 +1269,38 @@ int TestMultipleRuntimes () {
     InterpDeallocate(prog2);
 
 	return 0;
+}
+
+int TestIPC() {
+	int result = 0;
+	
+    std::cout << "***************** INTERPROCESS MESSAGING ******************\n";
+
+	auto sched = RTSchedulerAllocate();
+
+	RTSchedulerAddProgram(sched, StringNew("ipc_prog1.ecs"));
+	RTSchedulerAddProgram(sched, StringNew("ipc_prog2.ecs"));
+
+	while (RTSchedulerRun(sched, 50)) { // more rounds = less overhead, but coarser time slicing
+		// system time is fun time
+	}
+
+	// now check to see if there was an error
+
+	RTSchedulerDeallocate(&sched);
+/*
+	auto code1 = Compile("ipc_prog1.ecs");
+	auto code2 = Compile("ipc_prog2.ecs");
+	
+    auto prog1 = InterpAllocate(code1, 1 MEGABYTE, NULL);
+    auto prog2 = InterpAllocate(code2, 200 KILOBYTES, NULL);
+
+    VecDeallocate(code1);
+    VecDeallocate(code2);
+	*/
+	// TODO: loop until both are finished, doing IPC when needed.
+
+	return result;
 }
 
 int main() {
@@ -1314,7 +1363,7 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-/*
+
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
 	
@@ -1322,6 +1371,6 @@ int main() {
     auto multi = TestMultipleRuntimes();
     if (multi != 0) return multi;
     MMPop();
-	*/
+	
     ShutdownManagedMemory();
 }

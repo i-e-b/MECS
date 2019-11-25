@@ -487,6 +487,22 @@ bool TCW_AddSymbols(TagCodeCache* tcc, HashMap* sym) {
     return ok;
 }
 
+
+void TCW_GetSymbolsTo(TagCodeCache* tcc, HashMap* sym, Arena* strMem) {
+    if (tcc == NULL || sym == NULL) return;
+	
+    auto content = MapAllEntries( tcc->_symbols);
+
+    HashMap_KVP entry;
+    while (VecPop_HashMap_KVP(content, &entry)) {
+		auto newStr = StringClone(*(StringPtr*)entry.Value, strMem);
+		MapPut_int_StringPtr(sym, *(int32_t*)entry.Key, newStr, true);
+    }
+    VecDeallocate(content);
+
+    return;
+}
+
 HashMap* TCW_GetSymbols(TagCodeCache* tcc) {
     if (tcc == NULL) return NULL;
     return tcc->_symbols;
