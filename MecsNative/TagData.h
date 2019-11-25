@@ -56,6 +56,10 @@ enum class DataType {
     // The triggering opcode will be repeated when more input is available
     MustWait = 250,
 
+	// This special value means the program requires an IPC message.
+	// The triggering call will *NOT* be repeated when a message is available.
+	IPCWait = 251,
+
     Flag = 0xFF // A marker for internal testing
 };
 
@@ -92,8 +96,11 @@ DataTag RuntimeError(uint32_t bytecodeLocation);
 DataTag MarkEndOfSubProgram();
 DataTag MarkEndOfProgram();
 
-// Interpreter has to pause
+// Interpreter has to pause for console input
 DataTag MustWait(uint32_t resumePosition);
+
+// Interpreter has to pause for IPC input
+DataTag IPCWaitRequest();
 
 // Encode an op-code with up to 2x16 bit params
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2);

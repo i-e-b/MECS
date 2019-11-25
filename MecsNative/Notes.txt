@@ -85,7 +85,8 @@ Actor model stuff:
     * [ ] `send`, `listen` and `wait` built-in functions with target on send and register.
 	* [ ] routing/mapping/storage between interpreter sessions (maybe a hash-map per interpreter state?)
 * [ ] Scheduler
-  * [ ] start new process -- maybe by sending a specific message? (`send("start" "myprog.ecs")`) or a new built-in (`run-prog("myprog.ecs")`)
+  * [ ]      start new process -- maybe by sending a specific message? (`send("start" "myprog.ecs")`) or a new built-in (`run-prog("myprog.ecs")`)
+  * [ ] -OR- have a scheduler script that starts up multiple programs.
 * [x] Make sure all allocations for interpreter are inside its own memory space
   * [ ] Suspend & resume (including suspend-to-disk)
 

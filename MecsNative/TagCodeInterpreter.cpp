@@ -7,6 +7,7 @@
 #include "TagCodeReader.h"
 #include "TypeCoersion.h"
 #include "MathBits.h"
+#include "Serialisation.h"
 
 // required only for 'eval'
 #include "SourceCodeTokeniser.h"
@@ -32,6 +33,7 @@ RegisterVectorFor(DataTag, Vec)
 RegisterVectorFor(int, Vec)
 RegisterVectorFor(char, Vec)
 RegisterVectorFor(VectorPtr, Vec)
+RegisterVectorFor(StringPtr, Vec)
 RegisterVectorFor(HashMap_KVP, Vec)
 
 // the smallest difference considered for float equality
@@ -252,6 +254,18 @@ ExecutionResult WaitingExecutionResult() {
     ExecutionResult r = {};
     r.Result = NonResult();
     r.State = ExecutionState::Waiting;
+    return r;
+}
+ExecutionResult IPCWaitExecutionResult() {
+    ExecutionResult r = {};
+    r.Result = NonResult();
+    r.State = ExecutionState::IPC_Wait;
+    return r;
+}
+ExecutionResult IPCSendExecutionResult() {
+    ExecutionResult r = {};
+    r.Result = NonResult();
+    r.State = ExecutionState::IPC_Send;
     return r;
 }
 
@@ -1102,7 +1116,15 @@ bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageDa
 void ResetIPCWaits(InterpreterState* is) {
 	if (is == NULL || is->IPC_Queue_WaitFlags == NULL) return;
 
-	MapClear(is->IPC_Queue_WaitFlags); // just nuke everything
+	// deallocate all the string keys
+	auto ptrs = MapAllEntries(is->IPC_Queue_WaitFlags); // Vector<HashMap_KVP>
+	HashMap_KVP target;
+	while (VecPop_HashMap_KVP(ptrs, &target)) {
+		StringDeallocate(*((StringPtr*)target.Key));
+	}
+
+	// wipe the map
+	MapClear(is->IPC_Queue_WaitFlags);
 }
 
 // Add an IPC target to our wait state, and ensure any data structures are in place.
@@ -1125,6 +1147,20 @@ void AddWaitFlag(InterpreterState* is, String* target) {
 
 	// Finally, set the wait flag:
 	MapPut_StringPtr_bool(is->IPC_Queue_WaitFlags, target, true, true);
+}
+
+Vector* InterpWaitingIPC(InterpreterState* is) {
+	auto result = VecAllocateArena_StringPtr(is->_memory);
+
+	if (is->IPC_Queue_WaitFlags != NULL) {
+		auto ptrs = MapAllEntries(is->IPC_Queue_WaitFlags); // Vector<HashMap_KVP>
+		HashMap_KVP target;
+		while (VecPop_HashMap_KVP(ptrs, &target)) {
+			VecPush_StringPtr(result, *((StringPtr*)target.Key));
+		}
+	}
+
+	return result;
 }
 
 String *ConcatList(int nbParams, DataTag* param, int startIndex, InterpreterState* is) {
@@ -1555,14 +1591,57 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 	case FuncDef::Listen:
 	{
 		// Here we would add a hook into our `is` IPC map
-        return _Exception(is, "Built-in not implemented: `listen`");
+		// The 'listen' call replaces any other previous calls.
+		// So if you call `listen("a" "b")` and then `listen("a" "c")`
+		// The second call would destroy the 'b' queue and add a new 'c' queue.
+
+		// Check we have a queue map ready:
+		if (is->IPC_Queues == NULL) { is->IPC_Queues = MapAllocateArena_StringPtr_VectorPtr(5, is->_memory); }
+
+		// check there is a message queue for each specific target:
+		for (int i = 0; i < nbParams; i++) {
+			auto target = CastString(is, param[i]);
+			if (StringLength(target) < 1) continue; // ignore empty strings
+
+			VectorPtr* msgQueue;
+			if (!MapGet_StringPtr_VectorPtr(is->IPC_Queues, target, &msgQueue)) {
+				auto newQueue = VecAllocateArena_VectorPtr(is->_memory);
+				MapPut_StringPtr_VectorPtr(is->IPC_Queues, target, newQueue, true);
+				msgQueue = &newQueue;
+			} else {
+				StringDeallocate(target);
+			}
+		}
+
+		// TODO: remove the old queues.
+		// Maybe it would be better to make a new queue set and move any still active ones over.
+
+        //return _Exception(is, "Built-in not implemented: `listen`");
 	}
 
 	case FuncDef::Wait:
 	{
+		if (is->IPC_Queues == NULL) return _Exception(is, "Tried to `wait`, but you didn't say `listen` first.");
+
 		// Kick back to the interpreter with a special status code, and set an IPC flag for ourselves.
 		// When we resume, we should be able to read our IPC map into the value stack before continuing
-        return _Exception(is, "Built-in not implemented: `wait`");
+		ResetIPCWaits(is);
+		if (is->IPC_Queue_WaitFlags == NULL) { is->IPC_Queue_WaitFlags = MapAllocateArena_StringPtr_bool(5, is->_memory); }
+		
+		// Re-add every requested target
+		// also, check we have an appropriate queue, otherwise fail.
+		for (int i = 0; i < nbParams; i++) {
+			auto target = CastString(is, param[i]);
+			if (StringLength(target) < 1) continue; // ignore empty strings
+
+			bool listening = MapGet_StringPtr_VectorPtr(is->IPC_Queues, target, NULL);
+			if (!listening) return _Exception(is, "Tried to `wait` for a message you didn't add to `listen`");
+
+			if (!MapPut_StringPtr_bool(is->IPC_Queue_WaitFlags, target, true, true)) {
+				return _Exception(is, "`wait` failed: could not store wait states");
+			}
+		}
+        return IPCWaitRequest();
 	}
 
 	case FuncDef::Send:
@@ -1659,8 +1738,26 @@ inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, in
 }
 
 // Read a byte vector into an interpreter object, and push that to the value stack.
-bool DeserialiseIPCData(InterpreterState* is, VectorPtr ipcData, StringPtr target){
-	not yet implemented
+bool DeserialiseIPCData(InterpreterState* is, VectorPtr ipcData, StringPtr target) {
+	DataTag dest; // ref we will put in the map
+    bool ok = DefrostFromVector(&dest, is->_memory, ipcData);
+	if (!ok) return false;
+
+	// Make a map to store it in
+	auto map = MapAllocateArena_StringPtr_DataTag(1, is->_memory);
+	if (map == NULL) return false;
+
+	// add the data
+	ok = MapPut_StringPtr_DataTag(map, target, dest, true);
+	if (!ok) return false;
+	
+	// Encode a pointer to the map
+	uint32_t encPtr = ArenaPtrToOffset(is->_memory, map); // allows us to place a 32-bit ptr in 64-bit space
+	if (encPtr < 1) { return false; } // nonsense result from arena allocation
+	DataTag final = EncodePointer(encPtr, DataType::HashtablePtr);
+
+	// push into the value stack
+	return VecPush_DataTag(is->_valueStack, final);
 }
 
 // Load a message from program's queues based on that programs wait state
@@ -1704,12 +1801,13 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
     if (is == NULL) {
         return FailureResult(0);
     }
+
     DataTag evalResult = {};
     auto programEnd = VectorLength(is->_program);
     int localSteps = 0;
 
 
-	// TODO: if we are coming out of an IPC wait state, we need to load the message data onto the value stack here.
+	// If we are coming out of an IPC wait state, we need to load the message data onto the value stack here.
 	if (is->State == ExecutionState::IPC_Ready) {
 		auto ok = LoadIPCData(is);
 		if (!ok) {
@@ -1766,10 +1864,14 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
             uint8_t p3;
             DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2, &p3);
             auto result = ProcessOpCode(codeClass, codeAction, p1, p2, p3, &(is->_position), word, is);
+			
+			// TODO: make a flag bit for these lot...
             if (result == DataType::Exception) { // program failed
                 return FailureResult(is->_position);
             } else if (result == DataType::MustWait) { // program is waiting for input, and is yielding
                 return WaitingExecutionResult();
+			} else if (result == DataType::IPCWait) {
+				return IPCWaitExecutionResult();
             } else if (result == DataType::EndOfProgram) { // program is exiting early (based on logic)
                 goto GOOD_EXIT;
             }

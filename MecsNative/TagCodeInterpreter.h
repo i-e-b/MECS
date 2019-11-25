@@ -60,6 +60,10 @@ ExecutionResult InterpRun(InterpreterState* is, int maxCycles);
 // returns false if there was not enough memory to store the event.
 bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageData);
 
+// Return a vector of IPC targets the interpreter is waiting for. Caller should dealloc the vector but not the strings.
+// Returns Vector<StringPtr>
+Vector* InterpWaitingIPC(InterpreterState* is);
+
 // Add string data to the waiting input stream
 void WriteInput(InterpreterState* is, String* str);
 

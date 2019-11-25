@@ -986,10 +986,30 @@ int TestRuntimeExec() {
         DescribeTag(result.Result, str, symbolMap);
 		resultState = 1;
         break;
+	case ExecutionState::IPC_Send:
+		StringAppend(str, "\r\nProgram wants to send '");
+		StringAppend(str, result.IPC_Out_Target);
+		StringAppendFormat(str, "' with \x02 bytes of data", VectorLength(result.IPC_Out_Data));
+		break;
+	case ExecutionState::IPC_Wait:
+		{
+			StringAppend(str, "\r\nProgram wants is waiting for IPC data: ");
+			auto waits = InterpWaitingIPC(interp);
+			StringPtr targ;
+			while (VecPop_StringPtr(waits, &targ)) {
+				StringAppend(str, targ);
+				StringAppend(str, "; ");
+			}
+		}
+		break;
     case ExecutionState::Running:
         StringAppend(str, "\r\nProgram still running?");
 		resultState = 2;
         break;
+	default:
+		StringAppendFormat(str, "\r\nUNKNOWN STOP STATE \x03", (int)result.State);
+		resultState = 3;
+		break;
     }
     WriteStr(str);
     StringDeallocate(str);
@@ -1294,7 +1314,7 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-
+/*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
 	
@@ -1302,6 +1322,6 @@ int main() {
     auto multi = TestMultipleRuntimes();
     if (multi != 0) return multi;
     MMPop();
-
+	*/
     ShutdownManagedMemory();
 }

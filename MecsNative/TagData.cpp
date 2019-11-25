@@ -30,6 +30,10 @@ DataTag MustWait(uint32_t resumePosition) {
     return DataTag{ (int)DataType::MustWait, 0, resumePosition };
 };
 
+DataTag IPCWaitRequest() {
+    return DataTag{ (int)DataType::IPCWait, 0, 0 };
+}
+
 // return a tag that is never valid (denotes an error)
 DataTag InvalidTag() {
     return DataTag{ (int)DataType::Invalid, 0, 0 };
