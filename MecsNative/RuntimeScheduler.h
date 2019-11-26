@@ -42,9 +42,9 @@ bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath);
 
 // Run ONE of the scheduled programs for a given number of rounds.
 // Each time you call this, a different program may be given the rounds.
-// Will return false if there is a fault or all programs have ended.
+// Will return non-zero if there is a fault or all programs have ended.
 // (use `RTSchedulerState` function to get a flag, and the `RTSchedulerProgramStatistics` function to get detailed states)
-bool RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds);
+int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds);
 
 // Return a state for the scheduler
 SchedulerState RTSchedulerState(RuntimeSchedulerPtr sched);

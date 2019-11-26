@@ -269,6 +269,13 @@ ExecutionResult IPCSendExecutionResult() {
     return r;
 }
 
+
+// Return the most recent interpreter state
+ExecutionState InterpreterCurrentState(InterpreterState* is) {
+	if (is == NULL) return ExecutionState::ErrorState;
+	return is->State;
+}
+
 String* DbgStr(InterpreterState* is, uint32_t hash)
 {
     if (is->DebugSymbols == NULL) {

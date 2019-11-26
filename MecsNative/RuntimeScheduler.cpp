@@ -117,8 +117,82 @@ bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath){
 // Each time you call this, a different program may be given the rounds.
 // Will return false if there is a fault or all programs have ended.
 // (use `RTSchedulerState` function to get a flag, and the `RTSchedulerProgramStatistics` function to get detailed states)
-bool RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds){
+int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds) {
+	if (sched == NULL) return 1;
 
+	// ensure we're in bounds
+	int max = VectorLength(sched->interpreters);
+	if (sched->roundRobin >= max) { sched->roundRobin = 0; }
+
+	// find the interpreter
+	auto isp = VectorGet_InterpreterStatePtr(sched->interpreters, sched->roundRobin);
+	if (isp == NULL || *isp == NULL) return 2;
+	auto is = *isp;
+
+	// check state and run if appropriate
+	// if not, we do nothing and return true (expecting the scheduler to be run endlessly)
+	auto state = InterpreterCurrentState(is);
+	ExecutionResult result;
+	switch (state) {
+		// Valid run states
+		case ExecutionState::Paused:
+		case ExecutionState::Waiting: // will loop if not enough data
+		case ExecutionState::IPC_Ready:
+			result = InterpRun(is, rounds);
+			break;
+
+		// Valid wait states
+		case ExecutionState::Complete:
+		case ExecutionState::Running:
+		case ExecutionState::IPC_Wait:
+			return 0;
+
+		// Fail states
+		default:
+			return 3;
+	}
+
+	// check the result state
+	// if there is IPC data, dish it out
+	switch (result.State) {
+		// Invalid stop states
+		case ExecutionState::ErrorState:
+		case ExecutionState::Running:
+			return 4;
+
+		// Broadcast IPC to all programs (including self)
+		case ExecutionState::IPC_Send:
+		{
+			if (result.IPC_Out_Target == NULL || result.IPC_Out_Data == NULL) return 5; // invalid IPC call
+			int length = VectorLength(sched->interpreters);
+			for (int i = 0; i < length; i++) {
+				auto target = VectorGet_InterpreterStatePtr(sched->interpreters, sched->roundRobin);
+				if (target == NULL || *target == NULL) return 6;
+				bool ok = InterpAddIPC(*target, result.IPC_Out_Target, result.IPC_Out_Data);
+				if (!ok) return 7;
+			}
+		}
+		break;
+
+		case ExecutionState::Complete:
+		{
+			// Check to see if all programs have finished.
+			// If so, return non-success.
+			int length = VectorLength(sched->interpreters);
+			for (int i = 0; i < length; i++) {
+				auto target = VectorGet_InterpreterStatePtr(sched->interpreters, sched->roundRobin);
+				if (target == NULL || *target == NULL) return 8;
+				bool done = InterpreterCurrentState(*target) == ExecutionState::Complete;
+				if (!done) return 0; // at least one more to run
+			}
+			return -1;
+		}
+		break;
+
+		// Valid stop states
+		default:
+			return 0;
+	}
 }
 
 // Return a state for the scheduler

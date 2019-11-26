@@ -51,6 +51,9 @@ InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* de
 // Close down an interpreter and free all memory
 void InterpDeallocate(InterpreterState* is);
 
+// Return the most recent interpreter state
+ExecutionState InterpreterCurrentState(InterpreterState* is);
+
 // Run the interpreter until end or cycle count (whichever comes first)
 // Remember to check execution state afterward
 ExecutionResult InterpRun(InterpreterState* is, int maxCycles);
