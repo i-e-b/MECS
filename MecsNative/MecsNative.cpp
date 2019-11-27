@@ -782,6 +782,15 @@ int TestSerialisation() {
     for (int i = 0; i < length; i++) { std::cout << (int)((uint8_t)*VecGet_char(vec, i)) << " "; }
     std::cout << std::dec << "\nSerialisation OK.\n";
 
+	
+    std::cout << "Check repeated serialisation (should not damage orignal data)\n"; 
+    ok = FreezeToVector(result.Result, /*InterpreterState*/interp, /*Vector<byte>*/vec);
+    if (!ok) { std::cout << "Serialisation failed\n"; return -1; }
+    std::cout << "Result bytes = " << std::hex;
+    length = VecLength(vec);
+    for (int i = 0; i < length; i++) { std::cout << (int)((uint8_t)*VecGet_char(vec, i)) << " "; }
+    std::cout << std::dec << "\nSerialisation OK. Should be exact same data\n";
+
     // deserialise
     ok = DefrostFromVector(&dest, targetArena, vec);
     if (!ok) { std::cout << "Deserialisation failed\n"; return -2; }
@@ -1287,13 +1296,11 @@ int TestIPC() {
 	int faultLine = 0;
 	while ((faultLine = RTSchedulerRun(sched, 50, consoleOut)) == 0) { // more rounds = less overhead, but coarser time slicing
 
-		std::cout << "\n#" << RTSchedulerLastProgramIndex(sched);
-		std::cout << ": <";
+		//std::cout << "\n#" << RTSchedulerLastProgramIndex(sched) << "\n";
 		if (StringLength(consoleOut) > 0) {
-			WriteStr(consoleOut);
+			WriteStrInline(consoleOut);
 			StringClear(consoleOut);
 		}
-		std::cout << ">";
 
 		// system time is fun time
 		if (--safetyLatch < 0) {
@@ -1350,7 +1357,7 @@ int main() {
     if (aares != 0) return aares;
 
     StartManagedMemory();
-/*
+
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1412,7 +1419,7 @@ int main() {
     MMPush(10 MEGABYTES);
     auto multi = TestMultipleRuntimes();
     if (multi != 0) return multi;
-    MMPop();*/
+    MMPop();
 	
     MMPush(10 MEGABYTES);
     auto ipct = TestIPC();

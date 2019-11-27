@@ -1142,24 +1142,29 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
 }
 
 
+
+// comment this out to trace IPC flow
+#define IPC_TRACE / ## /
+
+
 // Try to add an incoming IPC message to an InterpreterState.
 // Only call when the program is in a wait state.
 // The call will ignore the request if it is not interested in the target type
 // Returns false iff there is an error storing the message. Successful stores AND ignored messages return true.
 bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageData) {
 
-	StringAppendFormat(is->_output, "\nReceiving \x01", targetName);
+	IPC_TRACE StringAppendFormat(is->_output, "\nReceiving \x01", targetName);
 
 	if (is == NULL || targetName == NULL || ipcMessageData == NULL) return true; // invalid
 	if (is->IPC_Queues == NULL) {
-		StringAppend(is->_output, " -- nothing bound\n");
+		IPC_TRACE StringAppend(is->_output, " -- nothing bound\n");
 		return true; // no bindings
 	}
 	
 	VectorPtr *queue;
 	bool mapped = MapGet_StringPtr_VectorPtr(is->IPC_Queues, targetName, &queue);
 	if (!mapped) {
-		StringAppend(is->_output, " -- not mapped\n");
+		IPC_TRACE StringAppend(is->_output, " -- not mapped\n");
 		return true; // this one not bound
 	}
 
@@ -1168,12 +1173,12 @@ bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageDa
 
 	auto newMsg = VecClone(ipcMessageData, is->_memory); // copy of IPC data in our own arena
 	if (newMsg == NULL) {
-		StringAppend(is->_output, " -- failed to clone data\n");
+		IPC_TRACE StringAppend(is->_output, " -- failed to clone data\n");
 		return false;
 	}
 	auto ok = VecPush_VectorPtr(*queue, newMsg);
 	
-	StringAppend(is->_output, " accepted! ");
+	IPC_TRACE StringAppend(is->_output, " accepted! ");
 
 	// set a ready state if we're waiting for a message we have.
 	if (is->State == ExecutionState::IPC_Wait) {
@@ -1181,12 +1186,12 @@ bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageDa
 		if (MapGet_StringPtr_bool(is->IPC_Queue_WaitFlags, targetName, &flag)) {
 			if (flag != NULL && *flag == true) {
 				is->State = ExecutionState::IPC_Ready;
-				StringAppend(is->_output, " set ready ");
+				IPC_TRACE StringAppend(is->_output, " set ready ");
 			}
 		}
 	}
 	
-	StringAppend(is->_output, "\n");
+	IPC_TRACE StringAppend(is->_output, "\n");
 	return ok;
 }
 
@@ -1726,8 +1731,6 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 			}
 		}
 
-		StringAppend(is->_output, "Yielding to wait for IPC"); // TODO: delete this
-
         return IPCWaitRequest();
 	}
 
@@ -1746,6 +1749,8 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 		auto data = VecAllocateArena_char(is->_memory);
 		auto ok = FreezeToVector(param[1], is, data);
 		if (!ok) { return _Exception(is, "Failed to serialise data for IPC send"); }
+
+		// TODO FAULT: are we destroying strings during the freeze process?
 		
 		uint32_t encPtr = ArenaPtrToOffset(is->_memory, data); // allows us to place a 32-bit ptr in 64-bit space
 		if (encPtr < 1) { return _Exception(is, "Failed to serialise data for IPC send: nonsense result from arena allocation"); }
@@ -1869,13 +1874,13 @@ bool LoadIPCData(InterpreterState *is) {
 	// map, whose key is the matching IPC target.
 
 	if (is->IPC_Queues == NULL || is->IPC_Queue_WaitFlags == NULL) {
-		StringAppend(is->_output, "IPC queue containers are invalid\n");
+		IPC_TRACE StringAppend(is->_output, "IPC queue containers are invalid\n");
 		return false;
 	}
 
 	VectorPtr vecWait = MapAllEntries(is->IPC_Queue_WaitFlags); // Vector<HashMap_KVP>
 	
-	StringAppendFormat(is->_output, "\nWait entries: \x02\n", VecLength(vecWait));
+	IPC_TRACE StringAppendFormat(is->_output, "\nWait entries: \x02\n", VecLength(vecWait));
 
 	bool ok = false;
 	// For each message we're waiting for...
@@ -1884,36 +1889,36 @@ bool LoadIPCData(InterpreterState *is) {
 		StringPtr target = *((StringPtr*)waitEntry.Key);
 		bool set = *((bool*)waitEntry.Value);
 		
-		StringAppendFormat(is->_output, "\nChecking '\x01'\n", target);
+		IPC_TRACE StringAppendFormat(is->_output, "\nChecking '\x01'\n", target);
 
 		// ... see if we have data ...
 		VectorPtr *ipcChannelDataQueue; // Vector< ByteVec >
 		bool found = MapGet_StringPtr_VectorPtr(is->IPC_Queues, target, &ipcChannelDataQueue);
 		if (!found || ipcChannelDataQueue == NULL) {
-			StringAppend(is->_output, "queue not found\n");
+			IPC_TRACE StringAppend(is->_output, "queue not found\n");
 			continue; // no queue?
 		}
 		if (VecLength(*ipcChannelDataQueue) < 1) {
-			StringAppend(is->_output, "queue was empty\n");
+			IPC_TRACE StringAppend(is->_output, "queue was empty\n");
 			continue; // empty queue
 		}
 
 		VectorPtr ipcObject = NULL;
 		if (!VecDequeue_VectorPtr(*ipcChannelDataQueue, &ipcObject)) {
-			StringAppend(is->_output, "IPC object dequeue failed\n");
+			IPC_TRACE StringAppend(is->_output, "IPC object dequeue failed\n");
 			continue; // failed to read object?
 		}
 		if (ipcObject == NULL) {
-			StringAppend(is->_output, "IPC object was null\n");
+			IPC_TRACE StringAppend(is->_output, "IPC object was null\n");
 			continue; // failed to read object
 		}
 
-		StringAppendFormat(is->_output, "\nFound IPC data for '\x01', \x02 bytes\n", target, VecLength(ipcObject));
+		IPC_TRACE StringAppendFormat(is->_output, "\nFound IPC data for '\x01', \x02 bytes\n", target, VecLength(ipcObject));
 
 		ok = DeserialiseIPCData(is, ipcObject, target);
 
 		if (!ok) {
-			StringAppend(is->_output, "IPC deserialising failed\n");
+			IPC_TRACE StringAppend(is->_output, "IPC deserialising failed\n");
 		}
 
 		VecDeallocate(ipcObject); // we will have copied the data by deserialising.
@@ -1938,7 +1943,7 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
 
 	// If we are coming out of an IPC wait state, we need to load the message data onto the value stack here.
 	if (is->State == ExecutionState::IPC_Ready) {
-		StringAppend(is->_output, "Attempting IPC read from queue");
+		IPC_TRACE StringAppend(is->_output, "Attempting IPC read from queue");
 		auto ok = LoadIPCData(is);
 		if (!ok) {
 			_Exception(is, "Failed to load IPC data");

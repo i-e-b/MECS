@@ -67,7 +67,7 @@ void RTSchedulerDeallocate(RuntimeSchedulerPtr* schedHndl) {
 		}
 	}
 	
-	//DropArena(&(sched->baseMemory));// failing?
+	DropArena(&(sched->baseMemory));
 	schedHndl = NULL;
 }
 

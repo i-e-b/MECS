@@ -44,6 +44,14 @@ inline bool DequeueUInt32(uint32_t* value, Vector* target) {
     return true;
 }
 
+// Push the bytes of a string to a byte vector, without destroying the original string
+void PushStringBytes(String* str, Vector* target) {
+	auto bvec = VecClone(StringGetByteVector(str), VectorArena(target));
+	uint8_t b;
+	while (VecDequeue_byte(bvec, &b)) VecPush_byte(target, b);
+	VecDeallocate(bvec);
+}
+
 bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
     switch ((DataType)source.type) {
         // Simple small types
@@ -69,9 +77,7 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
         VecPush_byte(target, (int)DataType::StringPtr); // always a general string pointer once it's serialised
         auto str = CastString(state, source);
         PushUInt32(StringLength(str), target);
-        auto bvec = StringGetByteVector(str);
-        uint8_t b;
-        while (VecDequeue_byte(bvec, &b)) VecPush_byte(target, b);
+		PushStringBytes(str, target);
         return true;
     }
 
@@ -100,9 +106,7 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
 
             // Write key (no type tag, it's always a string)
             PushUInt32(StringLength(str), target);
-            auto bvec = StringGetByteVector(str);
-            uint8_t b;
-            while (VecDequeue_byte(bvec, &b)) VecPush_byte(target, b);
+			PushStringBytes(str, target);
 
             // Write the value (recursive)
             auto ok = RecursiveWrite(*valTag, state, target);

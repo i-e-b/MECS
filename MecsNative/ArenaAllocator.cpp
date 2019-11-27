@@ -93,6 +93,7 @@ void DropArena(Arena** a) {
     if (a == NULL) return;
 
     auto ptr = *a;
+	*a = NULL; // kill the arena reference
     if (ptr == NULL) return;
 
     if (ptr->_headsPtr != NULL) { // delete contained memory
@@ -102,8 +103,7 @@ void DropArena(Arena** a) {
         ptr->_limit = NULL;
     }
 
-    free(*a); // Free the arena reference itself
-    *a = NULL; // kill the arena reference
+    free(ptr); // Free the arena reference itself
 }
 
 void TraceArena(Arena* a, bool traceOn) {
