@@ -5,29 +5,24 @@
    and the inter-process communication between them
 */
 
-#ifndef runtimescheduler_h
-#define runtimescheduler_h
-
 #include "String.h"
 #include "Vector.h"
 #include "TagCodeInterpreter.h"
 
+#ifndef runtimescheduler_h
+#define runtimescheduler_h
+
 typedef struct RuntimeScheduler RuntimeScheduler;
 typedef RuntimeScheduler* RuntimeSchedulerPtr;
-
-typedef struct ProgramState {
-	ExecutionState runState;
-	InterpreterState *interpreter;
-} ProgramState;
 
 
 enum class SchedulerState {
 	// The scheduler has no faults, and at least one program that can still run
-	Running,
+	Running = 1,
 	// At least one program has entered a faulted state
-	Faulted,
+	Faulted = 2,
 	// All programs have run to completion
-	Complete
+	Complete = 3
 };
 
 // Allocate a new scheduler. The scheduler will create its own memory arenas, and those for the interpreters.
@@ -44,12 +39,16 @@ bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath);
 // Each time you call this, a different program may be given the rounds.
 // Will return non-zero if there is a fault or all programs have ended.
 // (use `RTSchedulerState` function to get a flag, and the `RTSchedulerProgramStatistics` function to get detailed states)
-int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds);
+// `consoleOut` is optional. If supplied, it will be filled with console data from the run program. If not, the program's console will be cleared.
+int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut);
 
 // Return a state for the scheduler
 SchedulerState RTSchedulerState(RuntimeSchedulerPtr sched);
 
-// Return a Vector<ProgramState>, with entries for each program in the schedule
-VectorPtr RTSchedulerProgramStatistics();
+// Return the index of the last program that ran
+int RTSchedulerLastProgramIndex(RuntimeSchedulerPtr sched);
+
+// Write a description of the compiled code to a string
+void RTSchedulerDebugDump(RuntimeSchedulerPtr sched, StringPtr target);
 
 #endif

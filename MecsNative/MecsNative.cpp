@@ -1276,29 +1276,71 @@ int TestIPC() {
 	
     std::cout << "***************** INTERPROCESS MESSAGING ******************\n";
 
+	
+    auto consoleOut = StringEmpty();
 	auto sched = RTSchedulerAllocate();
 
 	RTSchedulerAddProgram(sched, StringNew("ipc_prog1.ecs"));
 	RTSchedulerAddProgram(sched, StringNew("ipc_prog2.ecs"));
 
-	while (RTSchedulerRun(sched, 50)) { // more rounds = less overhead, but coarser time slicing
+	int32_t safetyLatch = 50; // programs should complete in 2500 steps
+	int faultLine = 0;
+	while ((faultLine = RTSchedulerRun(sched, 50, consoleOut)) == 0) { // more rounds = less overhead, but coarser time slicing
+
+		std::cout << "\n#" << RTSchedulerLastProgramIndex(sched);
+		std::cout << ": <";
+		if (StringLength(consoleOut) > 0) {
+			WriteStr(consoleOut);
+			StringClear(consoleOut);
+		}
+		std::cout << ">";
+
 		// system time is fun time
+		if (--safetyLatch < 0) {
+			std::cout << "\n########## Schedule ran too long. Abandoning. ##########";
+			break;
+		}
+	}
+
+	if (StringLength(consoleOut) > 0) {
+		WriteStr(consoleOut);
+		StringClear(consoleOut);
 	}
 
 	// now check to see if there was an error
+	auto endState = RTSchedulerState(sched);
+	switch (endState) {
+	case SchedulerState::Complete:
+		std::cout << "\nSchedule completed OK!";
+		break;
+
+	case SchedulerState::Faulted:
+		std::cout << "\nSchedule encountered a fault; LINE = " << faultLine;
+		std::cout << "\nIn program #" << RTSchedulerLastProgramIndex(sched);
+
+		RTSchedulerDebugDump(sched, consoleOut);
+		WriteStr(consoleOut);
+		StringClear(consoleOut);
+		result = 1;
+		break;
+
+	case SchedulerState::Running:
+		std::cout << "\nScheduler didn't finish running; " << faultLine;
+		break;
+
+	default:
+		std::cout << "\nUNEXPECTED STATE: " << (int)endState;
+		result = 2;
+		break;
+	}
 
 	RTSchedulerDeallocate(&sched);
-/*
-	auto code1 = Compile("ipc_prog1.ecs");
-	auto code2 = Compile("ipc_prog2.ecs");
-	
-    auto prog1 = InterpAllocate(code1, 1 MEGABYTE, NULL);
-    auto prog2 = InterpAllocate(code2, 200 KILOBYTES, NULL);
+	StringDeallocate(consoleOut);
 
-    VecDeallocate(code1);
-    VecDeallocate(code2);
-	*/
-	// TODO: loop until both are finished, doing IPC when needed.
+    size_t alloc, unalloc;
+    int objects;
+    ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
+    std::cout << "\n\nRuntime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
 
 	return result;
 }
@@ -1308,7 +1350,7 @@ int main() {
     if (aares != 0) return aares;
 
     StartManagedMemory();
-
+/*
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1370,7 +1412,13 @@ int main() {
     MMPush(10 MEGABYTES);
     auto multi = TestMultipleRuntimes();
     if (multi != 0) return multi;
+    MMPop();*/
+	
+    MMPush(10 MEGABYTES);
+    auto ipct = TestIPC();
+    if (ipct != 0) return ipct;
     MMPop();
 	
     ShutdownManagedMemory();
 }
+

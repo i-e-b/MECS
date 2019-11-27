@@ -52,6 +52,12 @@ enum class DataType {
     StaticStringPtr = 22,                          // Data is a pointer to a static string in tag code vector. Ignored by GC. Params not used.
     StringPtr = ALLOCATED_TYPE + StaticStringPtr,  // (150) Data is pointer to dynamic string in arena memory. Params not used. Can be collected by GC
 
+
+
+	// ##### Special flags and conditions #######
+	// These are all >= 250 (this is used by the runtime)
+
+
     // This special value means the interpreter needs to pause for input.
     // The triggering opcode will be repeated when more input is available
     MustWait = 250,
@@ -60,7 +66,11 @@ enum class DataType {
 	// The triggering call will *NOT* be repeated when a message is available.
 	IPCWait = 251,
 
-    Flag = 0xFF // A marker for internal testing
+	// This special value means the program is broadcasting an IPC message
+	// The triggering call will *NOT* be repeated when a message is available.
+	IPCSend = 252,
+
+    Flag = 255 // A marker for internal testing
 };
 
 // Fixed-size 64-bit operand for the runtime
@@ -98,9 +108,10 @@ DataTag MarkEndOfProgram();
 
 // Interpreter has to pause for console input
 DataTag MustWait(uint32_t resumePosition);
-
 // Interpreter has to pause for IPC input
 DataTag IPCWaitRequest();
+// Interpreter has to yield to send an IPC message
+DataTag IPCSendRequest();
 
 // Encode an op-code with up to 2x16 bit params
 DataTag EncodeOpcode(char codeClass, char codeAction, uint16_t p1, uint16_t p2);

@@ -1,3 +1,4 @@
+print("IPC Listener started")
 
 // Listen registers a 'target' name against this runtime.
 // From now on, for any message sent to this target, we will get a copy.
@@ -6,11 +7,16 @@
 // so if you want to continually get messages, you have to run 'wait' in a loop.
 listen("keyboard")
 
-print("Press a key to continue")
+print("waiting with no set")
+wait("keyboard")
+
+print("waiting *with* set")
 set(key wait("keyboard")) // We will get a run-time error if we haven't listened first?
                            // not sure if we want to name the target, or add a timeout?
+print("Listener resumed")
 print("You pressed" key)
 
+/*
 set(myMessage new-map("type" "line", "x0" 1, "x1" 150, "y0" 10, "y1" 200))
 
 // send( target object )
@@ -18,5 +24,6 @@ set(myMessage new-map("type" "line", "x0" 1, "x1" 150, "y0" 10, "y1" 200))
 // and returns the interpreter in a paused state
 send("screen" myMessage)
 print("I sent a message")
+*/
 
-
+print("IPC Listener done")

@@ -72,6 +72,7 @@ Vector* InterpWaitingIPC(InterpreterState* is);
 void WriteInput(InterpreterState* is, String* str);
 
 // Move output data to the supplied string
+// If the supplied string is null, the programs output will be cleared.
 void ReadOutput(InterpreterState* is, String* receiver);
 
 // Convert a tag code offset into a physical memory location
@@ -92,5 +93,8 @@ String* ReadStaticString(InterpreterState* is, int position, int length);
 
 // ONLY FOR DEBUG USE!!
 Arena* InterpInternalMemory(InterpreterState* is);
+
+// Append a string description of opcodes to the target
+void InterpDescribeCode(InterpreterState* is, String* target);
 
 #endif

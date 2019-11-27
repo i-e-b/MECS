@@ -31,6 +31,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Samples", "_Samples", "{C5
 		Samples\Importer.ecs = Samples\Importer.ecs
 		Samples\ImportMeUnit.ecs = Samples\ImportMeUnit.ecs
 		Samples\ipc_prog1.ecs = Samples\ipc_prog1.ecs
+		Samples\ipc_prog2.ecs = Samples\ipc_prog2.ecs
 		Samples\listMath.ecs = Samples\listMath.ecs
 		Samples\lists.ecs = Samples\lists.ecs
 		Samples\nestedLoops.ecs = Samples\nestedLoops.ecs

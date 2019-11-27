@@ -118,6 +118,14 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
 #undef add;
 }
 
+
+void InterpDescribeCode(InterpreterState* is, String* target){
+	if (is == NULL || target == NULL) return;
+	auto str = TCR_Describe(is->_program, is->DebugSymbols);
+	StringAppend(target, str);
+	StringDeallocate(str);
+}
+
 // Start up an interpreter
 // tagCode is Vector<DataTag>, debugSymbols in Map<CrushName -> StringPtr>.
 InterpreterState* InterpAllocate(Vector* tagCode, size_t memorySize, HashMap* debugSymbols) {
@@ -183,7 +191,12 @@ void WriteInput(InterpreterState* is, String* str) {
 
 // Move output data to the supplied string
 void ReadOutput(InterpreterState* is, String* receiver) {
-    if (is == NULL || receiver == NULL) return;
+    if (is == NULL) return;
+
+	if (receiver == NULL) {
+		StringClear(is->_output);
+		return;
+	}
 
     int limit = StringLength(is->_output);
     char c;
@@ -262,11 +275,37 @@ ExecutionResult IPCWaitExecutionResult() {
     r.State = ExecutionState::IPC_Wait;
     return r;
 }
-ExecutionResult IPCSendExecutionResult() {
+ExecutionResult IPCSendExecutionResult(InterpreterState* is) {
     ExecutionResult r = {};
     r.Result = NonResult();
     r.State = ExecutionState::IPC_Send;
-    return r;
+
+	DataTag tag;
+	// send opcode should push target string and then data. We pop in reverse order.
+
+	// pop out data
+    if (!VecPop_DataTag(is->_valueStack, &tag)) {
+		is->State = ExecutionState::ErrorState;
+        StringAppendFormat(is->_output, "Value stack underflow at position \x03 when reading IPC data", is->_position);
+        return FailureResult(is->_position);
+    }
+	if (tag.type != (int)DataType::VectorPtr) {
+		is->State = ExecutionState::ErrorState;
+        StringAppendFormat(is->_output, "Incorrect type on value stack at position \x03 when reading IPC data. Expected \x02, got \x02", is->_position, (int)DataType::VectorPtr, tag.type);
+        return FailureResult(is->_position);
+	}
+	r.IPC_Out_Data = (VectorPtr)InterpreterDeref(is, tag);
+
+	// pop out string target
+    if (!VecPop_DataTag(is->_valueStack, &tag)) {
+		is->State = ExecutionState::ErrorState;
+        StringAppendFormat(is->_output, "Value stack underflow at position \x03 when reading IPC target", is->_position);
+        return FailureResult(is->_position);
+    }
+
+	r.IPC_Out_Target = CastString(is, tag);
+
+	return r;
 }
 
 
@@ -294,6 +333,19 @@ String* DiagnosticString(DataTag tag, InterpreterState* is) {
     return StringEmptyInArena(is->_memory);
 }
 
+// Write a description of the current code position to a string
+void DescribeCodePosition(InterpreterState* is, String* outp) {
+	if (is == NULL || outp == NULL) return;
+
+	auto tagptr = VecGet_DataTag(is->_program, is->_position);
+	if (tagptr == NULL) {
+		StringAppend(outp, "<out of bounds>");
+		return;
+	}
+
+	DescribeTag(*tagptr, outp, is->DebugSymbols);
+}
+
 DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
     DataTag* param = (DataTag*)ArenaAllocate(is->_memory, nbParams * sizeof(DataTag));
     if (param == NULL) return NULL;
@@ -303,7 +355,8 @@ DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
     for (int i = nbParams - 1; i >= 0; i--) {
         if (!VecPop_DataTag(is->_valueStack, &(param[i]))) {
 			is->State = ExecutionState::ErrorState;
-            StringAppendFormat(is->_output, "\nValue stack underflow at position \x03 (\x02)\n", is->_position, is->_position);
+            StringAppendFormat(is->_output, "\nValue stack underflow when reading params, at position \x03 (\x02)\n", is->_position, is->_position);
+			DescribeCodePosition(is, is->_output);
             return NULL;
         }
 
@@ -819,14 +872,15 @@ inline DataType PrepareFunctionCall(int* position, uint32_t nameHash, uint16_t n
         VecPush_DataTag(is->_valueStack, evalResult);
         return DataType::Exception;
     }
-    if (evalResult.type == (int)DataType::MustWait) {
-        return DataType::MustWait;
-    }
 
     if (evalResult.type == 0) { // something gave a totally invalid result
 		is->State = ExecutionState::ErrorState;
         VecPush_DataTag(is->_valueStack, RuntimeError(is->_position));
         return DataType::Exception;
+    }
+	
+    if (evalResult.type >= 250) { // special flags
+        return (DataType)evalResult.type;
     }
 
     // Add result on stack as a value.
@@ -875,6 +929,7 @@ inline DataType HandleReturn(InterpreterState* is) {
 
     ScopeDrop(is->_variables);
     is->_position = result;
+	return DataType::Void;
 }
 
 inline DataType HandleControlSignal(int* position, char codeAction, int opCodeCount, InterpreterState* is) {
@@ -1092,19 +1147,33 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
 // The call will ignore the request if it is not interested in the target type
 // Returns false iff there is an error storing the message. Successful stores AND ignored messages return true.
 bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageData) {
+
+	StringAppendFormat(is->_output, "\nReceiving \x01", targetName);
+
 	if (is == NULL || targetName == NULL || ipcMessageData == NULL) return true; // invalid
-	if (is->IPC_Queues == NULL) return true; // no bindings
+	if (is->IPC_Queues == NULL) {
+		StringAppend(is->_output, " -- nothing bound\n");
+		return true; // no bindings
+	}
 	
 	VectorPtr *queue;
 	bool mapped = MapGet_StringPtr_VectorPtr(is->IPC_Queues, targetName, &queue);
-	if (!mapped) return true; // this one not bound
+	if (!mapped) {
+		StringAppend(is->_output, " -- not mapped\n");
+		return true; // this one not bound
+	}
 
 	// `queue` is a vector of byte-vectors. We want to import a *copy* of the incoming data
 	// migrated into the interpreter's arena.
 
-	auto newMsg = VecClone(ipcMessageData, is->_memory); // what to do if we run out of memory?
-	if (newMsg == NULL) return false;
-	auto ok = VectorPush(*queue, newMsg);
+	auto newMsg = VecClone(ipcMessageData, is->_memory); // copy of IPC data in our own arena
+	if (newMsg == NULL) {
+		StringAppend(is->_output, " -- failed to clone data\n");
+		return false;
+	}
+	auto ok = VecPush_VectorPtr(*queue, newMsg);
+	
+	StringAppend(is->_output, " accepted! ");
 
 	// set a ready state if we're waiting for a message we have.
 	if (is->State == ExecutionState::IPC_Wait) {
@@ -1112,10 +1181,12 @@ bool InterpAddIPC(InterpreterState* is, String* targetName, Vector* ipcMessageDa
 		if (MapGet_StringPtr_bool(is->IPC_Queue_WaitFlags, targetName, &flag)) {
 			if (flag != NULL && *flag == true) {
 				is->State = ExecutionState::IPC_Ready;
+				StringAppend(is->_output, " set ready ");
 			}
 		}
 	}
-
+	
+	StringAppend(is->_output, "\n");
 	return ok;
 }
 
@@ -1603,7 +1674,12 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 		// The second call would destroy the 'b' queue and add a new 'c' queue.
 
 		// Check we have a queue map ready:
-		if (is->IPC_Queues == NULL) { is->IPC_Queues = MapAllocateArena_StringPtr_VectorPtr(5, is->_memory); }
+		if (is->IPC_Queues == NULL) { 
+			is->IPC_Queues = MapAllocateArena_StringPtr_VectorPtr(5, is->_memory);
+			if (is->IPC_Queues == NULL) {
+				return _Exception(is, "Failed to allocate an IPC queue");
+			}
+		}
 
 		// check there is a message queue for each specific target:
 		for (int i = 0; i < nbParams; i++) {
@@ -1623,12 +1699,13 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 		// TODO: remove the old queues.
 		// Maybe it would be better to make a new queue set and move any still active ones over.
 
-        //return _Exception(is, "Built-in not implemented: `listen`");
+        return VoidReturn();
 	}
 
 	case FuncDef::Wait:
 	{
 		if (is->IPC_Queues == NULL) return _Exception(is, "Tried to `wait`, but you didn't say `listen` first.");
+		if (nbParams < 1) return _Exception(is, "Tried to `wait`, but you didn't say name any targets");
 
 		// Kick back to the interpreter with a special status code, and set an IPC flag for ourselves.
 		// When we resume, we should be able to read our IPC map into the value stack before continuing
@@ -1648,6 +1725,9 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 				return _Exception(is, "`wait` failed: could not store wait states");
 			}
 		}
+
+		StringAppend(is->_output, "Yielding to wait for IPC"); // TODO: delete this
+
         return IPCWaitRequest();
 	}
 
@@ -1659,7 +1739,22 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 		// programs with a matching key in their IPC map.
 		// This program can be resumed at any time without special warm-up.
 		// Senders have no idea how many (if any) programs got their message.
-        return _Exception(is, "Built-in not implemented: `send`");
+		
+		if (nbParams != 2) return _Exception(is, "A `send` call must have 2 parameters: target and data");
+
+		auto target = param[0]; // the string target name
+		auto data = VecAllocateArena_char(is->_memory);
+		auto ok = FreezeToVector(param[1], is, data);
+		if (!ok) { return _Exception(is, "Failed to serialise data for IPC send"); }
+		
+		uint32_t encPtr = ArenaPtrToOffset(is->_memory, data); // allows us to place a 32-bit ptr in 64-bit space
+		if (encPtr < 1) { return _Exception(is, "Failed to serialise data for IPC send: nonsense result from arena allocation"); }
+		DataTag final = EncodePointer(encPtr, DataType::VectorPtr);
+		
+		VecPush_DataTag(is->_valueStack, target);
+		VecPush_DataTag(is->_valueStack, final);
+
+        return IPCSendRequest();
 	}
 
     default:
@@ -1747,7 +1842,7 @@ inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, in
 // Read a byte vector into an interpreter object, and push that to the value stack.
 bool DeserialiseIPCData(InterpreterState* is, VectorPtr ipcData, StringPtr target) {
 	DataTag dest; // ref we will put in the map
-    bool ok = DefrostFromVector(&dest, is->_memory, ipcData);
+    bool ok = DefrostFromVector(&dest, is->_memory, ipcData); // failing?
 	if (!ok) return false;
 
 	// Make a map to store it in
@@ -1773,9 +1868,14 @@ bool LoadIPCData(InterpreterState *is) {
 	// The first match we find, we deserialise the data into `is->_valueStack`, wrapped in a
 	// map, whose key is the matching IPC target.
 
-	if (is->IPC_Queues == NULL || is->IPC_Queue_WaitFlags == NULL) return false;
+	if (is->IPC_Queues == NULL || is->IPC_Queue_WaitFlags == NULL) {
+		StringAppend(is->_output, "IPC queue containers are invalid\n");
+		return false;
+	}
 
 	VectorPtr vecWait = MapAllEntries(is->IPC_Queue_WaitFlags); // Vector<HashMap_KVP>
+	
+	StringAppendFormat(is->_output, "\nWait entries: \x02\n", VecLength(vecWait));
 
 	bool ok = false;
 	// For each message we're waiting for...
@@ -1783,17 +1883,39 @@ bool LoadIPCData(InterpreterState *is) {
 	while (VecPop_HashMap_KVP(vecWait, &waitEntry)) {
 		StringPtr target = *((StringPtr*)waitEntry.Key);
 		bool set = *((bool*)waitEntry.Value);
+		
+		StringAppendFormat(is->_output, "\nChecking '\x01'\n", target);
 
 		// ... see if we have data ...
-		VectorPtr *vecData;
-		bool found = MapGet_StringPtr_VectorPtr(is->IPC_Queues, target, &vecData);
-		if (!found || vecData == NULL) continue; // no queue?
-		if (VecLength(*vecData) < 1) continue; // empty queue
+		VectorPtr *ipcChannelDataQueue; // Vector< ByteVec >
+		bool found = MapGet_StringPtr_VectorPtr(is->IPC_Queues, target, &ipcChannelDataQueue);
+		if (!found || ipcChannelDataQueue == NULL) {
+			StringAppend(is->_output, "queue not found\n");
+			continue; // no queue?
+		}
+		if (VecLength(*ipcChannelDataQueue) < 1) {
+			StringAppend(is->_output, "queue was empty\n");
+			continue; // empty queue
+		}
 
-		VectorPtr ipcObject;
-		if (!VecDequeue_VectorPtr(*vecData, &ipcObject)) continue; // failed to read object?
+		VectorPtr ipcObject = NULL;
+		if (!VecDequeue_VectorPtr(*ipcChannelDataQueue, &ipcObject)) {
+			StringAppend(is->_output, "IPC object dequeue failed\n");
+			continue; // failed to read object?
+		}
+		if (ipcObject == NULL) {
+			StringAppend(is->_output, "IPC object was null\n");
+			continue; // failed to read object
+		}
+
+		StringAppendFormat(is->_output, "\nFound IPC data for '\x01', \x02 bytes\n", target, VecLength(ipcObject));
 
 		ok = DeserialiseIPCData(is, ipcObject, target);
+
+		if (!ok) {
+			StringAppend(is->_output, "IPC deserialising failed\n");
+		}
+
 		VecDeallocate(ipcObject); // we will have copied the data by deserialising.
 		break; // only load one message at a time
 	}
@@ -1816,6 +1938,7 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
 
 	// If we are coming out of an IPC wait state, we need to load the message data onto the value stack here.
 	if (is->State == ExecutionState::IPC_Ready) {
+		StringAppend(is->_output, "Attempting IPC read from queue");
 		auto ok = LoadIPCData(is);
 		if (!ok) {
 			_Exception(is, "Failed to load IPC data");
@@ -1872,16 +1995,27 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
             DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2, &p3);
             auto result = ProcessOpCode(codeClass, codeAction, p1, p2, p3, &(is->_position), word, is);
 			
-			// TODO: make a flag bit for these lot...
-            if (result == DataType::Exception) { // program failed
-                return FailureResult(is->_position);
-            } else if (result == DataType::MustWait) { // program is waiting for input, and is yielding
-                return WaitingExecutionResult();
-			} else if (result == DataType::IPCWait) {
-				return IPCWaitExecutionResult();
-            } else if (result == DataType::EndOfProgram) { // program is exiting early (based on logic)
-                goto GOOD_EXIT;
-            }
+			if ((int)result >= 250) { // Special conditions
+				switch (result) {
+				case DataType::Exception: return FailureResult(is->_position); // program failed
+				case DataType::MustWait:
+					// we don't advance the position counter, so the waiting opcode will run again
+					return WaitingExecutionResult(); // program is waiting for console input, and is yielding
+				case DataType::IPCWait:
+					is->_position++; // don't repeat wait command
+					return IPCWaitExecutionResult(); // program is waiting for an IPC message, and is yielding
+				case DataType::IPCSend:
+					is->_position++; // don't repeat send command
+					return IPCSendExecutionResult(is); // program wants to broadcast an IPC message. It has set stack values and is yielding.
+
+				case DataType::EndOfProgram: goto GOOD_EXIT; // program is exiting early (based on logic)
+					
+				default:
+					StringAppend(is->_output, "Unexpected special condition after opcode: ");
+					StringAppendInt32(is->_output, (int)result);
+					return FailureResult(is->_position);
+				}
+			}
             break;
         }
         case (int)DataType::EndOfSubProgram:

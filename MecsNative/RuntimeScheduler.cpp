@@ -27,6 +27,9 @@ typedef struct RuntimeScheduler {
 
 	// Next interpreter slot that should be used. This may be off the end, and need reset.
 	int roundRobin;
+
+	// Last recorded run state
+	SchedulerState state;
 } RuntimeScheduler;
 
 // Allocate a new scheduler. The scheduler will create its own memory arenas, and those for the interpreters.
@@ -43,8 +46,9 @@ RuntimeSchedulerPtr RTSchedulerAllocate(){
 	}
 
 	result->baseMemory = coreMem;
-	result->roundRobin = 0;
+	result->roundRobin = -1;
 	result->interpreters = intVec;
+	result->state = SchedulerState::Running;
 
 	return result;
 }
@@ -63,7 +67,7 @@ void RTSchedulerDeallocate(RuntimeSchedulerPtr* schedHndl) {
 		}
 	}
 	
-	DropArena(&(sched->baseMemory));
+	//DropArena(&(sched->baseMemory));// failing?
 	schedHndl = NULL;
 }
 
@@ -108,25 +112,44 @@ bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath){
 	if (code == NULL) return false;
     auto prog = InterpAllocate(code, 10 MEGABYTE, symbols); // copy bytecode into a new interpreter
     VectorDeallocate(code); // deallocate from ambient memory
-	if (prog == NULL) return NULL;
+	if (prog == NULL) return false;
+
+	// Store the interpreter
+	VectorPush_InterpreterStatePtr(sched->interpreters, prog);
 
 	return true;
 }
+
+// Helper for returning fault states
+int Fault(RuntimeSchedulerPtr sched, int line) {
+	if (sched != NULL) {
+		sched->state = SchedulerState::Faulted;
+	}
+	return line;
+}
+
+constexpr auto OK = 0;
+constexpr auto ALL_COMPLETE = -1;
+constexpr auto DROP_THRU = -2;
 
 // Run ONE of the scheduled programs for a given number of rounds.
 // Each time you call this, a different program may be given the rounds.
 // Will return false if there is a fault or all programs have ended.
 // (use `RTSchedulerState` function to get a flag, and the `RTSchedulerProgramStatistics` function to get detailed states)
-int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds) {
-	if (sched == NULL) return 1;
+int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) {
+	if (sched == NULL) return Fault(sched, __LINE__);
+
+	// Advance the schedule
+	sched->roundRobin++;
 
 	// ensure we're in bounds
 	int max = VectorLength(sched->interpreters);
+	if (max < 1) return Fault(sched, __LINE__);
 	if (sched->roundRobin >= max) { sched->roundRobin = 0; }
 
 	// find the interpreter
 	auto isp = VectorGet_InterpreterStatePtr(sched->interpreters, sched->roundRobin);
-	if (isp == NULL || *isp == NULL) return 2;
+	if (isp == NULL || *isp == NULL) return Fault(sched, __LINE__);
 	auto is = *isp;
 
 	// check state and run if appropriate
@@ -135,9 +158,10 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds) {
 	ExecutionResult result;
 	switch (state) {
 		// Valid run states
-		case ExecutionState::Paused:
-		case ExecutionState::Waiting: // will loop if not enough data
-		case ExecutionState::IPC_Ready:
+		case ExecutionState::Paused: // normal stop for time-slice
+		case ExecutionState::Waiting: // waiting for console data. Will loop if not enough data
+		case ExecutionState::IPC_Ready: // was waiting, now has data
+		case ExecutionState::IPC_Send: // requested a send, can now continue
 			result = InterpRun(is, rounds);
 			break;
 
@@ -145,63 +169,96 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds) {
 		case ExecutionState::Complete:
 		case ExecutionState::Running:
 		case ExecutionState::IPC_Wait:
-			return 0;
+			return OK;
 
 		// Fail states
 		default:
-			return 3;
+			return Fault(sched, __LINE__);
 	}
+
+	// Move output
+	ReadOutput(is, consoleOut);
 
 	// check the result state
 	// if there is IPC data, dish it out
 	switch (result.State) {
 		// Invalid stop states
 		case ExecutionState::ErrorState:
+			return Fault(sched, __LINE__);
+
 		case ExecutionState::Running:
-			return 4;
+			return Fault(sched, __LINE__);
 
 		// Broadcast IPC to all programs (including self)
 		case ExecutionState::IPC_Send:
 		{
-			if (result.IPC_Out_Target == NULL || result.IPC_Out_Data == NULL) return 5; // invalid IPC call
+			if (result.IPC_Out_Target == NULL || result.IPC_Out_Data == NULL) return Fault(sched, __LINE__); // invalid IPC call
 			int length = VectorLength(sched->interpreters);
 			for (int i = 0; i < length; i++) {
-				auto target = VectorGet_InterpreterStatePtr(sched->interpreters, sched->roundRobin);
-				if (target == NULL || *target == NULL) return 6;
+				auto target = VectorGet_InterpreterStatePtr(sched->interpreters, i);
+				if (target == NULL || *target == NULL) return Fault(sched, __LINE__);
+
 				bool ok = InterpAddIPC(*target, result.IPC_Out_Target, result.IPC_Out_Data);
-				if (!ok) return 7;
+				if (!ok) return Fault(sched, __LINE__);
 			}
+
+			// deallocate IPC data
+			VectorDeallocate(result.IPC_Out_Data);
+			StringDeallocate(result.IPC_Out_Target);
+			return OK;
 		}
 		break;
 
+		// The program ended. Check to see if any others are running
 		case ExecutionState::Complete:
 		{
 			// Check to see if all programs have finished.
 			// If so, return non-success.
 			int length = VectorLength(sched->interpreters);
 			for (int i = 0; i < length; i++) {
-				auto target = VectorGet_InterpreterStatePtr(sched->interpreters, sched->roundRobin);
-				if (target == NULL || *target == NULL) return 8;
+				auto target = VectorGet_InterpreterStatePtr(sched->interpreters, i);
+				if (target == NULL || *target == NULL) return Fault(sched, __LINE__);
 				bool done = InterpreterCurrentState(*target) == ExecutionState::Complete;
-				if (!done) return 0; // at least one more to run
+				if (!done) return OK; // at least one more to run
 			}
-			return -1;
+			sched->state = SchedulerState::Complete;
+			return ALL_COMPLETE;
 		}
 		break;
 
 		// Valid stop states
 		default:
-			return 0;
+			return OK;
 	}
+
+	return DROP_THRU; // Shouldn't actually hit this
+}
+
+// Write a description of the compiled code to a string
+void RTSchedulerDebugDump(RuntimeSchedulerPtr sched, StringPtr target) {
+	if (sched == NULL || target == NULL) return;
+
+	int length = VectorLength(sched->interpreters);
+	for (int i = 0; i < length; i++) {
+		auto interp = VectorGet_InterpreterStatePtr(sched->interpreters, i);
+		if (interp == NULL || *interp == NULL) continue;
+
+		StringAppend(target, "\nCode for program #");
+		StringAppendInt32(target, i);
+		StringAppend(target, "\n\n");
+
+		InterpDescribeCode(*interp, target);
+	}
+}
+
+int RTSchedulerLastProgramIndex(RuntimeSchedulerPtr sched) {
+	if (sched == NULL) return -1;
+	return sched->roundRobin;
 }
 
 // Return a state for the scheduler
 SchedulerState RTSchedulerState(RuntimeSchedulerPtr sched){
-
-}
-
-// Return a Vector<ProgramState>, with entries for each program in the schedule
-VectorPtr RTSchedulerProgramStatistics(){
-
+	if (sched == NULL) return SchedulerState::Faulted;
+	return sched->state;
 }
 
