@@ -27,14 +27,8 @@ typedef struct Scope Scope;
 
 // Create a new empty scope
 Scope* ScopeAllocate(Arena* arena);
-// Create a new scope, copying data from an existing one.
-// All visible values from the source become globals in the result. Shadowed values are not copied
-Scope* ScopeClone(Scope* source, Arena* arena);
 // Delete a scope
 void ScopeDeallocate(Scope* s);
-
-// List all *visible* references (vector of ScopeReference) any shadowed references are not supplied.
-Vector* ScopeAllVisible(Scope* s);
 
 // Start a new inner-most scope. Parameters are specially named by index (like "__p0", "__p1"). The compiler must match this.
 // `Parameters` is vector of DataTag
@@ -60,9 +54,5 @@ uint32_t ScopeNameForPosition(int i);
 bool InScope(Scope* s, uint32_t crushedName);
 // Add an increment to a stored number
 void ScopeMutateNumber(Scope* s, uint32_t crushedName, int8_t increment);
-
-// Purge hashmaps of all scopes.
-// TODO: This *REALLY* needs to be improved!
-void ScopePurge(Scope* s);
 
 #endif

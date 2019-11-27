@@ -395,7 +395,7 @@ int CountRealFunctionParameters(TreeNode* node) {
 	int filteredCount = 0;
 	while (childChain != NULL) {
 		auto nodeData = TreeReadBody_SourceNode(childChain);
-		if (!StringAreEqual(nodeData->Text, "()") || !TreeCountChildren(childChain) > 0) filteredCount++; // not a chain extension
+		if (!StringAreEqual(nodeData->Text, "()") || !(TreeCountChildren(childChain) > 0)) filteredCount++; // not a chain extension
 		childChain = TreeSibling(childChain);
 	}
 	return filteredCount;

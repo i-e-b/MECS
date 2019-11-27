@@ -1098,47 +1098,44 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
 // dispatch for op codes. valueStack is Vector<DataTag>, returnStack is Vector<int>
 inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, uint8_t p3, int* position, DataTag word, InterpreterState* is) {
     uint32_t varRef;
-    switch (codeClass)
-    {
-    case 'f': // Function operations
-        if (codeAction == 'c') {
-            varRef = p2 + (p1 << 16);
-            return PrepareFunctionCall(position, varRef, p3, is);
-        } else if (codeAction == 'd') {
-            HandleFunctionDefinition(position, p1, p2, is);
-        }
-        break;
+	switch (codeClass)
+	{
+	case 'f': // Function operations
+		if (codeAction == 'c') {
+			varRef = p2 + (p1 << 16);
+			return PrepareFunctionCall(position, varRef, p3, is);
+		}
+		else if (codeAction == 'd') {
+			HandleFunctionDefinition(position, p1, p2, is);
+		}
+		return DataType::Void;
 
-    case 'c': // flow Control -- conditions, jumps etc
-    {
-        int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
-        return HandleControlSignal(position, codeAction, opCodeCount, is);
-    }
-    break;
+	case 'c': // flow Control -- conditions, jumps etc
+	{
+		int opCodeCount = p2 + (p1 << 16); // we use 31 bit jumps, in case we have lots of static data
+		return HandleControlSignal(position, codeAction, opCodeCount, is);
+	}
+	break;
 
-    case 'C': // compound compare and jump
-        *position = HandleCompoundCompare(*position, codeAction, p1, p2, is);
-        break;
+	case 'C': // compound compare and jump
+		*position = HandleCompoundCompare(*position, codeAction, p1, p2, is);
+		return DataType::Void;
 
-    case 'm': // Memory access - get|set|isset|unset
-        varRef = p2 + (p1 << 16);
-        HandleMemoryAccess(position, codeAction, varRef, p3, is);
-        break;
+	case 'm': // Memory access - get|set|isset|unset
+		varRef = p2 + (p1 << 16);
+		HandleMemoryAccess(position, codeAction, varRef, p3, is);
+		return DataType::Void;
 
-    case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
-        varRef = p2 + (p1 << 16);
-        ScopeMutateNumber(is->_variables, varRef, (int8_t)codeAction);
-        break;
+	case 'i': // special 'increment' operator. Uses the 'codeAction' slot to hold a small signed number
+		varRef = p2 + (p1 << 16);
+		ScopeMutateNumber(is->_variables, varRef, (int8_t)codeAction);
+		return DataType::Void;
 
-    case 's': // reserved for System operation.
-        StringAppendFormat(is->_output, "Unimplemented System operation op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
-        return DataType::Exception;
-
-    default:
-        StringAppendFormat(is->_output, "Unexpected op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
-        return DataType::Exception;
-    }
-    return DataType::Void;
+	default:
+		StringAppendFormat(is->_output, "Unexpected op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
+		return DataType::Exception;
+	}
+	return DataType::Void;
 }
 
 
@@ -1955,6 +1952,13 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
     int lowIndex = -1, highIndex = -1;
 	is->State = ExecutionState::Running;
 
+	int opCodeType = (int)DataType::Opcode;
+	
+	// decode opcode and do stuff
+	char codeClass, codeAction;
+	uint16_t p1, p2;
+	uint8_t p3;
+
     while (true){
         if (localSteps >= maxCycles) {
             VecFreeCache(is->_program, programWindow);
@@ -1983,23 +1987,10 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
         if (!CheckProgramWindow(is, &programWindow, &lowIndex, &highIndex)) break;
         auto word = programWindow[is->_position - lowIndex];
 
+		if (word.type == opCodeType) { // instructions
+			DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2, &p3);
+			auto result = ProcessOpCode(codeClass, codeAction, p1, p2, p3, &(is->_position), word, is);
 
-        switch (word.type) {
-        case (int)DataType::Invalid:
-        {
-            StringAppendFormat(is->_output, "Unknown code point at position \x02\n", is->_position);
-            break;
-        }
-
-        case (int)DataType::Opcode:
-        {
-            // decode opcode and do stuff
-            char codeClass, codeAction;
-            uint16_t p1, p2;
-            uint8_t p3;
-            DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2, &p3);
-            auto result = ProcessOpCode(codeClass, codeAction, p1, p2, p3, &(is->_position), word, is);
-			
 			if ((int)result >= 250) { // Special conditions
 				switch (result) {
 				case DataType::Exception: return FailureResult(is->_position); // program failed
@@ -2014,30 +2005,36 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
 					return IPCSendExecutionResult(is); // program wants to broadcast an IPC message. It has set stack values and is yielding.
 
 				case DataType::EndOfProgram: goto GOOD_EXIT; // program is exiting early (based on logic)
-					
+
 				default:
 					StringAppend(is->_output, "Unexpected special condition after opcode: ");
 					StringAppendInt32(is->_output, (int)result);
 					return FailureResult(is->_position);
 				}
 			}
-            break;
-        }
-        case (int)DataType::EndOfSubProgram:
-        {
-            // Delete back to the 'EndOfProgram' marker
-            HandleReturn(is);
-            highIndex -= RollBackSubProgram(is);
-            programEnd = VectorLength(is->_program);
-            break;
-        }
-        case (int)DataType::EndOfProgram:
-            goto GOOD_EXIT;
+		} else { // values and special flags
+			switch (word.type) {
+			case (int)DataType::Invalid:
+			{
+				StringAppendFormat(is->_output, "Unknown code point at position \x02\n", is->_position);
+				break;
+			}
+			case (int)DataType::EndOfSubProgram:
+			{
+				// Delete back to the 'EndOfProgram' marker
+				HandleReturn(is);
+				highIndex -= RollBackSubProgram(is);
+				programEnd = VectorLength(is->_program);
+				break;
+			}
+			case (int)DataType::EndOfProgram:
+				goto GOOD_EXIT;
 
-        default:
-            VecPush_DataTag(is->_valueStack, word); // encoded values, or references/pointers
-            break;
-        }
+			default:
+				VecPush_DataTag(is->_valueStack, word); // encoded values, or references/pointers
+				break;
+			}
+		}
 
         is->_position++;
     }

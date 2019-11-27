@@ -66,9 +66,9 @@ The machine:
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
-* [ ] Add IPC in/out (vector of strings, or special serialised format -- see Message queues below)
+* [x] Add IPC in/out (vector of strings, or special serialised format -- see Message queues below)
 * [x] Debug symbols file and reader
-* [ ] Value stack improvements (delete unused return values. Maybe have a sentinel value.)
+* [ ] Value stack improvements (delete unused return values. Maybe have a sentinel value, or single stack)
 
 
 Actor model stuff:
@@ -79,11 +79,11 @@ Actor model stuff:
     * [x] Fix arena/zone naming consistency in the allocator code
     * [x] Per-instance arenas for containers? (so we can be thread safe-ish)
 * [x] Serialisation & hashing (will help escape arenas)
-* [ ] Message queues
-    * [ ] multiple available interpreter sessions with sequencer
+* [x] Message queues
+    * [x] multiple available interpreter sessions with sequencer
 	    * [ ] could load balance between cores based on idle time
-    * [ ] `send`, `listen` and `wait` built-in functions with target on send and register.
-	* [ ] routing/mapping/storage between interpreter sessions (maybe a hash-map per interpreter state?)
+    * [x] `send`, `listen` and `wait` built-in functions with target on send and register.
+	* [x] routing/mapping/storage between interpreter sessions (maybe a hash-map per interpreter state?)
 * [ ] Scheduler
   * [ ]      start new process -- maybe by sending a specific message? (`send("start" "myprog.ecs")`) or a new built-in (`run-prog("myprog.ecs")`)
   * [ ] -OR- have a scheduler script that starts up multiple programs.

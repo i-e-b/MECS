@@ -176,7 +176,7 @@ void* ArenaAllocate(Arena* a, size_t byteCount) {
 
         // found a slot where it will fit
         a->_currentZone = i;
-        uint16_t result = GetHead(a, i); // new pointer
+        size_t result = GetHead(a, i); // new pointer
         SetHead(a, i, result + byteCount); // advance pointer to end of allocated data
 
         auto oldRefs = GetRefCount(a, i);
@@ -286,7 +286,7 @@ void ArenaGetState(Arena* a, size_t* allocatedBytes, size_t* unallocatedBytes,
         if (zoneHead > 0) occupied++;
         else empty++;
 
-        auto free = ARENA_ZONE_SIZE - zoneHead;
+        unsigned free = ARENA_ZONE_SIZE - zoneHead;
         allocated += zoneHead;
         unallocated += free;
         if (free > largestFree) largestFree = free;
