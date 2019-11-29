@@ -13,6 +13,7 @@ typedef struct HashMap_KVP {
 // A generalised hash-map using the robin-hood strategy and our own Vector class
 // Users must supply their own hashing and equality function pointers
 typedef struct HashMap HashMap;
+typedef HashMap* HashMapPtr;
 
 // Create a new hash map with an initial size
 HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, bool(*keyComparerFunc)(void* key_A, void* key_B), unsigned int(*getHashFunc)(void* key));

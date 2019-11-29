@@ -124,39 +124,42 @@ void *NewChunk(Vector *v) {
 
 // This is the core of most of the containers in MECS.
 // It's very important this is correct and optimal
+// `chunkPtr` returns the memory address of a vector chunk
+// `chunkIndex` returns the chunk index where the logical index was found
 bool FindNearestChunk(Vector *v, int targetIndex, void **chunkPtr, unsigned int *chunkIndex) {
-    if (v->_elementCount == 0) { // Optimised for empty list
+	uint baseOffset = v->_baseOffset;
+	uint elemCount = v->_elementCount;
+	uint realElemCount = elemCount + baseOffset;
+
+    if (realElemCount < v->ElemsPerChunk) { // Optimised for near-empty list
         *chunkPtr = v->_endChunkPtr;
         *chunkIndex = 0;
         return true;
     }
 
     // 0. Apply offsets
-    uint realIndex = targetIndex + v->_baseOffset;
+    uint realIndex = targetIndex + baseOffset;
 
     // 1. Calculate desired chunk index
     uint targetChunkIdx = realIndex >> v->ElemChunkLog2;
+	*chunkIndex = targetChunkIdx;
 
     // 2. Optimise for start- and end- of chain (small lists & very likely for Push & Pop)
-    if (targetChunkIdx == 0)
-    { // start of chain
+
+    if (targetChunkIdx == 0) { // start of chain
         *chunkPtr = v->_baseChunkTable;
-        *chunkIndex = targetChunkIdx;
         return true;
     }
 
-    uint realElemCount = v->_elementCount + v->_baseOffset;
     uint endChunkIdx = (realElemCount - 1) >> v->ElemChunkLog2;
     if (targetChunkIdx == endChunkIdx)
     { // lands on end-of-chain
         *chunkPtr = v->_endChunkPtr;
-        *chunkIndex = targetChunkIdx;
         return true;
     }
-    if (targetIndex >= v->_elementCount)
+    if (targetIndex >= elemCount)
     { // lands outside a chunk -- off the end
         *chunkPtr = v->_endChunkPtr;
-        *chunkIndex = targetChunkIdx;
         return false;
     }
 
@@ -192,15 +195,13 @@ bool FindNearestChunk(Vector *v, int targetIndex, void **chunkPtr, unsigned int 
         if (next == NULL) {
             // walk chain failed! We will store the last step in case it's useful.
             *chunkPtr = chunkHeadPtr;
-            *chunkIndex = targetChunkIdx;
             return false;
         }
         chunkHeadPtr = next;
     }
 
     *chunkPtr = chunkHeadPtr;
-    *chunkIndex = targetChunkIdx;
-    return true;
+	return true;
 }
 
 inline void RebuildSkipTable(Vector *v)
@@ -269,6 +270,8 @@ inline void MaybeRebuildSkipTable(Vector *v) {
     if (v->_skipTableDirty) RebuildSkipTable(v);
 }
 
+// Find the base pointer of the data in the given vector slot.
+// This gets *hammered* by many calls in the system, so it's a good idea to keep it optimal.
 inline void * PtrOfElem(Vector *v, int index) {
     if (v == NULL) return NULL;
     while (index < 0) { index += v->_elementCount; } // allow negative index syntax
@@ -276,8 +279,18 @@ inline void * PtrOfElem(Vector *v, int index) {
 
     var entryIdx = (index + v->_baseOffset) % v->ElemsPerChunk;
 
+	/* */
+	uint baseOffset = v->_baseOffset;
+	uint elemCount = v->_elementCount;
+	uint realElemCount = elemCount + baseOffset;
+
+    if (realElemCount < v->ElemsPerChunk) { // Optimised for near-empty list
+		return byteOffset(v->_endChunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));
+    }
+	/* */
+
     void *chunkPtr = NULL;
-    uint32_t realIdx = index;
+    uint32_t realIdx = 0;
     if (!FindNearestChunk(v, index, &chunkPtr, &realIdx)) return NULL;
 
     return byteOffset(chunkPtr, PTR_SIZE + (v->ElementByteSize * entryIdx));

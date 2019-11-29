@@ -196,7 +196,27 @@ int TestVector() {
     std::cout << "\n";
     VectorDeallocate(gvec);
 
-
+	// Queue/Dequeue chain
+	std::cout << "Dequeue chain ";
+	auto q = VecAllocate_char();
+	char c = '0';
+	for (int i = 0; i < 5; i++) { VecPush_char(q, (char)(i+48)); }
+	for (int i = 5; i < 78; i++)
+	{
+		VecPush_char(q, (char)(i+48));
+		VecDequeue_char(q, &c);
+		std::cout << c;
+	}
+	while (VecDequeue_char(q, &c)) { std::cout << c; }
+    std::cout << "\n              ";
+	for (int i = 0; i < 78; i++)
+	{
+		VecPush_char(q, (char)(i+48));
+		VecDequeue_char(q, &c);
+		std::cout << c;
+	}
+    std::cout << "\n";
+	VecDeallocate(q);
 
     // Check that vectors pin to the arena they were created in:
     size_t beforeOuter, afterInner, afterOuter, finalOuter;
@@ -213,7 +233,6 @@ int TestVector() {
 
     // delete the arena, check we can still access data
     MMPop();
-    char c;
     for (int i = 0; i < (100 KILOBYTES); i++) {
         VecPop_char(pinv, &c);
     }
@@ -1357,7 +1376,7 @@ int main() {
     if (aares != 0) return aares;
 
     StartManagedMemory();
-/*
+
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
@@ -1412,15 +1431,10 @@ int main() {
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
-*/
-	//for (int i = 0; i < 20; i++)
-	{
 
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
 
-	}
-	/*
     MMPush(10 MEGABYTES);
     auto multi = TestMultipleRuntimes();
     if (multi != 0) return multi;
@@ -1430,7 +1444,7 @@ int main() {
     auto ipct = TestIPC();
     if (ipct != 0) return ipct;
     MMPop();
-	*/
+
     ShutdownManagedMemory();
 }
 
