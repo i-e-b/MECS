@@ -1,6 +1,5 @@
 
 #include "DisplaySys.h"
-
 //#include <stdlib.h>
 
 
@@ -32,6 +31,62 @@ typedef struct ScanBuffer {
 
 
 #ifdef WIN32
+
+#include <SDL.h>
+#include <SDL_mutex.h>
+#include <SDL_thread.h>
+
+typedef struct Screen {
+    //The window we'll be rendering to
+    SDL_Window* window;
+
+    //The surface contained by the window
+    SDL_Surface* screenSurface;
+
+	// Allocation zone
+	ArenaPtr arena;
+} Screen;
+
+// Do anything needed to attach to a physical display device
+ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height) {
+	if (arena == NULL) return NULL;
+	if (width < 100 || height < 100) return NULL;
+
+	auto result = (ScreenPtr)ArenaAllocateAndClear(arena, sizeof(Screen));
+	if (result == NULL) return NULL;
+
+	result->arena = arena;
+
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+		ArenaDereference(arena, result);
+        return NULL;
+	}
+
+    result->window = SDL_CreateWindow("MECS for Windows (SDL)", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN);
+	
+    if (result->window == NULL) {
+		ArenaDereference(arena, result);
+        return NULL;
+	}
+
+	result->screenSurface = SDL_GetWindowSurface(result->window); // Get window surface
+    SDL_FillRect(result->screenSurface, NULL, SDL_MapRGB(result->screenSurface->format, 0x70, 0x70, 0x80)); // Fill the surface blue-grey
+    SDL_UpdateWindowSurface(result->window); // Update the surface
+}
+
+// Release a physical display device
+void DisplaySystem_Shutdown(ScreenPtr screen) {
+	if (screen != NULL) {
+		SDL_DestroyWindow(screen->window);
+		ArenaDereference(screen->arena, screen);
+	}
+    SDL_Quit();
+}
+
+
+void DisplaySystem_PumpIdle(ScreenPtr screen) {
+	SDL_PumpEvents(); // Keep Win32 happy
+}
 
 #endif
 

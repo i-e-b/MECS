@@ -18,6 +18,7 @@
 // System abstractions
 #include "FileSys.h"
 #include "TimingSys.h"
+#include "DisplaySys.h"
 
 // The MECS compiler and runtime
 #include "SourceCodeTokeniser.h"
@@ -1376,6 +1377,7 @@ int main() {
     if (aares != 0) return aares;
 
     StartManagedMemory();
+	auto screen = DisplaySystem_Start(NewArena(1 MEGABYTE), 800, 600);	
 
     MMPush(1 MEGABYTE);
     auto vres = TestVector();
@@ -1445,6 +1447,7 @@ int main() {
     if (ipct != 0) return ipct;
     MMPop();
 
+	DisplaySystem_Shutdown(screen);
     ShutdownManagedMemory();
 }
 

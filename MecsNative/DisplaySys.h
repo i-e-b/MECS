@@ -4,10 +4,26 @@
 #define displaysys_h
 
 #include <stdint.h>
+#include "ArenaAllocator.h"
 
-// This is basically a copy from the SDL experiments' `ScanBufferDraw.h`
-
+// Draw commands structures
 typedef struct ScanBuffer ScanBuffer;
+
+// Structure for tracking display (window on desktop, raw buffer on embed)
+typedef struct Screen Screen;
+typedef Screen* ScreenPtr;
+
+
+// Do anything needed to attach to a physical display device
+ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height);
+
+// Release a physical display device
+void DisplaySystem_Shutdown(ScreenPtr screen);
+
+// Run desktop system events (ignored on embedded systems)
+// This should be called frequently, particularly as the system goes idle.
+void DisplaySystem_PumpIdle(ScreenPtr screen);
+
 
 // Create a new scan-buffer, to accept draw commands and be rendered to a buffer
 ScanBuffer *InitScanBuffer(int width, int height);

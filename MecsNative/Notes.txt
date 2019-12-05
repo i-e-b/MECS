@@ -84,6 +84,12 @@ Actor model stuff:
 	    * [ ] could load balance between cores based on idle time
     * [x] `send`, `listen` and `wait` built-in functions with target on send and register.
 	* [x] routing/mapping/storage between interpreter sessions (maybe a hash-map per interpreter state?)
+* [ ] Special message receivers
+	* [ ] Graphics
+	* [ ] Storage (disk)
+* [ ] Special message sender
+	* [ ] Keyboard
+	* [ ] Animation frames
 * [ ] Scheduler
   * [ ]      start new process -- maybe by sending a specific message? (`send("start" "myprog.ecs")`) or a new built-in (`run-prog("myprog.ecs")`)
   * [ ] -OR- have a scheduler script that starts up multiple programs.

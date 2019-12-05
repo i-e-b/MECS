@@ -20,6 +20,7 @@
 #define ARENA_DEBUG 1
 
 typedef struct Arena Arena;
+typedef Arena* ArenaPtr;
 
 // Create a new arena for memory management. Size is the maximum size for the whole
 // arena. Fragmentation may make the usable size smaller. Size should be a multiple of ARENA_ZONE_SIZE

@@ -181,4 +181,9 @@
   <ItemGroup>
     <Text Include="Notes.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\SDL2-2.0.9\lib\x86\SDL2.lib" />
+    <Library Include="..\SDL2-2.0.9\lib\x86\SDL2main.lib" />
+    <Library Include="..\SDL2-2.0.9\lib\x86\SDL2test.lib" />
+  </ItemGroup>
 </Project>
