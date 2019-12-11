@@ -1374,8 +1374,8 @@ int TestIPC() {
 
 ScreenPtr ShowWindow() {
 	// SETUP
-	auto screen = DisplaySystem_Start(NewArena(1 MEGABYTE), 800, 600);	
-	auto scanBuf = InitScanBuffer(800, 600); // TODO: arena support
+	auto screen = DisplaySystem_Start(NewArena(1 MEGABYTE), 800, 600, 0x70, 0x70, 0x80);	
+	auto scanBuf = DS_InitScanBuffer(800, 600); // TODO: arena support
 
 	if (screen == NULL || scanBuf == NULL) return NULL;
 	
@@ -1389,14 +1389,26 @@ ScreenPtr ShowWindow() {
     auto demo3 = "TO-DO: Move everything over here.                    ";
     for (int i = 0; i < strLen; i++) {
 		                                               // RRGGBB
-        AddGlyph(scanBuf, demo1[i], (2 + i) * 8, 20, 1, 0x000000);
-        AddGlyph(scanBuf, demo2[i], (2 + i) * 8, 38, 1, 0xffffff);
-        AddGlyph(scanBuf, demo3[i], (2 + i) * 8, 46, 1, 0x77ffff);
+        DS_AddGlyph(scanBuf, demo1[i], (2 + i) * 8, 20, 1, 0x000000);
+        DS_AddGlyph(scanBuf, demo2[i], (2 + i) * 8, 38, 1, 0xffffff);
+        DS_AddGlyph(scanBuf, demo3[i], (2 + i) * 8, 46, 1, 0x77ffff);
     }
 
 	// Render to screen
-	RenderBuffer(scanBuf, DisplaySystem_GetFrameBuffer(screen)); // TODO: pass in screen directly
+	DS_RenderBuffer(scanBuf, DisplaySystem_GetFrameBuffer(screen)); // TODO: pass in screen directly
 	DisplaySystem_PumpIdle(screen); // needed to update the screen on Windows
+
+	for (int i = 1; i < 40; i++)
+	{
+		DS_VScrollScreen(screen, 10, 0x70, 0x70, 0x80);
+		DisplaySystem_PumpIdle(screen);
+	}
+	
+	for (int i = 1; i < 40; i++)
+	{
+		DS_VScrollScreen(screen, -10, 0x70, 0x70, 0x80);
+		DisplaySystem_PumpIdle(screen);
+	}
 	return screen;
 }
 

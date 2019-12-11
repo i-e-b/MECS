@@ -13,15 +13,16 @@ typedef struct Screen {
     //The window we'll be rendering to
     SDL_Window* window;
 
-    //The surface contained by the window
-    //SDL_Surface* screenSurface;
-
+	int height;
+	int width;
+	int bpp; // bits per pixel
+    
 	// Allocation zone
 	ArenaPtr arena;
 } Screen;
 
 // Do anything needed to attach to a physical display device
-ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height) {
+ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height, int r, int g, int b) {
 	if (arena == NULL) return NULL;
 	if (width < 100 || height < 100) return NULL;
 
@@ -42,8 +43,12 @@ ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height) {
         return NULL;
 	}
 
+	result->height = height;
+	result->width = width;
+
 	auto screenSurface = SDL_GetWindowSurface(result->window); // Get window surface
-    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x70, 0x70, 0x80)); // Fill the surface blue-grey
+    SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, r, g, b)); // Fill the surface
+	result->bpp = screenSurface->format->BitsPerPixel;
     SDL_UpdateWindowSurface(result->window); // Update the surface
 	return result;
 }
@@ -71,6 +76,60 @@ void DisplaySystem_PumpIdle(ScreenPtr screen) {
 	if (screen == NULL || screen->window == NULL) return;
 	SDL_UpdateWindowSurface(screen->window); // Update the surface
 	SDL_PumpEvents(); // Keep Win32 happy
+}
+
+
+// move all pixels on the screen in by a vertical number of pixels.
+// negative values will move the image up, positive will move it down.
+void DS_VScrollScreen(ScreenPtr screen, int distance, int r, int g, int b) {
+	if (screen == NULL || screen->window == NULL || distance == 0) return;
+
+	auto screenSurface = SDL_GetWindowSurface(screen->window); // Get window surface
+	auto buf = (char*)screenSurface->pixels;
+
+	int dir = (distance > 0) ? -1 : 1;
+	int start = (distance > 0) ? distance : 0;
+	int end = (distance > 0) ? screen->height : (screen->height + distance);
+	
+	int upper = (start > end) ? start : end;
+	int lower = (start > end) ? end : start;
+
+	int rowbytes = screen->width * (screen->bpp >> 3);
+
+	if (dir < 0) { auto tmp = start; start = end - 1; end = tmp; } // swap endpoints
+
+
+	for (int y = start; (y >= lower) && (y < upper); y += dir) {
+		int sy = y - distance;
+
+		int src_y = sy * rowbytes;
+		int dst_y = y * rowbytes;
+
+		for (int x = 0; x < rowbytes; x++) {
+			buf[dst_y+x] = buf[src_y+x];
+		}
+	}
+
+	for (int y = 0; y < lower; y++)
+	{
+		int dst_y = y * rowbytes;
+		for (int x = 0; x < rowbytes; x+=4) {
+			buf[dst_y+x+0] = b;
+			buf[dst_y+x+1] = g;
+			buf[dst_y+x+2] = r;
+			buf[dst_y+x+3] = 0; // NA
+		}
+	}
+	for (int y = upper; y < screen->height; y++)
+	{
+		int dst_y = y * rowbytes;
+		for (int x = 0; x < rowbytes; x+=4) {
+			buf[dst_y+x+0] = b;
+			buf[dst_y+x+1] = g;
+			buf[dst_y+x+2] = r;
+			buf[dst_y+x+3] = 0; // NA
+		}
+	}
 }
 
 #endif

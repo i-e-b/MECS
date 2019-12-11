@@ -54,6 +54,10 @@ The machine:
 ------------
 
 * [ ] Graphics (native / win split)
+  * [ ] Scrolling console (optimise scroll and dirty regions for this)
+  * [ ] Move `cout` calls in "MecsNative.cpp" to new console
+  * [ ] keyboard input -- console buffer and messaging
+  * [ ] message handler for graphics
   * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 
 * [x] Put ALL Interpreter allocations inside it's own memory

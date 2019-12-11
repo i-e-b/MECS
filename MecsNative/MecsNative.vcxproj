@@ -179,7 +179,7 @@
     <ClCompile Include="CompilerCore.cpp" />
     <ClCompile Include="CompilerOptimisations.cpp" />
     <ClCompile Include="Desugar.cpp" />
-    <ClCompile Include="DisplaySys.cpp" />
+    <ClCompile Include="DisplaySys_Native.cpp" />
     <ClCompile Include="DisplaySys_Common.cpp" />
     <ClCompile Include="FileSys.cpp" />
     <ClCompile Include="HashMap.cpp" />

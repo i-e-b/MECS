@@ -16,7 +16,8 @@ typedef Screen* ScreenPtr;
 //######################### Device management #########################
 
 // Do anything needed to attach to a physical display device
-ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height);
+// The screen will be cleared with the given color
+ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height, int r, int g, int b);
 
 // Release a physical display device
 void DisplaySystem_Shutdown(ScreenPtr screen);
@@ -28,27 +29,35 @@ void DisplaySystem_PumpIdle(ScreenPtr screen);
 // get a pointer to the raw frame buffer being used by the screen
 char* DisplaySystem_GetFrameBuffer(ScreenPtr screen);
 
+// move all pixels on the screen in by a vertical number of pixels.
+// negative values will move the image up, positive will move it down.
+// invalidated pixels will be written with the given color
+void DS_VScrollScreen(ScreenPtr screen, int distance, int r, int g, int b);
 
 
 // Create a new scan-buffer, to accept draw commands and be rendered to a buffer
-ScanBuffer *InitScanBuffer(int width, int height);
+ScanBuffer *DS_InitScanBuffer(int width, int height);
 // Dispose if a scan-buffer when no longer needed
-void FreeScanBuffer(ScanBuffer *buf);
+void DS_FreeScanBuffer(ScanBuffer *buf);
 
 // Reset all drawing operations in the buffer, ready for next frame
 // Do this *after* rendering to pixel buffer
-void ClearScanBuffer(ScanBuffer *buf);
+void DS_ClearScanBuffer(ScanBuffer *buf);
+
+// Clear the rows between top and bottom (inclusive)
+void DS_ClearRows(ScanBuffer *buf, int top, int bottom);
+
 
 // Render a scan buffer to a pixel framebuffer
 // This can be done on a different processor core from other draw commands to spread the load
 // Do not draw to a scan buffer while it is rendering (switch buffers if you need to)
-void RenderBuffer(
+void DS_RenderBuffer(
     ScanBuffer *buf, // source scan buffer
     char* data       // target frame-buffer (must match scanbuffer dimensions)
 );
 
 // Fill a triagle with a solid colour
-void FillTrangle( ScanBuffer *buf,
+void DS_FillTrangle( ScanBuffer *buf,
     int x0, int y0, 
     int x1, int y1,
     int x2, int y2,
@@ -56,23 +65,25 @@ void FillTrangle( ScanBuffer *buf,
     int r, int g, int b);
 
 // Fill an axis aligned rectangle
-void FillRect(ScanBuffer *buf,
+void DS_FillRect(ScanBuffer *buf,
     int left, int top, int right, int bottom,
     int z,
     int r, int g, int b);
 
-void FillCircle(ScanBuffer *buf,
+// Fill a circle given a point and radius
+void DS_FillCircle(ScanBuffer *buf,
     int x, int y, int radius,
     int z,
     int r, int g, int b);
 
-void FillEllipse(ScanBuffer *buf,
+// Fill an ellipse given a centre point, height and width
+void DS_FillEllipse(ScanBuffer *buf,
     int xc, int yc, int width, int height,
     int z,
     int r, int g, int b);
 
 // Fill a quad given 3 points
-void FillTriQuad(ScanBuffer *buf,
+void DS_FillTriQuad(ScanBuffer *buf,
     int x0, int y0,
     int x1, int y1,
     int x2, int y2,
@@ -80,34 +91,34 @@ void FillTriQuad(ScanBuffer *buf,
     int r, int g, int b);
 
 // draw a line with width
-void DrawLine(ScanBuffer *buf,
+void DS_DrawLine(ScanBuffer *buf,
     int x0, int y0,
     int x1, int y1,
     int z, int w, // width
     int r, int g, int b);
 
 // draw the border of an ellipse
-void OutlineEllipse(ScanBuffer *buf,
+void DS_OutlineEllipse(ScanBuffer *buf,
     int xc, int yc, int width, int height,
     int z, int w, // outline width
     int r, int g, int b);
 
 // Set a background plane
-void SetBackground( ScanBuffer *buf,
+void DS_SetBackground( ScanBuffer *buf,
     int z, // depth of the background. Anything behind this will be invisible
     int r, int g, int b);
 
 // draw everywhere except in the ellipse
-void EllipseHole(ScanBuffer *buf,
+void DS_EllipseHole(ScanBuffer *buf,
     int xc, int yc, int width, int height,
     int z,
     int r, int g, int b);
 
 
-
 // Write a glyph at the given position (y is baseline)
 // This is done with a very basic default font
-void AddGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color);
+// characters fit on an 8x8 grid
+void DS_AddGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color);
 
 
 #endif

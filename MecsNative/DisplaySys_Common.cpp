@@ -68,7 +68,7 @@ RegisterHeapFor(SP_Element, Heap)
 // Holes: A CCW winding polygon will have 'OFF's before 'ON's, being inside-out. If a single 'ON' is set before this shape
 //        (Same as a background) then we will fill only where the polygon is *not* present -- this makes vignette effects simple
 
-ScanBuffer * InitScanBuffer(int width, int height)
+ScanBuffer * DS_InitScanBuffer(int width, int height)
 {
     auto buf = (ScanBuffer*)mcalloc(1, sizeof(ScanBuffer));
     if (buf == NULL) return NULL;
@@ -80,14 +80,14 @@ ScanBuffer * InitScanBuffer(int width, int height)
     //       Could also do a 'region' like difference-from-last-scanline?
 
     buf->materials = (Material*)mcalloc(OBJECT_MAX + 1, sizeof(Material));
-    if (buf->materials == NULL) { FreeScanBuffer(buf); return NULL; }
+    if (buf->materials == NULL) { DS_FreeScanBuffer(buf); return NULL; }
 
     buf->scanLines = (ScanLine*)mcalloc(height+1, sizeof(ScanLine)); // we use a spare line as sorting temp memory
-    if (buf->scanLines == NULL) { FreeScanBuffer(buf); return NULL; }
+    if (buf->scanLines == NULL) { DS_FreeScanBuffer(buf); return NULL; }
 
     for (int i = 0; i < height + 1; i++) {
         auto scanBuf = (SwitchPoint*)mcalloc(sizeEstimate + 1, sizeof(SwitchPoint));
-        if (scanBuf == NULL) { FreeScanBuffer(buf); return NULL; }
+        if (scanBuf == NULL) { DS_FreeScanBuffer(buf); return NULL; }
         buf->scanLines[i].points = scanBuf;
         buf->scanLines[i].count = 0;
         buf->scanLines[i].length = sizeEstimate;
@@ -95,13 +95,13 @@ ScanBuffer * InitScanBuffer(int width, int height)
 
     buf->p_heap = HeapAllocate_SP_Element();
     if (buf->p_heap == NULL) {
-        FreeScanBuffer(buf);
+        DS_FreeScanBuffer(buf);
         return NULL;
     }
 
     buf->r_heap = HeapAllocate_SP_Element();
     if (buf->r_heap == NULL) {
-        FreeScanBuffer(buf);
+        DS_FreeScanBuffer(buf);
         return NULL;
     }
 
@@ -112,7 +112,7 @@ ScanBuffer * InitScanBuffer(int width, int height)
     return buf;
 }
 
-void FreeScanBuffer(ScanBuffer * buf)
+void DS_FreeScanBuffer(ScanBuffer * buf)
 {
     if (buf == NULL) return;
     if (buf->scanLines != NULL) {
@@ -217,7 +217,7 @@ void GeneralRect(ScanBuffer *buf,
 }
 
 // Fill an axis aligned rectangle
-void FillRect(ScanBuffer *buf,
+void DS_FillRect(ScanBuffer *buf,
     int left, int top, int right, int bottom,
     int z,
     int r, int g, int b)
@@ -228,11 +228,11 @@ void FillRect(ScanBuffer *buf,
     buf->itemCount++;
 }
 
-void FillCircle(ScanBuffer *buf,
+void DS_FillCircle(ScanBuffer *buf,
     int x, int y, int radius,
     int z,
     int r, int g, int b) {
-    FillEllipse(buf,
+    DS_FillEllipse(buf,
         x, y, radius * 2, radius * 2,
         z,
         r, g, b);
@@ -295,7 +295,7 @@ void GeneralEllipse(ScanBuffer *buf,
 }
 
 
-void FillEllipse(ScanBuffer *buf,
+void DS_FillEllipse(ScanBuffer *buf,
     int xc, int yc, int width, int height,
     int z,
     int r, int g, int b)
@@ -310,7 +310,7 @@ void FillEllipse(ScanBuffer *buf,
     buf->itemCount++;
 }
 
-void EllipseHole(ScanBuffer *buf,
+void DS_EllipseHole(ScanBuffer *buf,
     int xc, int yc, int width, int height,
     int z,
     int r, int g, int b) {
@@ -330,7 +330,7 @@ void EllipseHole(ScanBuffer *buf,
 }
 
 // Fill a quad given 3 points
-void FillTriQuad(ScanBuffer *buf,
+void DS_FillTriQuad(ScanBuffer *buf,
     int x0, int y0,
     int x1, int y1,
     int x2, int y2,
@@ -378,7 +378,7 @@ float isqrt(float number) {
 	return y;
 }
 
-void DrawLine(ScanBuffer * buf, int x0, int y0, int x1, int y1, int z, int w, int r, int g, int b)
+void DS_DrawLine(ScanBuffer * buf, int x0, int y0, int x1, int y1, int z, int w, int r, int g, int b)
 {
     if (w < 1) return; // empty
 
@@ -402,12 +402,12 @@ void DrawLine(ScanBuffer * buf, int x0, int y0, int x1, int y1, int z, int w, in
     x1 -= (int)(ndx - hdx);
     y1 -= (int)(ndy - hdy);
 
-    FillTriQuad(buf, x0, y0, x1, y1,
+    DS_FillTriQuad(buf, x0, y0, x1, y1,
         x0 + (int)(ndx), y0 + (int)(ndy),
         z, r, g, b);
 }
 
-void OutlineEllipse(ScanBuffer * buf, int xc, int yc, int width, int height, int z, int w, int r, int g, int b)
+void DS_OutlineEllipse(ScanBuffer * buf, int xc, int yc, int width, int height, int z, int w, int r, int g, int b)
 {
     if (z < 0) return; // behind camera
 
@@ -428,7 +428,7 @@ void OutlineEllipse(ScanBuffer * buf, int xc, int yc, int width, int height, int
 // Fill a triagle with a solid colour
 // Triangle must be clockwise winding (if dy is -ve, line is 'on', otherwise line is 'off')
 // counter-clockwise contours are detected and rearraged
-void FillTrangle(
+void DS_FillTrangle(
     ScanBuffer *buf, 
     int x0, int y0,
     int x1, int y1,
@@ -462,7 +462,7 @@ void FillTrangle(
 }
 
 // Set a single 'on' point at the given level on each scan line
-void SetBackground(
+void DS_SetBackground(
     ScanBuffer *buf,
     int z, // depth of the background. Anything behind this will be invisible
     int r, int g, int b) {
@@ -476,17 +476,25 @@ void SetBackground(
     buf->itemCount++;
 }
 
-// Reset all drawing operations in the buffer, ready for next frame
-// Do this *after* rendering to pixel buffer
-void ClearScanBuffer(ScanBuffer * buf)
-{
+
+// Clear the rows between top and bottom (inclusive)
+void DS_ClearRows(ScanBuffer *buf, int top, int bottom) {
+
     if (buf == NULL) return;
+	if (top < 0) top = 0;
+	if (bottom > buf->height) bottom = buf->height;
     buf->itemCount = 0; // reset object ids
-    for (int i = 0; i < buf->height; i++)
+    for (int i = top; i < bottom; i++)
     {
         buf->scanLines[i].count = 0;
         buf->scanLines[i].dirty = true;
     }
+}
+
+// Reset all drawing operations in the buffer, ready for next frame
+// Do this *after* rendering to pixel buffer
+void DS_ClearScanBuffer(ScanBuffer * buf) {
+	DS_ClearRows(buf, 0, 10000);
 }
 
 // blend two colors, by a proportion [0..255]
@@ -652,7 +660,7 @@ void RenderScanLine(
 // Render a scan buffer to a pixel framebuffer
 // This can be done on a different processor core from other draw commands to spread the load
 // Do not draw to a scan buffer while it is rendering (switch buffers if you need to)
-void RenderBuffer(
+void DS_RenderBuffer(
     ScanBuffer *buf, // source scan buffer
     char* data       // target frame-buffer (must match scanbuffer dimensions)
 ) {
@@ -665,7 +673,7 @@ void RenderBuffer(
 
 #define SAFETY_LIMIT 50
 
-void AddGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color) {
+void DS_AddGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color) {
     if (buf == NULL) return;
     if (c < 33 || c > 126) return;
     if (x < -7 || x > buf->width) return;
