@@ -21,6 +21,12 @@ typedef struct Screen {
 	ArenaPtr arena;
 } Screen;
 
+
+ArenaPtr DisplaySystem_GetArena(ScreenPtr screen) {
+	if (screen == NULL) return NULL;
+	return screen->arena;
+}
+
 // Do anything needed to attach to a physical display device
 ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height, int r, int g, int b) {
 	if (arena == NULL) return NULL;

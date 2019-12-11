@@ -13,11 +13,20 @@ typedef struct String {
 RegisterVectorStatics(V)
 RegisterVectorFor(char, V)
 
+
+inline ArenaPtr FindArena(VectorPtr vec) {
+    auto arena = VectorArena(vec);
+	if (arena == NULL) arena = MMCurrent();
+	return arena;
+}
+
 String * StringEmpty() {
     auto vec = VAllocate_char();
     if (!VectorIsValid(vec)) return NULL;
 
-    auto arena = VectorArena(vec);
+    auto arena = FindArena(vec);
+	if (arena == NULL) return NULL;
+
     auto str = (String*)ArenaAllocateAndClear(arena, sizeof(String));
     str->chars = vec;
     str->hashval = 0;
@@ -43,7 +52,9 @@ String *StringEmptyInArena(Arena* a) {
 String* StringProxy(String* original) {
     if (original == NULL) return NULL;
 
-    auto arena = VectorArena(original->chars);
+    auto arena = FindArena(original->chars);
+	if (arena == NULL) return NULL;
+
     auto str = (String*)ArenaAllocateAndClear(arena, sizeof(String)); // put the proxy in the same memory as the original
     str->chars = original->chars;
     str->hashval = 0;
@@ -63,7 +74,7 @@ void StringClear(String *str) {
 void StringDeallocate(String *str) {
     if (str == NULL) return;
 
-    auto arena = VectorArena(str->chars);
+    auto arena = FindArena(str->chars);
     if (str->isProxy == false && VectorIsValid(str->chars) == true) VectorDeallocate(str->chars);
 
     ArenaDereference(arena, str);
@@ -314,7 +325,8 @@ String *StringSlice(String* str, int startIdx, int length) {
     auto len = StringLength(str);
     if (len < 1) return NULL;
 
-    auto arena = VectorArena(str->chars);
+    auto arena = FindArena(str->chars);
+	if (arena == NULL) return NULL;
 
     String *result = StringEmptyInArena(arena);
     while (startIdx < 0) { startIdx += len; }
@@ -525,7 +537,8 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
         start += hayLen;
     }
     
-    auto arena = VectorArena(haystack->chars);
+    auto arena = FindArena(haystack->chars);
+	if (arena == NULL) return false;
 
     // Rabin–Karp method, but using sum rather than hash (more false positives, but much cheaper on average)
     // get a hash of the 'needle', and try to find somewhere in the haystack that matches.
@@ -624,7 +637,8 @@ String* StringReplace(String* haystack, String* needle, String* replacement) {
     // use `StringFind` to get to the next occurance.
     // for each occurance, copy across the chars up to that point, then copy across replacement, then skip the occurance
     
-    auto arena = VectorArena(haystack->chars);
+	auto arena = FindArena(haystack->chars);
+	if (arena == NULL) return NULL;
 
     String *result = StringEmptyInArena(arena);
     if (result == NULL) return NULL;

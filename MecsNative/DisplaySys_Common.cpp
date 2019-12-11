@@ -4,7 +4,6 @@
 
 #include "Heap.h"
 #include "Vector.h"
-#include "MemoryManager.h"
 
 
 // entry for each 'pixel' in a scan buffer
@@ -31,16 +30,19 @@ typedef struct Material {
     int16_t  depth;         // z-position in final image
 } Material;
 
+RegisterVectorFor(Material, Vector)
+
 // buffer of switch points.
 typedef struct ScanBuffer {
-	uint16_t itemCount;     // used to give each switch-point a unique ID. This is critical for the depth-sorting process
+	uint16_t itemCount;      // used to give each switch-point a unique ID. This is critical for the depth-sorting process
 	int height;
 	int width;
 	int32_t expectedScanBufferSize;
 
-	ScanLine* scanLines;    // matrix of switch points.
-	Material* materials;    // draw properties for each object
+	ScanLine* scanLines;     // matrix of switch points.
+	VectorPtr materials;     // Vector<Material> : draw properties for each object
 	HeapPtr p_heap, r_heap;  // internal heaps for depth sorting
+	ArenaPtr screenArena;    // Memory arena we are working in (owned by the display system)
 } ScanBuffer;
 
 
@@ -57,20 +59,23 @@ RegisterHeapFor(SP_Element, Heap)
 #define ON 0x01
 #define OFF 0x00
 
-#define OBJECT_MAX 65535
+// if we use a single arena array for the materials, we are limited to:
+constexpr int OBJECT_MAX = ARENA_ZONE_SIZE / sizeof(Material); // 8191 with 32-bit color; 10922 with 24 bit color
 
 // NOTES:
-
 // Backgrounds: To set a general background color, the first position (possibly at pos= -1) should be an 'ON' at the furthest depth per scanline.
 //              There should be no matching 'OFF'.
 //              In areas where there is no fill present, no change to the existing image is made.
-
 // Holes: A CCW winding polygon will have 'OFF's before 'ON's, being inside-out. If a single 'ON' is set before this shape
 //        (Same as a background) then we will fill only where the polygon is *not* present -- this makes vignette effects simple
 
-ScanBuffer * DS_InitScanBuffer(int width, int height)
+ScanBuffer * DS_InitScanBuffer(ScreenPtr screen, int width, int height)
 {
-    auto buf = (ScanBuffer*)mcalloc(1, sizeof(ScanBuffer));
+	auto arena = DisplaySystem_GetArena(screen);
+	if (arena == NULL) return NULL;
+
+	auto buf = (ScanBuffer*)ArenaAllocateAndClear(arena, sizeof(ScanBuffer));
+
     if (buf == NULL) return NULL;
 
     auto sizeEstimate = width * 2;
@@ -79,14 +84,15 @@ ScanBuffer * DS_InitScanBuffer(int width, int height)
     // Idea: Have a single list and sort by overall position rather than x (would need a background reset at each scan start?)
     //       Could also do a 'region' like difference-from-last-scanline?
 
-    buf->materials = (Material*)mcalloc(OBJECT_MAX + 1, sizeof(Material));
+    buf->materials = VectorAllocateArena_Material(arena); //(Material*)ArenaAllocateAndClear(arena, ARENA_ZONE_SIZE/*(OBJECT_MAX + 1) * sizeof(Material)*/); // TODO: make vector?
+
     if (buf->materials == NULL) { DS_FreeScanBuffer(buf); return NULL; }
 
-    buf->scanLines = (ScanLine*)mcalloc(height+1, sizeof(ScanLine)); // we use a spare line as sorting temp memory
+	buf->scanLines = (ScanLine*)ArenaAllocateAndClear(arena, (height + 1) * sizeof(ScanLine)); // we use a spare line as sorting temp memory
     if (buf->scanLines == NULL) { DS_FreeScanBuffer(buf); return NULL; }
 
     for (int i = 0; i < height + 1; i++) {
-        auto scanBuf = (SwitchPoint*)mcalloc(sizeEstimate + 1, sizeof(SwitchPoint));
+		auto scanBuf = (SwitchPoint*)ArenaAllocateAndClear(arena, (sizeEstimate + 1) * sizeof(SwitchPoint));
         if (scanBuf == NULL) { DS_FreeScanBuffer(buf); return NULL; }
         buf->scanLines[i].points = scanBuf;
         buf->scanLines[i].count = 0;
@@ -115,16 +121,19 @@ ScanBuffer * DS_InitScanBuffer(int width, int height)
 void DS_FreeScanBuffer(ScanBuffer * buf)
 {
     if (buf == NULL) return;
+	if (buf->screenArena == NULL) return;
+
+	auto arena = buf->screenArena;
     if (buf->scanLines != NULL) {
         for (int i = 0; i < buf->height; i++) {
-            if (buf->scanLines[i].points != NULL)mfree(buf->scanLines[i].points);
+			if (buf->scanLines[i].points != NULL) ArenaDereference(arena, buf->scanLines[i].points);
         }
-        mfree(buf->scanLines);
+        ArenaDereference(arena, buf->scanLines);
     }
-    if (buf->materials != NULL)mfree(buf->materials);
+    if (buf->materials != NULL) VectorDeallocate(buf->materials);
     if (buf->p_heap != NULL) HeapDeallocate(buf->p_heap);
     if (buf->r_heap != NULL) HeapDeallocate(buf->r_heap);
-    mfree(buf);
+    ArenaDereference(arena, buf);
 }
 
 // Set a point with an exact position, clipped to bounds
@@ -148,10 +157,13 @@ inline void SetSP(ScanBuffer * buf, int x, int y, uint16_t objectId, uint8_t isO
 	line->count++; // increment pointer
 }
 
-inline void SetMaterial(ScanBuffer* buf, uint16_t objectId, int depth, uint32_t color) {
-    if (objectId > OBJECT_MAX) return;
-    buf->materials[objectId].color = color;
-    buf->materials[objectId].depth = depth;
+inline void SetMaterial(ScanBuffer* buf, uint16_t* objectId, int depth, uint32_t color) {
+    //if (objectId > OBJECT_MAX) return;
+	Material mat;
+	mat.color = color;
+	mat.depth = depth;
+	VectorPush_Material(buf->materials, mat);
+	*objectId = VectorLength(buf->materials) - 1;
 }
 
 // INTERNAL: Write scan switch points into buffer for a single line.
@@ -188,7 +200,7 @@ void SetLine(
     float grad = (float)(x0 - x1) / (float)(y0 - y1);
 
     auto objectId = buf->itemCount;
-    SetMaterial(buf, objectId, z, color);
+    SetMaterial(buf, &objectId, z, color);
 
     for (int y = top; y < bottom; y++) // skip the last pixel to stop double-counting
     {
@@ -255,7 +267,7 @@ void GeneralEllipse(ScanBuffer *buf,
     int x, y, ty, sigma;
     
     auto objectId = buf->itemCount;
-    SetMaterial(buf, objectId, z, color);
+    SetMaterial(buf, &objectId, z, color);
     int grad = 15; // TODO: calculate (could be based on distance from centre line)
 
     // Top and bottom (need to ensure we don't double the scanlines)
@@ -533,7 +545,8 @@ inline void CleanUpHeaps(HeapPtr p_heap, HeapPtr r_heap) {
 
     // clean up the heaps more
     if (HeapTryFindNext(p_heap, &nextObj)) {
-        if (HeapPeekMin_SP_Element(r_heap)->identifier == nextObj.identifier) {
+		auto elem = HeapPeekMin_SP_Element(r_heap);
+        if (elem != NULL && elem->identifier == nextObj.identifier) {
 			SP_Element current = {};
             bool ok = HeapDeleteMin_SP_Element(p_heap, &current); // remove the current top (we'll put it back after)
             while (HeapTryFindMin(p_heap, &top) && HeapTryFindMin(r_heap, &nextRemove)
@@ -594,7 +607,9 @@ void RenderScanLine(
         SwitchPoint sw = list[i];
         if (sw.xpos > end) break; // ran off the end
 
-        Material m = materials[sw.id];
+		Material m = Material{ 0, 0 };
+        Material* mptr = VectorGet_Material(materials, sw.id);//materials[sw.id];
+		if (mptr != NULL) m = *mptr;
 
         if (sw.xpos > p) { // render up to this switch point
             if (on) {
@@ -626,15 +641,11 @@ void RenderScanLine(
             // set color for next run based on top of p_heap
             //color = materials[top.identifier].color;
             current = list[top.lookup];
-            color = materials[current.id].color;
-
-            // If there is another object underneath, we store the color for antialiasing.
-            SP_Element nextObj = { 0,0,0 };
-            if (HeapTryFindNext_SP_Element(p_heap, &nextObj)) {
-                color_under = materials[nextObj.identifier].color;
-            } else {
-                color_under = 0;
-            }
+			
+			Material m = Material{ 0, 0 };
+			Material* mptr = VectorGet_Material(materials, current.id);//materials[current.id];
+			if (mptr != NULL) m = *mptr;
+            color = m.color;
         } else {
             color = 0;
         }
@@ -662,9 +673,12 @@ void RenderScanLine(
 // Do not draw to a scan buffer while it is rendering (switch buffers if you need to)
 void DS_RenderBuffer(
     ScanBuffer *buf, // source scan buffer
-    char* data       // target frame-buffer (must match scanbuffer dimensions)
+    ScreenPtr screen // target frame-buffer (must match scanbuffer dimensions)
 ) {
-    if (buf == NULL || data == NULL) return;
+    if (buf == NULL || screen == NULL) return;
+
+	auto data = DisplaySystem_GetFrameBuffer(screen);
+	if (data == NULL) return;
 
     for (int i = 0; i < buf->height; i++) {
         RenderScanLine(buf, i, data);
@@ -673,28 +687,70 @@ void DS_RenderBuffer(
 
 #define SAFETY_LIMIT 50
 
-void DS_AddGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color) {
-    if (buf == NULL) return;
-    if (c < 33 || c > 126) return;
-    if (x < -7 || x > buf->width) return;
-    if (y < -1 || y > buf->height + 8) return;
-
-    // pick a char block. For now, just use 'A'
-    uint16_t* points = charMap[c - 33];
-
-    // set objectId, color, and depth
-    int objId = buf->itemCount;
-    buf->itemCount ++;
-    SetMaterial(buf, objId, z, color);
-
-    // draw points
+inline void insertGlyph(ScanBuffer *buf, int x, int y, uint16_t* points, uint16_t objectId) {
+	if (points == NULL) return;
     bool on = true;
     for (int i = 0; i < SAFETY_LIMIT; i++) {
         if (points[i] == 0xFFFF) break;
         int px = x + (points[i] & 0xff);
         int py = y - (points[i] >> 8) + 1;
-        SetSP(buf, px, py, objId, on);
+        SetSP(buf, px, py, objectId, on);
         on = !on;
     }
+}
+
+inline uint16_t* glyphForChar(char c) {
+    if (c < 33 || c > 126) return NULL;
+	return charMap[c - 33];
+}
+
+void DS_DrawGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color) {
+    if (buf == NULL) return;
+    if (c < 33 || c > 126) return;
+    if (x < -7 || x > buf->width) return;
+    if (y < -1 || y > buf->height + 8) return;
+
+    // pick a char block
+	uint16_t* points = charMap[c - 33];
+
+    // set objectId, color, and depth
+    uint16_t objId = buf->itemCount;
+	buf->itemCount++;
+    SetMaterial(buf, &objId, z, color);
+
+    // draw points
+	insertGlyph(buf, x,y, points, objId);
+}
+
+// Draw as much of a string as possible between the `left` and `right` sides.
+// `y` is the font baseline. glyphs will be rendered above and below this point.
+// The string is consumed as it is rendered, so any remaining string was not drawn
+// we optimise here by using a single material for the entire row.
+// Returns false if drawing can't continue -- either the string is empty or there was an error
+bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, int y, int z, uint32_t color) {
+	if (buf == NULL || str == NULL) return false;
+	if (right - left < 8) return false;
+
+    uint16_t objId = buf->itemCount;
+	buf->itemCount++;
+    SetMaterial(buf, &objId, z, color);
+
+	int x = left;
+	int end = right - 8;
+	while (x <= end) {
+		char c = StringDequeue(str);
+		if (c == 0) return false; // end of string
+		if (c == '\n') return true; // simple line break
+		if (c == '\r') {// possibly complex linebreak
+			char next = StringCharAtIndex(str, 0);
+			if (next == '\n') StringDequeue(str);
+			return true;
+		}
+
+		// ok, now draw the actual char
+		insertGlyph(buf, x, y, glyphForChar(c), objId);
+		x += FONT_WIDTH;
+	}
+	return true;
 }
 

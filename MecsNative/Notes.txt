@@ -1,6 +1,13 @@
 Components to do:
 =================
 
+Code niceties
+-------------
+
+* [ ] change 'deallocate' functions to `...Deallocate(thing** x){ ... *x = NULL ...}`
+* [ ] add typedefinition to container registration (e.g. `VectorPop(VectorPtr_MyType v)`)
+
+
 Language features
 -----------------
 
@@ -66,7 +73,6 @@ The machine:
   * [x] Special hashmap for scope (like the c# side uses); use array rather than vector.
 * [ ] Tail-recursion support (maybe with counting return stack?)
 * [ ] Try introducing C++ namespacing?
-* [ ] change 'deallocate' functions to `...Deallocate(thing** x){ ... *x = NULL ...}`
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
