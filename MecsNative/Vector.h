@@ -63,6 +63,11 @@ int VectorElementSize(Vector *v);
 // Return the arena that contains this vector
 Arena* VectorArena(Vector *v);
 
+// Sort array, using duplicate space
+// Merge with minimal copies. Input values should be in arr1. Returns the array that the final result is in.
+// The input array should have had the first set of swaps done (partition size = 1)
+// Compare should return 0 if the two values are equal, negative if A should be before B, and positive if B should be before A.
+void* IterativeMergeSort(void* arr1, void* arr2, int n, int elemSize, int(*compareFunc)(void* A, void* B));
 
 // Macros to create type-specific versions of the methods above.
 // If you want to use the typed versions, make sure you call `RegisterContainerFor(typeName, namespace)` for EACH type

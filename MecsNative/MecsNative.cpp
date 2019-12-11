@@ -1372,12 +1372,41 @@ int TestIPC() {
 	return result;
 }
 
+ScreenPtr ShowWindow() {
+	// SETUP
+	auto screen = DisplaySystem_Start(NewArena(1 MEGABYTE), 800, 600);	
+	auto scanBuf = InitScanBuffer(800, 600); // TODO: arena support
+
+	if (screen == NULL || scanBuf == NULL) return NULL;
+	
+	// DRAW COMMANDS
+    int px = 2;
+	int strLen = 52;
+				//          1         2         3         4         5
+				//01234567890123456789012345678901234567890123456789012
+    auto demo1 = "Welcome to the MECS rendering engine!                ";
+    auto demo2 = "Tests should be running in the background console    ";
+    auto demo3 = "TO-DO: Move everything over here.                    ";
+    for (int i = 0; i < strLen; i++) {
+		                                               // RRGGBB
+        AddGlyph(scanBuf, demo1[i], (2 + i) * 8, 20, 1, 0x000000);
+        AddGlyph(scanBuf, demo2[i], (2 + i) * 8, 38, 1, 0xffffff);
+        AddGlyph(scanBuf, demo3[i], (2 + i) * 8, 46, 1, 0x77ffff);
+    }
+
+	// Render to screen
+	RenderBuffer(scanBuf, DisplaySystem_GetFrameBuffer(screen)); // TODO: pass in screen directly
+	DisplaySystem_PumpIdle(screen); // needed to update the screen on Windows
+	return screen;
+}
+
+
 int main() {
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
 
     StartManagedMemory();
-	auto screen = DisplaySystem_Start(NewArena(1 MEGABYTE), 800, 600);	
+	auto screen = ShowWindow();
 
     MMPush(1 MEGABYTE);
     auto vres = TestVector();

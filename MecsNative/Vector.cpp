@@ -721,7 +721,7 @@ bool VectorReverse(Vector *v) {
 // Merge with minimal copies. Input values should be in arr1. Returns the array that the final result is in.
 // The input array should have had the first set of swaps done (partition size = 1)
 // Compare should return 0 if the two values are equal, negative if A should be before B, and positive if B should be before A.
-void* iterativeMergeSort(void* arr1, void* arr2, int n, int elemSize, int(*compareFunc)(void* A, void* B)) {
+void* IterativeMergeSort(void* arr1, void* arr2, int n, int elemSize, int(*compareFunc)(void* A, void* B)) {
     bool anySwaps = false;
 
     auto A = arr2; // we will be flipping the array pointers around
@@ -819,7 +819,7 @@ void VectorSort(Vector *v, int(*compareFunc)(void* A, void* B)) {
     }
 
     // do the sort
-    auto result = iterativeMergeSort(arr1, arr2, n, size, compareFunc);
+    auto result = IterativeMergeSort(arr1, arr2, n, size, compareFunc);
 
     // push the result back into the vector
     for (i = 0; i < n; i++) {

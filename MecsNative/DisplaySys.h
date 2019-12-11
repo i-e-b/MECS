@@ -13,6 +13,7 @@ typedef struct ScanBuffer ScanBuffer;
 typedef struct Screen Screen;
 typedef Screen* ScreenPtr;
 
+//######################### Device management #########################
 
 // Do anything needed to attach to a physical display device
 ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height);
@@ -23,6 +24,10 @@ void DisplaySystem_Shutdown(ScreenPtr screen);
 // Run desktop system events (ignored on embedded systems)
 // This should be called frequently, particularly as the system goes idle.
 void DisplaySystem_PumpIdle(ScreenPtr screen);
+
+// get a pointer to the raw frame buffer being used by the screen
+char* DisplaySystem_GetFrameBuffer(ScreenPtr screen);
+
 
 
 // Create a new scan-buffer, to accept draw commands and be rendered to a buffer
@@ -36,10 +41,10 @@ void ClearScanBuffer(ScanBuffer *buf);
 
 // Render a scan buffer to a pixel framebuffer
 // This can be done on a different processor core from other draw commands to spread the load
-// Do not draw to a buffer while it is rendering (switch buffers if you need to)
-void RenderBuffer( ScanBuffer *buf, // source scan buffer
-    uint8_t* data, int rowBytes,    // target frame-buffer
-    int bufSize                     // size of target buffer
+// Do not draw to a scan buffer while it is rendering (switch buffers if you need to)
+void RenderBuffer(
+    ScanBuffer *buf, // source scan buffer
+    char* data       // target frame-buffer (must match scanbuffer dimensions)
 );
 
 // Fill a triagle with a solid colour
@@ -99,6 +104,10 @@ void EllipseHole(ScanBuffer *buf,
     int r, int g, int b);
 
 
+
+// Write a glyph at the given position (y is baseline)
+// This is done with a very basic default font
+void AddGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color);
 
 
 #endif

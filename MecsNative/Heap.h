@@ -5,6 +5,7 @@
 
 // A generic heap based on the vector container
 typedef struct Heap Heap;
+typedef Heap* HeapPtr;
 
 // Allocate and setup a heap structure with a given size
 Heap *HeapAllocate(int elementByteSize);
@@ -13,8 +14,10 @@ void HeapDeallocate(Heap * H);
 // Remove all entries without deallocating ( O(n) time )
 void HeapClear(Heap * H);
 // Add an element ( O(log n) )
+// Data from the element is copied into the heap, and can be disposed by the caller
 void HeapInsert(Heap * H, int priority, void* element);
 // Remove the minimum element, returning its value ( O(log n) )
+// Data is copied into the element from the heap. If the element passed is NULL, the delete still happens, but the result is discarded
 bool HeapDeleteMin(Heap * H, void* element);
 // Returns a pointer to the value of the minimum element. Returns NULL if empty. Does not copy. ( O(1) )
 void* HeapPeekMin(Heap* H);
