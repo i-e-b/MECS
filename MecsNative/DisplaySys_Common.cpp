@@ -727,7 +727,7 @@ void DS_DrawGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color) 
 // The string is consumed as it is rendered, so any remaining string was not drawn
 // we optimise here by using a single material for the entire row.
 // Returns false if drawing can't continue -- either the string is empty or there was an error
-bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, int y, int z, uint32_t color) {
+bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, int* dx, int y, int z, uint32_t color) {
 	if (buf == NULL || str == NULL) return false;
 	if (right - left < 8) return false;
 
@@ -737,20 +737,25 @@ bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, i
 
 	int x = left;
 	int end = right - 8;
+	bool cont = true;
 	while (x <= end) {
 		char c = StringDequeue(str);
-		if (c == 0) return false; // end of string
-		if (c == '\n') return true; // simple line break
+		if (c == 0) { cont = false; break; } // end of string
+		if (c == '\n') break; // simple line break
 		if (c == '\r') {// possibly complex linebreak
 			char next = StringCharAtIndex(str, 0);
 			if (next == '\n') StringDequeue(str);
-			return true;
+			break;
 		}
 
 		// ok, now draw the actual char
 		insertGlyph(buf, x, y, glyphForChar(c), objId);
 		x += FONT_WIDTH;
 	}
-	return true;
+	if (dx != NULL) {
+		if (x + 8 > right) return x = left;
+		*dx = x - left;
+	}
+	return cont;
 }
 

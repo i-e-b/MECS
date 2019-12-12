@@ -9,6 +9,7 @@
 
 // Draw commands structures
 typedef struct ScanBuffer ScanBuffer;
+typedef ScanBuffer* ScanBufferPtr;
 
 // Structure for tracking display (window on desktop, raw buffer on embed)
 typedef struct Screen Screen;
@@ -129,8 +130,9 @@ void DS_DrawGlyph(ScanBuffer *buf, char c, int x, int y, int z, uint32_t color);
 
 // Draw as much of a string as possible between the `left` and `right` sides.
 // `y` is the font baseline. glyphs will be rendered above and below this point.
+// if `dx` is not null, it will be given the offset from `left` where drawing stopped
 // The string is consumed as it is rendered, so any remaining string was not drawn
 // Returns false if drawing can't continue -- either the string is empty or there was an error
-bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, int y, int z, uint32_t color);
+bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, int* dx, int y, int z, uint32_t color);
 
 #endif

@@ -1,5 +1,5 @@
 #include <iostream>
-#include <stdio.h>
+//#include <stdio.h>
 
 // Containers:
 #include "Vector.h"
@@ -55,50 +55,68 @@ RegisterTreeFor(exampleElement, T)
 RegisterHeapStatics(H)
 RegisterHeapFor(char, H)
 
-void WriteStr(String *str) {
-    auto cstr = StringToCStr(str);
-    std::cout << cstr << "\n";
-    mfree(cstr);
+void Console_Write(StringPtr msg);
+void Console_Newline();
+void Console_WriteLine(StringPtr msg) {
+	auto clone = StringClone(msg);
+	Console_Write(clone);
+	Console_Newline();
+	StringDeallocate(clone);
 }
-void WriteStrInline(String *str) {
-    auto cstr = StringToCStr(str);
-    std::cout << cstr;
-    mfree(cstr);
+// Write to console, and dispose of source string
+void Console_WriteD(StringPtr msg) {
+	Console_Write(msg);
+	StringDeallocate(msg);
+}
+void Console_WriteChar(char c) {
+	auto msg = StringNew(c);
+	Console_Write(msg);
+	StringDeallocate(msg);
+}
+
+void Console_Write(const char* msg) {
+	auto tmp = StringNew(msg);
+	Console_Write(tmp);
+	StringDeallocate(tmp);
+}
+void Console_WriteLine(const char* msg) {
+	Console_Write(msg);
+	Console_Newline();
 }
 
 int TestHashMap() {
-    std::cout << "*************** HASH MAP *****************\n";
-    std::cout << "Allocating\n";
+    Console_Write("*************** HASH MAP *****************\n");
+    Console_Write("Allocating\n");
     // start small enough that we will go through a grow cycle when adding
     auto hmap = MapAllocate_int_int(64);
 
-    std::cout << "Writing entries\n";
+    Console_Write("Writing entries\n");
     for (int i = 0; i < 100; i++) {
         int key = i;
         int value = 2 * i;
         MapPut_int_int(hmap, key, value, true);
     }
 
-    std::cout << "Looking up data\n";
+    Console_Write("Looking up data\n");
     int lukey = 40;
     int* lu_val_ptr = NULL;
     if (!MapGet_int_int(hmap, lukey, &lu_val_ptr)) {
-        std::cout << "Get failed!\n";
+        Console_Write("Get failed!\n");
         return 1;
     }
-    std::cout << "Found value " << *lu_val_ptr << " (expected 80)\n";
+    Console_WriteD(StringNewFormat("Found value \x02 (expected 80)\n", *lu_val_ptr));
 
     auto has50 = MapGet_int_int(hmap, 50, NULL);
     auto hasNeg1 = MapGet_int_int(hmap, -1, NULL);
-    std::cout << "Has 50? " << (has50 ? "yes" : "no") << "; Has -1? " << (hasNeg1 ? "yes" : "no") << "\n";
+    Console_WriteD(StringNewFormat("Has 50? \x05; Has -1? \x05\n", (has50 ? "yes" : "no"), (hasNeg1 ? "yes" : "no")));
 
     MapRemove_int_int(hmap, 50);
     has50 = MapGet_int_int(hmap, 50, NULL);
-    std::cout << "Has 50 after removal? " << (has50 ? "yes" : "no") << "\n";
+    Console_WriteD(StringNewFormat("Has 50 after removal? \x05\n", (has50 ? "yes" : "no")));
 
-    std::cout << "Count before clear = " << (MapCount(hmap)) << "\n";
+	Console_WriteD(StringNewFormat("Count before clear = \x02\n", MapCount(hmap)));
     MapClear(hmap);
-    std::cout << "Count after clear = " << (MapCount(hmap)) << "\n";
+	Console_WriteD(StringNewFormat("Count after clear = \x02\n", MapCount(hmap)));
 
 
     // Check we can replace one entry an unlimited number of times:
@@ -114,68 +132,70 @@ int TestHashMap() {
     std::cout << "done\n";*/
 
 
-    std::cout << "Deallocating map\n";
+    Console_Write("Deallocating map\n");
     MapDeallocate(hmap);
     return 0;
 }
 
 int TestVector() {
-    std::cout << "**************** VECTOR *******************\n";
+    Console_Write("**************** VECTOR *******************\n");
     auto testElement = exampleElement{ 20,5 };
 
     // See if the container stuff works...
-    std::cout << "Allocating\n";
+    Console_Write("Allocating\n");
     auto gvec = VecAllocate_exampleElement();
-    std::cout << "Vector OK? " << VectorIsValid(gvec) << "\n";
+    Console_Write("Vector OK? ");
+	Console_Write(VectorIsValid(gvec) ? "true\n" : "false\n");
 
     // add some entries
-    std::cout << "Writing entries with 'push'\n";
+    Console_Write("Writing entries with 'push'\n");
     for (int i = 0; i < 1000; i++) {
         if (!VecPush_exampleElement(gvec, testElement)) {
-            std::cout << "Push failed!\n";
+            Console_Write("Push failed!\n");
             return 255;
         }
     }
-    std::cout << "Vector OK? " << VectorIsValid(gvec) << "; Elements stored = " << VectorLength(gvec) << "\n";
+	Console_Write("Vector ");Console_Write(VectorIsValid(gvec)?"OK":"Bad");
+	Console_WriteD(StringNewFormat("; Elements stored = \x02\n", VectorLength(gvec)));
 
     // read a random-access element
     auto r = VecGet_exampleElement(gvec, 5);
-    std::cout << "Element 5 data = " << r->a << ", " << r->b << "\n";
+    Console_WriteD(StringNewFormat("Element 5 data = \x02, \x02\n", r->a, r->b));
 
     // resize the array
     VectorPrealloc(gvec, 5000);
-    std::cout << "Vector OK? " << VectorIsValid(gvec) << "; Elements stored = " << VectorLength(gvec) << "\n";
+	Console_WriteD(StringNewFormat("Vector \x05; Elements stored = \x02\n", VectorIsValid(gvec)?"OK":"BAD", VectorLength(gvec)));
 
     // Pop a load of values
-    std::cout << "Reading and removing entries with 'pop'\n";
+    Console_Write("Reading and removing entries with 'pop'\n");
     for (int i = 0; i < 4000; i++) {
         exampleElement poppedData;
         if (!VecPop_exampleElement(gvec, &poppedData)) {
-            std::cout << "Pop failed!\n";
+            Console_Write("Pop failed!\n");
             return 254;
         }
     }
-    std::cout << "Vector OK? " << VectorIsValid(gvec) << "; Elements stored = " << VectorLength(gvec) << "\n";
+	Console_WriteD(StringNewFormat("Vector \x05; Elements stored = \x02\n", VectorIsValid(gvec)?"OK":"BAD", VectorLength(gvec)));
 
     // Set a different element value
     auto newData = exampleElement{ 255,511 };
     exampleElement capturedOldData;
     VecSet_exampleElement(gvec, 70, newData, &capturedOldData);
-    std::cout << "Replace value at 70. Old data = " << capturedOldData.a << ", " << capturedOldData.b << "\n";
+    Console_WriteD(StringNewFormat("Replace value at 70. Old data = \x02, \x02\n", capturedOldData.a, capturedOldData.b));
     r = VecGet_exampleElement(gvec, 70);
-    std::cout << "Element 70 new data = " << r->a << ", " << r->b << " (should be 255,511)\n";
+    Console_WriteD(StringNewFormat("Element 70 new data = \x02, \x02 (should be 255,511)\n", r->a, r->b));
 
     // Swap elements by index pair
-    std::cout << "Swapping 60 and 70\n";
+    Console_Write("Swapping 60 and 70\n");
     VectorSwap(gvec, 60, 70);
     r = VecGet_exampleElement(gvec, 60);
-    std::cout << "Element 60 new data = " << r->a << ", " << r->b << " (255,511)\n";
+    Console_WriteD(StringNewFormat("Element 60 new data = \x02, \x02 (255,511)\n", r->a, r->b));
     r = VecGet_exampleElement(gvec, 70);
-    std::cout << "Element 70 new data = " << r->a << ", " << r->b << " (20,5)\n";
+    Console_WriteD(StringNewFormat("Element 70 new data = \x02, \x02 (20,5)\n", r->a, r->b));
 
-    std::cout << "Deallocating\n";
+    Console_Write("Deallocating\n");
     VectorDeallocate(gvec);
-    std::cout << "Vector OK? " << VectorIsValid(gvec) << "\n";
+    Console_Write(VectorIsValid(gvec)? "Vector OK\n" : "Vector gone\n");
 
     // Test sorting
     gvec = VecAllocate_exampleElement();
@@ -183,22 +203,22 @@ int TestVector() {
     for (int i = 0; i < sal; i++) {
         VecPush_exampleElement(gvec, exampleElement{ ((i * 6543127) % sal) - 10, i }); // a very crappy random
     }
-    std::cout << "Before sort:\n";
+    Console_Write("Before sort:\n");
     for (int i = 0; i < sal; i++) {
-        std::cout << VecGet_exampleElement(gvec, i)->a << ", ";
+		Console_WriteD(StringNewFormat("\x02, ", VecGet_exampleElement(gvec, i)->a));
     }
-    std::cout << "\n";
+    Console_Write("\n");
 
-    std::cout << "After sort:\n";
+    Console_Write("After sort:\n");
     VecSort_exampleElement(gvec, CompareExampleElement); // sort into ascending order (reverse the compare to reverse the order)
     for (int i = 0; i < sal; i++) {
-        std::cout << VecGet_exampleElement(gvec, i)->a << ", ";
+		Console_WriteD(StringNewFormat("\x02, ", VecGet_exampleElement(gvec, i)->a));
     }
-    std::cout << "\n";
+    Console_Write("\n");
     VectorDeallocate(gvec);
 
 	// Queue/Dequeue chain
-	std::cout << "Dequeue chain ";
+	Console_Write("Dequeue chain ");
 	auto q = VecAllocate_char();
 	char c = '0';
 	for (int i = 0; i < 5; i++) { VecPush_char(q, (char)(i+48)); }
@@ -206,17 +226,17 @@ int TestVector() {
 	{
 		VecPush_char(q, (char)(i+48));
 		VecDequeue_char(q, &c);
-		std::cout << c;
+		Console_WriteChar(c);
 	}
-	while (VecDequeue_char(q, &c)) { std::cout << c; }
-    std::cout << "\n              ";
+	while (VecDequeue_char(q, &c)) { Console_WriteChar(c); }
+    Console_Write("\n              ");
 	for (int i = 0; i < 78; i++)
 	{
 		VecPush_char(q, (char)(i+48));
 		VecDequeue_char(q, &c);
-		std::cout << c;
+		Console_WriteChar(c);
 	}
-    std::cout << "\n";
+    Console_Write("\n");
 	VecDeallocate(q);
 
     // Check that vectors pin to the arena they were created in:
@@ -224,7 +244,7 @@ int TestVector() {
     ArenaGetState(MMCurrent(), &beforeOuter, NULL, NULL, NULL, NULL, NULL);
     auto pinv = VecAllocate_char();
     if (!MMPush(256 KILOBYTES)) {
-        std::cout << "Arena allcation failed";
+        Console_Write("Arena allcation failed");
         return 253;
     }
     for (int i = 0; i < (100 KILOBYTES); i++) {
@@ -243,15 +263,15 @@ int TestVector() {
     VecDeallocate(pinv);
     ArenaGetState(MMCurrent(), &finalOuter, NULL, NULL, NULL, NULL, NULL);
 
-    std::cout << "Memory arena pinning: Outer before=" << beforeOuter << "; after=" << afterOuter << "; final=" << finalOuter << "\n";
-    std::cout << "                      Inner after=" << afterInner << " (should be zero)\n";
-    std::cout << "                      References after pops=" << refs << "\n";
+	Console_WriteD(StringNewFormat("Memory arena pinning: Outer before=\x02; after=\x02; final=\x02\n", beforeOuter, afterOuter, finalOuter));
+	Console_WriteD(StringNewFormat("                      Inner after=\x02 (should be zero)\n", afterInner));
+	Console_WriteD(StringNewFormat("                      References after pops=\x02\n", refs));
 
     return 0;
 }
 
 int TestQueue() {
-    std::cout << "**************** QUEUE (VECTOR) *******************\n";
+    Console_Write("**************** QUEUE (VECTOR) *******************\n");
     // queues are a feature of vectors (makes things a bit complex)
 
     auto q = VecAllocate_char();
@@ -262,40 +282,40 @@ int TestQueue() {
 
     // empty it back into std-out
     char c;
-    while (VecDequeue_char(q, &c)) { std::cout << c; }
-    std::cout << "\n";
+    while (VecDequeue_char(q, &c)) { Console_WriteChar(c); }
+    Console_Write("\n");
 
     // Fill up again and empty from both ends...
     auto pal = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzzyxwvutsrqponmlkjihgfedcba9876543210ZYXWVUTSRQPONMLKJIHGFEDCBA";
     ptr = pal;
     while (*ptr != 0) { VecPush_char(q, *ptr++); }
     while (VecLength(q) > 0) {
-        VecDequeue_char(q, &c); std::cout << c;
-        VecPop_char(q, &c); std::cout << c;
+        VecDequeue_char(q, &c); Console_WriteChar(c);
+        VecPop_char(q, &c); Console_WriteChar(c);
     }
-    std::cout << "\n";
+    Console_Write("\n");
 
     // Fill up again and empty from both ends, but using indexes
     ptr = pal;
     while (*ptr != 0) { VecPush_char(q, *ptr++); }
     while (VecLength(q) > 0) {
-        VecCopy_char(q, 0, &c); std::cout << c;
-        VecCopy_char(q, VecLength(q) - 1, &c); std::cout << c;
+        VecCopy_char(q, 0, &c); Console_WriteChar(c);
+        VecCopy_char(q, VecLength(q) - 1, &c); Console_WriteChar(c);
         VecDequeue_char(q, &c);
         VecPop_char(q, &c);
     }
-    std::cout << "\n";
+    Console_Write("\n");
 
     return 0;
 }
 
 int TestTree() {
-    std::cout << "**************** TREE *******************\n";
+    Console_Write("**************** TREE *******************\n");
 
-    std::cout << "Allocating\n";
+    Console_Write("Allocating\n");
     auto tree = TAllocate_exampleElement();
 
-    std::cout << "Adding elements\n";
+    Console_Write("Adding elements\n");
     auto elem1 = exampleElement{ 0,1 };
     TSetValue_exampleElement(tree, &elem1);
 
@@ -312,7 +332,7 @@ int TestTree() {
     auto node5 = TAddSibling_exampleElement(node4, &elem5); // child of node3, sibling of node4
 
 
-    std::cout << "Reading elements\n";
+    Console_Write("Reading elements\n");
     // find elem5 the long way...
     auto find = tree;
     find = TChild(find);
@@ -320,74 +340,74 @@ int TestTree() {
     find = TChild(find);
     find = TSibling(find);
     auto found = TReadBody_exampleElement(find);
-    std::cout << "Element 5 data (expecting 2,5) = " << found->a << ", " << found->b << "\n";
+    Console_WriteD(StringNewFormat("Element 5 data (expecting 2,5) = \x02, \x02\n", found->a, found->b));
 
-    std::cout << "Deallocating\n";
+    Console_Write("Deallocating\n");
     TDeallocate(tree);
     return 0;
 }
 
 int TestString() {
-    std::cout << "*************** MUTABLE STRING *****************\n";
+    Console_Write("*************** MUTABLE STRING *****************\n");
 
     String* str1 = StringNew("Hello, ");
     String* str2 = StringNew("World");
 
-    std::cout << "Hashes of original strings: " << StringHash(str1) << ", " << StringHash(str2) << "\n";
-    std::cout << "String lengths before append: " << StringLength(str1) << ", " << StringLength(str2) << "\n";
+    Console_WriteD(StringNewFormat("Hashes of original strings: \x03, \x03\n", StringHash(str1), StringHash(str2)));
+    Console_WriteD(StringNewFormat("String lengths before append: \x02, \x02\n", StringLength(str1), StringLength(str2)));
     StringAppend(str1, str2);
     StringAppend(str1, "!");
     StringDeallocate(str2);
-    std::cout << "String length after appends: " << StringLength(str1) << "\n";
-    std::cout << "Hashes of result string: " << StringHash(str1) << "\n";
+    Console_WriteD(StringNewFormat("String length after appends: \x02\n", StringLength(str1)));
+    Console_WriteD(StringNewFormat("Hashes of result string: \x02\n", StringHash(str1)));
 
     auto cstr = StringToCStr(str1);
-    std::cout << cstr << "\n";
+    Console_WriteLine(cstr);
     mfree(cstr);
-    std::cout << "First char = '" << StringCharAtIndex(str1, 0) << "'\n";
-    std::cout << "Last char = '" << StringCharAtIndex(str1, -1) << "'\n";
+    Console_WriteD(StringNewFormat("First char = '\x04'\n", StringCharAtIndex(str1, 0)));
+    Console_WriteD(StringNewFormat("Last char = '\x04'\n", StringCharAtIndex(str1, -1)));
 
     StringToUpper(str1);
-    std::cout << "Upper case: ";
-    WriteStr(str1);
+    Console_Write("Upper case: ");
+    Console_WriteLine(str1);
 
     StringToLower(str1);
-    std::cout << "Lower case: ";
-    WriteStr(str1);
+	Console_Write("Lower case: ");
+    Console_WriteLine(str1);
 
     // Search
     str2 = StringNew("lo,");
     unsigned int pos;
     if (StringFind(str1, str2, 0, &pos)) {
-        std::cout << "Found at " << pos << "\n";
+        Console_WriteD(StringNewFormat("Found at \x02\n", pos));
     } else {
-        std::cout << "Didn't find a string I was expecting!?\n";
+        Console_Write("Didn't find a string I was expecting!?\n");
     }
     if (StringFind(str1, str2, 4, NULL)) {
-        std::cout << "Found a string I wasn't expecting\n";
+        Console_Write("Found a string I wasn't expecting\n");
     }
     StringDeallocate(str2);
 
     str2 = StringNew("l,o");
     if (StringFind(str1, str2, 0, &pos)) { // this should trigger the 'add' method to a false positive, but still return not found
-        std::cout << "Found a string I wasn't expecting\n";
+        Console_Write("Found a string I wasn't expecting\n");
     }
     StringDeallocate(str2);
 
     // Slicing and chopping
     str2 = StringChop(StringSlice(str1, -2, 2), 0, 5); // last 2 chars = 'd!', then get 5 chars from that str = 'd!d!d'
-    WriteStr(str2);
+    Console_Write(str2);
 
     // Comparison
-    std::cout << (StringStartsWith(str1, "hello") ? "cmp 1 OK" : "cmp 1 failed") << "\n";
-    std::cout << (StringStartsWith(str1, "fish") ? "cmp 2 failed" : "cmp 2 OK") << "\n";
-    std::cout << (StringStartsWith(str1, str1) ? "cmp 3 OK" : "cmp 3 failed") << "\n";
-    std::cout << (StringEndsWith(str1, "world!") ? "cmp 4 OK" : "cmp 4 failed") << "\n";
-    std::cout << (StringEndsWith(str1, "fish") ? "cmp 5 failed" : "cmp 5 OK") << "\n";
-    std::cout << (StringEndsWith(str1, str1) ? "cmp 6 OK" : "cmp 6 failed") << "\n";
-    std::cout << (StringAreEqual(str1, "fish") ? "cmp 7 failed" : "cmp 7 OK") << "\n";
-    std::cout << (StringAreEqual(str1, str2) ? "cmp 8 failed" : "cmp 8 OK") << "\n";
-    std::cout << (StringAreEqual(str1, str1) ? "cmp 9 OK" : "cmp 9 failed") << "\n";
+    Console_WriteLine(StringStartsWith(str1, "hello") ? "cmp 1 OK" : "cmp 1 failed");
+    Console_WriteLine(StringStartsWith(str1, "fish") ? "cmp 2 failed" : "cmp 2 OK");
+    Console_WriteLine(StringStartsWith(str1, str1) ? "cmp 3 OK" : "cmp 3 failed");
+    Console_WriteLine(StringEndsWith(str1, "world!") ? "cmp 4 OK" : "cmp 4 failed");
+    Console_WriteLine(StringEndsWith(str1, "fish") ? "cmp 5 failed" : "cmp 5 OK");
+    Console_WriteLine(StringEndsWith(str1, str1) ? "cmp 6 OK" : "cmp 6 failed");
+    Console_WriteLine(StringAreEqual(str1, "fish") ? "cmp 7 failed" : "cmp 7 OK");
+    Console_WriteLine(StringAreEqual(str1, str2) ? "cmp 8 failed" : "cmp 8 OK");
+    Console_WriteLine(StringAreEqual(str1, str1) ? "cmp 9 OK" : "cmp 9 failed");
 
     StringDeallocate(str1);
 
@@ -405,8 +425,8 @@ int TestString() {
     StringAppend(str1, ", ");
     StringAppendInt32Hex(str1, 0x0123ABCD);
 
-    WriteStr(str1);
-    std::cout << "1000, 1234, -4567, 0, 2147483647, 0123ABCD\n";
+    Console_WriteLine(str1);
+    Console_Write("1000, 1234, -4567, 0, 2147483647, 0123ABCD\n");
 
     // Parsing strings
     // INTEGERS
@@ -417,7 +437,7 @@ int TestString() {
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
     StringAppendInt32(str1, int32res);
-    WriteStr(str1);
+    Console_Write(str1);
 
     StringClear(str1);
     StringAppend(str1, "0001234000");
@@ -425,7 +445,7 @@ int TestString() {
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
     StringAppendInt32(str1, int32res);
-    WriteStr(str1);
+    Console_Write(str1);
 
     StringClear(str1);
     StringAppend(str1, "-123");
@@ -433,7 +453,7 @@ int TestString() {
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
     StringAppendInt32(str1, int32res);
-    WriteStr(str1);
+    Console_Write(str1);
 
     // Parsing strings
     // FLOATING POINT
@@ -444,7 +464,7 @@ int TestString() {
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
     StringAppendDouble(str1, fix);
-    WriteStr(str1);
+    Console_Write(str1);
 
     StringClear(str1);
     StringAppend(str1, "110.01");
@@ -453,7 +473,7 @@ int TestString() {
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
     StringAppendDouble(str1, fix);
-    WriteStr(str1);
+    Console_Write(str1);
 
     StringClear(str1);
     StringAppend(str1, "-110");
@@ -462,7 +482,7 @@ int TestString() {
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
     StringAppendDouble(str1, fix);
-    WriteStr(str1);
+    Console_Write(str1);
 
     StringClear(str1);
     StringAppend(str1, "3000.0123");
@@ -471,7 +491,7 @@ int TestString() {
     StringAppend(str1, ok ? " (ok)" : " (fail)");
     StringAppend(str1, " = ");
     StringAppendDouble(str1, fix);
-    WriteStr(str1);
+    Console_Write(str1);
 
     // String formatting
     StringClear(str1);
@@ -479,11 +499,11 @@ int TestString() {
     StringAppend(str2, "'This is from a (String*)'");
     // Simple append
     StringAppendFormat(str1, "Formatted string, with literal (this), included mutable strings: \x01, decimal: \x02, and hex: \x03.", str2, 1234, 1234);
-    WriteStr(str1);
+    Console_Write(str1);
     // Create from format
     StringDeallocate(str2);
     str2 = StringNewFormat("String inception: \"\x01\"", str1);
-    WriteStr(str2);
+    Console_Write(str2);
 
     StringDeallocate(str1);
     StringDeallocate(str2);
@@ -494,8 +514,8 @@ int TestString() {
     auto replacement = StringNew("but also");
     str2 = StringReplace(str1, needle, replacement);
 
-    WriteStr(str1);
-    WriteStr(str2); // This is a line in the sbut also, but also will stbut also as a pillar of our hopes but also dreams.
+    Console_Write(str1);
+    Console_Write(str2); // This is a line in the sbut also, but also will stbut also as a pillar of our hopes but also dreams.
 
     StringDeallocate(str1);
     StringDeallocate(str2);
@@ -506,7 +526,7 @@ int TestString() {
 }
 
 int TestHeaps() {
-    std::cout << "*************** BINARY HEAP (Priority Queue) *****************\n";
+    Console_Write("*************** BINARY HEAP (Priority Queue) *****************\n");
     auto str1 = StringEmpty();
     auto str2 = StringEmpty();
     auto str3 = StringEmpty();
@@ -535,9 +555,9 @@ int TestHeaps() {
     StringAppend(str1, " (expected ABCDEFG)");
     StringAppend(str2, " (expected BCDEFG)");
     StringAppend(str3, " (expected ABCDEFG)");
-    WriteStr(str1);
-    WriteStr(str2);
-    WriteStr(str3);
+    Console_Write(str1);
+    Console_Write(str2);
+    Console_Write(str3);
     StringDeallocate(str1);
     StringDeallocate(str2);
     StringDeallocate(str3);
@@ -548,7 +568,7 @@ int TestHeaps() {
 }
 
 int TestTagData() {
-    std::cout << "***************** TAG DATA ******************\n";
+    Console_Write("***************** TAG DATA ******************\n");
 
     auto tag = DataTag { (int)DataType::VectorPtr, ALLOCATED_TYPE + 2, 0x82 }; // these should be the same
 
@@ -559,7 +579,7 @@ int TestTagData() {
     StringAppendInt32(str, tag.params);
     StringAppend(str, ", Data: ");
     StringAppendInt32(str, tag.data);
-    WriteStr(str);
+    Console_Write(str);
     StringClear(str);
 
     tag = EncodeOpcode('x', 'a', 1, 1);
@@ -571,7 +591,7 @@ int TestTagData() {
 
     if (p1 == 'x' && p2 == 'a' && param == 0x00010001 && p3 == 0) { StringAppend(str, "OpCodes OK;"); }
     else { StringAppend(str, "OPCODES FAILED;"); }
-    WriteStr(str);
+    Console_Write(str);
 
     StringClear(str);
     StringAppend(str, "ShrtStr");
@@ -579,14 +599,14 @@ int TestTagData() {
     StringAppend(str, "decoded: '");
     DecodeShortStr(tag, str);
     StringAppend(str, "' (expected 'ShrtStr')");
-    WriteStr(str);
+    Console_Write(str);
 
     StringClear(str);
     tag = EncodeShortStr("Hello!");
     StringAppend(str, "decoded: '");
     DecodeShortStr(tag, str);
     StringAppend(str, "' (expected 'Hello!')");
-    WriteStr(str);
+    Console_Write(str);
 
     double origd = 123450.098765;
     StringClear(str);
@@ -596,7 +616,7 @@ int TestTagData() {
     double resd = DecodeDouble(tag);
     StringAppendDouble(str, resd);
     StringAppend(str, "' (expected approx 123450.098765)");
-    WriteStr(str);
+    Console_Write(str);
 
 
     StringClear(str);
@@ -606,7 +626,7 @@ int TestTagData() {
     StringNL(str);
     DescribeTag(EncodeVariableRef(str, NULL), str, NULL);
     StringNL(str);
-    WriteStr(str);
+    Console_Write(str);
 
 
     StringDeallocate(str);
@@ -615,20 +635,20 @@ int TestTagData() {
 }
 
 int TestFileSystem() {
-    std::cout << "***************** FILE SYS ******************\n";
+    Console_Write("***************** FILE SYS ******************\n");
     auto vec = VecAllocate_char();
 
     auto path = StringNew("Test.txt");
     uint64_t read = 0;
     bool ok = FileLoadChunk(path, vec, 0, 1000, &read);
 
-    std::cout << "Existing file read OK = " << ok << "; Bytes read: " << read << "\n";
-    std::cout << "File contents:\n";
+    Console_WriteD(StringNewFormat("Existing file read OK = \x06; Bytes read: \x02\n", ok, read));
+    Console_Write("File contents:\n");
     char c = 0;
     while (VecDequeue_char(vec, &c)) {
-        std::cout << c;
+		Console_WriteChar(c);
     }
-    std::cout << "\n";
+    Console_Write("\n");
 
     for (int i = 32; i < 255; i++) {
         VecPush_char(vec, i);
@@ -636,22 +656,22 @@ int TestFileSystem() {
     StringClear(path);
     StringAppend(path, "output.txt");
     ok = FileWriteAll(path, vec);
-    std::cout << "Trunc & Write OK = " << ok << "; Bytes not written: " << VectorLength(vec) << "\n";
+	Console_WriteD(StringNewFormat("Trunc & Write OK = \x06; Bytes not written: \x02n", ok, VectorLength(vec)));
 
     for (int i = 32; i < 255; i++) {
         VecPush_char(vec, i);
     }
     ok = FileAppendAll(path, vec);
-    std::cout << " append Write OK = " << ok << "; Bytes not written: " << VectorLength(vec) << "\n";
+	Console_WriteD(StringNewFormat("append Write OK = \x06; Bytes not written: \x02n", ok, VectorLength(vec)));
 
     ok = FileLoadChunk(path, vec, 0, 1000, &read);
-    std::cout << "Read OK = " << ok << "; Bytes read: " << read << "\n";
-    std::cout << "File contents:\n";
+	Console_WriteD(StringNewFormat("Read OK = \x06; Bytes read: \x02\n", ok, read));
+    Console_Write("File contents:\n");
     c = 0;
     while (VecDequeue_char(vec, &c)) {
-        std::cout << c;
+        Console_WriteChar(c);
     }
-    std::cout << "\n";
+    Console_Write("\n");
 
     StringDeallocate(path);
     VectorDeallocate(vec);
@@ -660,7 +680,7 @@ int TestFileSystem() {
 }
 
 int TestArenaAllocator() {
-    std::cout << "***************** ARENA ALLOCATOR ******************\n";
+    Console_Write("***************** ARENA ALLOCATOR ******************\n");
     size_t allocatedBytes;
     size_t unallocatedBytes;
     int occupiedZones;
@@ -672,32 +692,37 @@ int TestArenaAllocator() {
     auto arena1 = NewArena(10 MEGABYTES);
 
     ArenaGetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
-    std::cout << "Empty 10MB Arena: alloc=" << allocatedBytes << "; free=" << unallocatedBytes << "; frgs used=" << occupiedZones << "; frgs empty=" << emptyZones << "; refs=" << totalReferenceCount << "; max chunk=" << largestContiguous << "\n";
+	Console_WriteD(StringNewFormat("Empty 10MB Arena: alloc=\x02; free=\x02; frgs used=\x02; frgs empty=\x02; refs=\x02; max chunk=\x02\n",
+		allocatedBytes, unallocatedBytes, occupiedZones,emptyZones,totalReferenceCount,largestContiguous));
 
     // allocate some bits
     for (int i = 0; i < 100; i++) {
         auto ptr = ArenaAllocate(arena1, ARENA_ZONE_SIZE / 5);
         if (ptr == NULL) {
-            std::cout << "Failed to allocate at " << i << "\n"; break;
+			Console_WriteD(StringNewFormat("Failed to allocate at \x02\n", i)); break;
         }
     }
     // and happily ignore them all, as long as we keep the arena reference
 
     ArenaGetState(arena1, &allocatedBytes, &unallocatedBytes, &occupiedZones, &emptyZones, &totalReferenceCount, &largestContiguous);
-    std::cout << " Used 10MB Arena: alloc=" << allocatedBytes << "; free=" << unallocatedBytes << "; frgs used=" << occupiedZones << "; frgs empty=" << emptyZones << "; refs=" << totalReferenceCount << "; max chunk=" << largestContiguous << "\n";
+	Console_WriteD(StringNewFormat(" Used 10MB Arena: alloc=\x02; free=\x02; frgs used=\x02; frgs empty=\x02; refs=\x02; max chunk=\x02\n",
+		allocatedBytes, unallocatedBytes, occupiedZones,emptyZones,totalReferenceCount,largestContiguous));
 
     DropArena(&arena1);
-    std::cout << "Arena was killed: " << (arena1 == NULL ? "yes" : "no") << "\n";
+	Console_WriteLine(arena1 == NULL ? "Arena was destroyed" : "Arena was NOT corrected dropped");
     
     // Test referencing and de-referencing
     auto arena2 = NewArena(256 KILOBYTES);
 
     ArenaGetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
-    std::cout << "Empty Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
+	Console_WriteD(StringNewFormat("Empty Arena: alloc=\x02; frgs used=\x02; refs=\x02\n",
+		allocatedBytes, occupiedZones, totalReferenceCount ));
+
     void* bits[20];
     for (int i = 0; i < 20; i++) { bits[i] = ArenaAllocate(arena2, 256); }
     ArenaGetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
-    std::cout << "Used Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
+	Console_WriteD(StringNewFormat(" Used Arena: alloc=\x02; frgs used=\x02; refs=\x02\n",
+		allocatedBytes, occupiedZones, totalReferenceCount ));
 
     for (int i = 1; i < 20; i+=2) { ArenaReference(arena2, bits[i]); }
     for (int i = 0; i < 20; i+=2) { ArenaDereference(arena2, bits[i]); }
@@ -707,7 +732,8 @@ int TestArenaAllocator() {
     }
 
     ArenaGetState(arena2, &allocatedBytes, NULL, &occupiedZones, NULL, &totalReferenceCount, NULL);
-    std::cout << "Used and dereferenced Arena: alloc=" << allocatedBytes << "; frgs used=" << occupiedZones << "; refs=" << totalReferenceCount << "\n";
+	Console_WriteD(StringNewFormat("Used and dereferenced Arena: alloc=\x02; frgs used=\x02; refs=\x02\n",
+		allocatedBytes, occupiedZones, totalReferenceCount ));
     DropArena(&arena2);
 
     // TODO: expand this when String/Vector/Hashtable etc can use the arena allocator
@@ -716,7 +742,7 @@ int TestArenaAllocator() {
 }
 
 int TestSerialisation() {
-    std::cout << "***************** SERIALISATION ******************\n";
+    Console_Write("***************** SERIALISATION ******************\n");
     
     // Compile some code and load it into an interpreter.
     auto tagCode = VecAllocate_DataTag();
@@ -743,16 +769,16 @@ int TestSerialisation() {
     auto ok = FreezeToVector(source, /*InterpreterState*/interp, /*Vector<byte>*/vec);
 
     if (!ok) {
-        std::cout << "Serialisation failed\n";
+        Console_Write("Serialisation failed\n");
         return -1;
     }
 
-    std::cout << "Result bytes = " << std::hex;
+	Console_Write("Result bytes = ");
     int length = VecLength(vec);
     for (int i = 0; i < length; i++) {
-        std::cout << (int)((uint8_t)*VecGet_char(vec, i)) << " ";
+		Console_WriteD(StringNewFormat("\x03 ",(int)((uint8_t)*VecGet_char(vec, i))));
     }
-    std::cout << std::dec << "\nSerialisation OK, trying deserialisation...\n";
+    Console_Write("\nSerialisation OK, trying deserialisation...\n");
 
     // Try restore
     
@@ -761,13 +787,13 @@ int TestSerialisation() {
     DataTag dest = {};
     ok = DefrostFromVector(&dest, targetArena, vec);
     if (!ok) {
-        std::cout << "Deserialisation failed\n";
+        Console_Write("Deserialisation failed\n");
         return -2;
     }
 
     // Show final result
     auto human = CastString(targetInterp, dest);
-    WriteStr(human);
+    Console_Write(human);
     StringDeallocate(human);
 
     //////////////////////////////////////////////////
@@ -777,48 +803,52 @@ int TestSerialisation() {
     // Run the program:
     auto result = InterpRun(interp, 5000);
     if (result.State != ExecutionState::Complete) {
-        std::cout << "Test program did not complete:\n\n";
+        Console_Write("Test program did not complete:\n\n");
         auto outp = StringEmpty();
         ReadOutput(interp, outp);
-        WriteStrInline(outp);
+        Console_Write(outp);
         StringDeallocate(outp);
         return -3;
     }
 
     // Show what we are expecting:
     human = CastString(interp, result.Result);
-    std::cout << "Serialiser input = "; 
-    WriteStr(human);
+    Console_Write("Serialiser input = "); 
+    Console_WriteLine(human);
     StringDeallocate(human);
 
     // the output should be loaded into `result.Result`
     // serialise it...
     ok = FreezeToVector(result.Result, /*InterpreterState*/interp, /*Vector<byte>*/vec);
-    if (!ok) { std::cout << "Serialisation failed\n"; return -1; }
+    if (!ok) { Console_Write("Serialisation failed\n"); return -1; }
 
     // display serialised data
-    std::cout << "Result bytes = " << std::hex;
+    Console_Write("Result bytes = ");
     length = VecLength(vec);
-    for (int i = 0; i < length; i++) { std::cout << (int)((uint8_t)*VecGet_char(vec, i)) << " "; }
-    std::cout << std::dec << "\nSerialisation OK.\n";
+    for (int i = 0; i < length; i++) {
+		Console_WriteD(StringNewFormat("\x03 ",(int)((uint8_t)*VecGet_char(vec, i))));
+	}
+    Console_Write("\nSerialisation OK.\n");
 
 	
-    std::cout << "Check repeated serialisation (should not damage orignal data)\n"; 
+    Console_Write("Check repeated serialisation (should not damage orignal data)\n");
     ok = FreezeToVector(result.Result, /*InterpreterState*/interp, /*Vector<byte>*/vec);
-    if (!ok) { std::cout << "Serialisation failed\n"; return -1; }
-    std::cout << "Result bytes = " << std::hex;
+    if (!ok) { Console_Write("Serialisation failed\n"); return -1; }
+    Console_Write("Result bytes = ");
     length = VecLength(vec);
-    for (int i = 0; i < length; i++) { std::cout << (int)((uint8_t)*VecGet_char(vec, i)) << " "; }
-    std::cout << std::dec << "\nSerialisation OK. Should be exact same data\n";
+    for (int i = 0; i < length; i++) {
+		Console_WriteD(StringNewFormat("\x03 ",(int)((uint8_t)*VecGet_char(vec, i))));
+	}
+    Console_Write("\nSerialisation OK. Should be exact same data\n");
 
     // deserialise
     ok = DefrostFromVector(&dest, targetArena, vec);
-    if (!ok) { std::cout << "Deserialisation failed\n"; return -2; }
+    if (!ok) { Console_Write("Deserialisation failed\n"); return -2; }
 
     // Show final result
     human = CastString(targetInterp, dest);
-    std::cout << "Deserialisation result = "; 
-    WriteStr(human);
+    Console_Write("Deserialisation result = "); 
+    Console_WriteLine(human);
     StringDeallocate(human);
 
     // Clean up interpreters and their arenas
@@ -829,7 +859,7 @@ int TestSerialisation() {
 }
 
 int TestCompiler() {
-    std::cout << "***************** COMPILER ******************\n";
+    Console_Write("***************** COMPILER ******************\n");
 
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
@@ -838,70 +868,70 @@ int TestCompiler() {
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
-    WriteStr(pathOfInvalid);
+    Console_WriteLine(pathOfInvalid);
     if (!FileLoadChunk(pathOfInvalid, vec, 0, 10000, &read)) {
-        std::cout << "Failed to read file. Test inconclusive.\n";
+        Console_Write("Failed to read file. Test inconclusive.\n");
         return -1;
     }
     
-    std::cout << "Reading a non-source code file: ";
+    Console_Write("Reading a non-source code file: ");
     auto syntaxTree = ParseSourceCode(code, false);
     StringClear(code); // also clears the underlying vector
-    if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -2; }
+    if (syntaxTree == NULL) { Console_Write("Parser failed entirely"); return -2; }
 
     SourceNode *result = (SourceNode*)TreeReadBody(syntaxTree);
 
     if (result->IsValid) {
-        std::cout << "The source file was parsed correctly!? It should not have been!\n";
+        Console_Write("The source file was parsed correctly!? It should not have been!\n");
         return -3;
     }
 
-    std::cout << "The source file was not valid (this is ok)\n";
+    Console_Write("The source file was not valid (this is ok)\n");
 
     StringDeallocate(pathOfInvalid);
     DeallocateAST(syntaxTree);
 
     //###################################################################
-    std::cout << "Reading a valid source code file: ";
-    WriteStr(pathOfValid);
+    Console_Write("Reading a valid source code file: ");
+	Console_WriteLine(pathOfValid);
     if (!FileLoadChunk(pathOfValid, vec, 0, 10000, &read)) {
-        std::cout << "Failed to read file. Test inconclusive.\n";
+        Console_Write("Failed to read file. Test inconclusive.\n");
         return -4;
     }
     auto compilableSyntaxTree = ParseSourceCode(code, false); // Compiler doesn't like metadata!
     syntaxTree = ParseSourceCode(code, true);
     StringDeallocate(code);
-    if (syntaxTree == NULL) { std::cout << "Parser failed entirely"; return -5; }
+    if (syntaxTree == NULL) { Console_Write("Parser failed entirely"); return -5; }
 
     result = (SourceNode*)TreeReadBody(syntaxTree);
 
     if (!result->IsValid) {
-        std::cout << "The source file was not valid (FAIL!)\n";
+        Console_Write("The source file was not valid (FAIL!)\n");
     } else {
-        std::cout << "The source file was parsed correctly:\n\n";
+        Console_Write("The source file was parsed correctly:\n\n");
     }
 
     auto nstr = RenderAstToSource(syntaxTree); // render it even if bad -- as it contains error details
     if (nstr == NULL) {
-        std::cout << "Failed to render AST\n";
+        Console_Write("Failed to render AST\n");
         return -8;
     }
-    WriteStr(nstr);
+    Console_WriteLine(nstr);
 
-    std::cout << "Attempting to compile:\n";
+    Console_Write("Attempting to compile:\n");
     auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
 
     if (TCW_HasErrors(tagCode)) {
-        std::cout << "COMPILE FAILED!\n";
+        Console_Write("COMPILE FAILED!\n");
         auto errs = TCW_ErrorList(tagCode);
         String* msg = NULL;
         while (VecPop_StringPtr(errs, &msg)) {
-            WriteStr(msg);
+            Console_WriteLine(msg);
         }
         return -1;
     } else {
-        std::cout << "Compile OK\n";
-        std::cout << "Listing tag-code (excluding strings)\n\n";
+        Console_Write("Compile OK\n");
+        Console_Write("Listing tag-code (excluding strings)\n\n");
         
         int opCount = TCW_OpCodeCount(tagCode);
         auto tagStr = StringEmpty();
@@ -910,19 +940,19 @@ int TestCompiler() {
             DescribeTag(opcode, tagStr, TCW_GetSymbols(tagCode));
             StringAppendChar(tagStr, '\n');
         }
-        WriteStr(tagStr);
+        Console_WriteLine(tagStr);
         StringDeallocate(tagStr);
         
-        std::cout << "\n\nWriting to code file...";
+        Console_Write("\n\nWriting to code file...");
         auto buf = TCW_WriteToStream(tagCode);
-        std::cout << VecLength(buf) << " bytes...";
+		Console_WriteD(StringNewFormat(" \x02 bytes...", VecLength(buf)));
         FileWriteAll(StringNew("tagcode.dat"), buf);
 
-        std::cout << "\n\nWriting to symbols file...";
+        Console_Write("\n\nWriting to symbols file...");
         TCW_WriteSymbolsToStream(tagCode, buf);
-        std::cout << VecLength(buf) << " bytes...";
+		Console_WriteD(StringNewFormat(" \x02 bytes...", VecLength(buf)));
         FileWriteAll(StringNew("tagsymb.dat"), buf);
-        std::cout << "Done\n";
+        Console_Write("Done\n");
 
         VecDeallocate(buf);
     }
@@ -939,45 +969,46 @@ int TestCompiler() {
     ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
 
     // The compiler currently leaks like a sieve, and relies heavily on arenas to clean up.
-    std::cout << "Compiling leaked " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+	Console_WriteD(StringNewFormat("Compiling leaked \x02 bytes across \x02 objects. \x02 free.\n",
+		alloc, objects, unalloc));
 
     return 0;
 }
 
 int TestRuntimeExec() {
     // This relies on the 'tagcode.dat' file created in the test compiler step
-    std::cout << "***************** RUNTIME ******************\n";
+    Console_Write("***************** RUNTIME ******************\n");
 
     // Read code file --------------------------------
     auto tagCode = VecAllocate_DataTag();
     auto path = StringNew("tagcode.dat");
     uint64_t actual;
     bool ok = FileLoadChunk(path, tagCode, 0, FILE_LOAD_ALL, &actual);
-    if (!ok || actual < 10) { std::cout << "Failed to read tagcode file\n"; return -1; }
+    if (!ok || actual < 10) { Console_Write("Failed to read tagcode file\n"); return -1; }
 
-    std::cout << "Read file OK. Loaded " << VecLength(tagCode) << " elements\n";
+	Console_WriteD(StringNewFormat("Read file OK. Loaded \x02 elements\n", VecLength(tagCode)));
 
     uint32_t startOfCode, startOfMem;
     if (!TCR_Read(tagCode, &startOfCode, &startOfMem)) {
-        std::cout << "Failed to read incoming byte code\n";
+        Console_Write("Failed to read incoming byte code\n");
         return -1;
     }
 
     // Read symbols file --------------------------------
-    std::cout << "Trying to read symbol file\n";
+    Console_Write("Trying to read symbol file\n");
     StringClear(path);
     StringAppend(path, "tagsymb.dat");
     HashMap* symbolMap = NULL;
     auto rawSymb = VecAllocate_char();
 
     ok = FileLoadChunk(path, rawSymb, 0, FILE_LOAD_ALL, &actual);
-    if (!ok || actual < 10) { std::cout << "Failed to read symbol file (ignoring)\n"; }
+    if (!ok || actual < 10) { Console_Write("Failed to read symbol file (ignoring)\n"); }
     else { symbolMap = TCR_ReadSymbols(rawSymb); }
     VecDeallocate(rawSymb);
 
     // Write a summary of the program to be executed ----------
     auto str = TCR_Describe(tagCode, symbolMap);
-    WriteStr(str);
+    Console_WriteLine(str);
     StringDeallocate(str);
     StringDeallocate(path);
     
@@ -985,13 +1016,13 @@ int TestRuntimeExec() {
     auto interp = InterpAllocate(tagCode, 1 MEGABYTE, symbolMap);
 
     // run a few cycles and print any output
-    std::cout << "Executing...\n";
+    Console_Write("Executing...\n");
     auto startTime = SystemTime();
     auto result = InterpRun(interp, 5000);
     while (result.State == ExecutionState::Paused) {
         str = StringEmpty();
         ReadOutput(interp, str);
-        WriteStrInline(str);
+        Console_Write(str);
         StringDeallocate(str);
         result = InterpRun(interp, 5000);
     }
@@ -1041,31 +1072,30 @@ int TestRuntimeExec() {
 		resultState = 3;
 		break;
     }
-    WriteStr(str);
+    Console_WriteLine(str);
     StringDeallocate(str);
 
-    std::cout << "Execution took " << (endTime - startTime) << " seconds\n";
+	Console_WriteD(StringNewFormat("Execution took \x02 seconds\n", (endTime - startTime)));
     size_t alloc;
     size_t unalloc;
     int objects;
 
     // Check memory state
     ArenaGetState(InterpInternalMemory(interp), &alloc, &unalloc, NULL, NULL, &objects, NULL);
-    std::cout << "Runtime used in internal memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
-
-    // clean up
+	Console_WriteD(StringNewFormat("Runtime used in internal memory:\x02 bytes across \x02 objects. \x02 free.\n", alloc, objects, unalloc));
+	
+	// clean up
     InterpDeallocate(interp);
     MapDeallocate(symbolMap);
     VecDeallocate(tagCode);
     auto arena = MMCurrent();
     ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
-    std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
-
+	
+	Console_WriteD(StringNewFormat("Runtime used in external memory:\x02 bytes across \x02 objects. \x02 free. (should all be zero)\n",
+		alloc, objects, unalloc));
 
     return resultState;
 }
-
-
 
 int AppendFinishState (InterpreterState* is, ExecutionResult result, String* str) {
 	int errState = 0;
@@ -1117,7 +1147,7 @@ int RunProgram(const char* filename) {
 
     size_t alloc, unalloc;
     int objects;
-    std::cout << "########## Attempting program: " << filename << " #########\n";
+	Console_WriteD(StringNewFormat("########## Attempting program: \x05 #########\n", filename));
 
     MMPush(1 MEGABYTE); // this is arena is used to read out the results to the console. Most memory allocations should stay inside the interpreter.
     auto program = VecAllocate_DataTag();
@@ -1129,7 +1159,7 @@ int RunProgram(const char* filename) {
         auto vec = StringGetByteVector(code);
         uint64_t read = 0;
         if (!FileLoadChunk(fileName, vec, 0, 10000, &read)) {
-            std::cout << "Failed to read file. Test inconclusive.\n";
+            Console_Write("Failed to read file. Test inconclusive.\n");
             return 1;
         }
         StringDeallocate(fileName);
@@ -1162,7 +1192,7 @@ int RunProgram(const char* filename) {
         TraceArena(MMCurrent(), false);
         auto str = StringEmpty();
         ReadOutput(is, str);
-        WriteStrInline(str);
+        Console_Write(str);
         StringDeallocate(str);
         TraceArena(MMCurrent(), true);
         result = InterpRun(is, 5000);
@@ -1175,16 +1205,16 @@ int RunProgram(const char* filename) {
 	int errState = AppendFinishState(is, result, str);
 
     ReadOutput(is, str);
-    WriteStr(str);
+    Console_WriteLine(str);
     StringDeallocate(str);
-    std::cout << "Execution took " << (endTime - startTime) << " seconds\n";
+	Console_WriteD(StringNewFormat("Execution took \x02 seconds\n", (endTime - startTime)));
 
 
     // Check memory state
     ArenaGetState(InterpInternalMemory(is), &alloc, &unalloc, NULL, NULL, &objects, NULL);
-    std::cout << "Runtime used in internal memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+	Console_WriteD(StringNewFormat("Runtime used in internal memory:\x02 bytes across \x02 objects. \x02 free.\n", alloc, objects, unalloc));
     ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
-    std::cout << "Runtime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+	Console_WriteD(StringNewFormat("Runtime used in external memory:\x02 bytes across \x02 objects. \x02 free.\n", alloc, objects, unalloc));
 
     InterpDeallocate(is);
 
@@ -1199,7 +1229,7 @@ int TestProgramSuite() {
     int errs = 0;
 
 #ifndef _DEBUG
-    errs += RunProgram("stressTest.ecs"); // really slow in debug mode
+    //errs += RunProgram("stressTest.ecs"); // really slow in debug mode
 #endif
 
     errs += RunProgram("Importer.ecs");
@@ -1216,7 +1246,7 @@ int TestProgramSuite() {
     errs += RunProgram("stringSearch.ecs");
     errs += RunProgram("strings.ecs");
 	
-    std::cout << "########## Error count = " << errs << " #########\n";
+	Console_WriteD(StringNewFormat("########## Error count = \x02 #########\n", errs));
     return errs;
 }
 
@@ -1231,7 +1261,7 @@ Vector* Compile(const char* filename) {
 	auto vec = StringGetByteVector(code);
 	uint64_t read = 0;
 	if (!FileLoadChunk(fileName, vec, 0, 10000, &read)) {
-		std::cout << "Failed to read file. Test inconclusive.\n";
+		Console_Write("Failed to read file. Test inconclusive.\n");
 		return NULL;
 	}
 	StringDeallocate(fileName);
@@ -1250,7 +1280,7 @@ Vector* Compile(const char* filename) {
 
 int TestMultipleRuntimes () {
 	
-    std::cout << "***************** MULTIPLE RUNTIMES ******************\n";
+    Console_Write("***************** MULTIPLE RUNTIMES ******************\n");
 
 	auto code1 = Compile("demo_program2.ecs");
 	auto code2 = Compile("demo_program3.ecs");
@@ -1270,13 +1300,13 @@ int TestMultipleRuntimes () {
 		
 		if (run1) {
 			result1 = InterpRun(prog1, 5);
-			std::cout << "1";
+			Console_Write("1");
 		}
 		if (result1.State != ExecutionState::Paused && result1.State != ExecutionState::Waiting) run1 = false;
 		
 		if (run2) {
 			result2 = InterpRun(prog2, 5);
-			std::cout << "2";
+			Console_Write("2");
 		}
 		if (result2.State != ExecutionState::Paused && result2.State != ExecutionState::Waiting) run2 = false;
 	}
@@ -1290,7 +1320,7 @@ int TestMultipleRuntimes () {
 	errState += AppendFinishState(prog2, result2, str);
     ReadOutput(prog2, str);
 
-    WriteStr(str);
+    Console_WriteLine(str);
     StringDeallocate(str);
 
 	
@@ -1303,7 +1333,7 @@ int TestMultipleRuntimes () {
 int TestIPC() {
 	int result = 0;
 	
-    std::cout << "***************** INTERPROCESS MESSAGING ******************\n";
+    Console_Write("***************** INTERPROCESS MESSAGING ******************\n");
 
 	
     auto consoleOut = StringEmpty();
@@ -1318,19 +1348,19 @@ int TestIPC() {
 
 		//std::cout << "\n#" << RTSchedulerLastProgramIndex(sched) << "\n";
 		if (StringLength(consoleOut) > 0) {
-			WriteStrInline(consoleOut);
+			Console_Write(consoleOut);
 			StringClear(consoleOut);
 		}
 
 		// system time is fun time
 		if (--safetyLatch < 0) {
-			std::cout << "\n########## Schedule ran too long. Abandoning. ##########";
+			Console_Write("\n########## Schedule ran too long. Abandoning. ##########");
 			break;
 		}
 	}
 
 	if (StringLength(consoleOut) > 0) {
-		WriteStr(consoleOut);
+		Console_WriteLine(consoleOut);
 		StringClear(consoleOut);
 	}
 
@@ -1338,25 +1368,23 @@ int TestIPC() {
 	auto endState = RTSchedulerState(sched);
 	switch (endState) {
 	case SchedulerState::Complete:
-		std::cout << "\nSchedule completed OK!";
+		Console_Write("\nSchedule completed OK!\n");
 		break;
 
 	case SchedulerState::Faulted:
-		std::cout << "\nSchedule encountered a fault; LINE = " << faultLine;
-		std::cout << "\nIn program #" << RTSchedulerLastProgramIndex(sched);
-
+		Console_WriteD(StringNewFormat("\nSchedule encountered a fault; LINE = \x02\nIn program#\x02\n", faultLine, RTSchedulerLastProgramIndex(sched)));
 		RTSchedulerDebugDump(sched, consoleOut);
-		WriteStr(consoleOut);
+		Console_WriteLine(consoleOut);
 		StringClear(consoleOut);
 		result = 1;
 		break;
 
 	case SchedulerState::Running:
-		std::cout << "\nScheduler didn't finish running; " << faultLine;
+		Console_WriteD(StringNewFormat("\nScheduler didn't finish running; \x02\n", faultLine));
 		break;
 
 	default:
-		std::cout << "\nUNEXPECTED STATE: " << (int)endState;
+		Console_WriteD(StringNewFormat("\nUNEXPECTED STATE: \x02\n", (int)endState));
 		result = 2;
 		break;
 	}
@@ -1367,87 +1395,137 @@ int TestIPC() {
     size_t alloc, unalloc;
     int objects;
     ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
-    std::cout << "\n\nRuntime used in external memory: " << alloc << " bytes across " << objects << " objects. " << unalloc << " free.\n";
+	Console_WriteD(StringNewFormat("\nRuntime used in external memory:\x02 bytes across \x02 objects. \x02 free.\n", alloc, objects, unalloc));
 
 	return result;
 }
 
-ScreenPtr ShowWindow() {
-	// SETUP
-	auto screen = DisplaySystem_Start(NewArena(10 MEGABYTE), 800, 600, 0x70, 0x70, 0x80);	
-	auto scanBuf = DS_InitScanBuffer(screen, 800, 600); // the scan buffer renderer uses the screen's Arena
 
-	if (screen == NULL || scanBuf == NULL) return NULL;
+//######  All this console stuff should go out to another module?
+ScreenPtr OutputScreen;
+ScanBufferPtr OutputGraphics;
+int ConsoleX;
+
+const int LINE_HEIGHT = 10;
+
+// Output message then scroll up
+void Console_Write(StringPtr msg) {
+	// echo to debug console
+    auto cstr = StringToCStr(msg);
+    std::cout << cstr;
+    mfree(cstr);
+
+	// bottom first, scrolling up
+	int y = 590;
+	int right = 790;
+
+	int left = 10 + ConsoleX;
+	if (left + 8 >= right) left = 10;
+
+	while (DS_DrawStringBounded(OutputGraphics, msg, left, right, &ConsoleX, y, 1, /* Text color: */ 0xFfFfFf)){
+		ConsoleX = 0; // only keep the offset if we didn't wrap
+		left = 10;
+		// Draw line and scroll up
+		DS_RenderBuffer(OutputGraphics, OutputScreen);
+		DS_ClearRows(OutputGraphics, 580, 600);
+		DS_VScrollScreen(OutputScreen, -LINE_HEIGHT, /*background color: */ 0x70, 0x70, 0x80);
+	}
 	
+	// draw any remaining line
+	DS_RenderBuffer(OutputGraphics, OutputScreen);
+	DS_ClearRows(OutputGraphics, 580, 600);
+	DisplaySystem_PumpIdle(OutputScreen);
+}
+
+void Console_Newline() {
+	// echo to debug console
+    std::cout << "\n";
+
+	ConsoleX = 0;
+	DS_VScrollScreen(OutputScreen, -LINE_HEIGHT, /*background color: */ 0x70, 0x70, 0x80);
+	DisplaySystem_PumpIdle(OutputScreen);
+}
+
+void ShowConsoleWindow() {
+	// SETUP
+	OutputScreen = DisplaySystem_Start(NewArena(10 MEGABYTE), 800, 600, 0x70, 0x70, 0x80);	
+	OutputGraphics = DS_InitScanBuffer(OutputScreen, 800, 600); // the scan buffer renderer uses the screen's Arena
+
+	if (OutputScreen == NULL || OutputGraphics == NULL) exit(1);
+	
+	ConsoleX = 0;
+
 	// DRAW COMMANDS
     int px = 2;
 	int strLen = 52;
 
 	auto msg = StringNew("Welcome to the MECS rendering engine!\nTests should be running in the background console\nTo-do: move the console over onto this window (including scrolling) this line is deliberately made long to force it to wrap onto another line.");
 	
-	// bottom first, scrolling up
-	int y = 590;
-	while (DS_DrawStringBounded(scanBuf, msg, 10, 790, y, 1, 0xffFFff)){
-		DS_RenderBuffer(scanBuf, screen);
-		DS_ClearRows(scanBuf, 580, 600);
-		DS_VScrollScreen(screen, -10, 0x70, 0x70, 0x80);
-		DisplaySystem_PumpIdle(screen);
-	}
+	Console_Write(msg);
+	Console_Newline();
 
-	return screen;
+	StringDeallocate(msg);
+}
+
+void CloseConsoleWindow() {
+	DS_FreeScanBuffer(OutputGraphics);
+	DisplaySystem_Shutdown(OutputScreen);
 }
 
 
 int main() {
+	
+    auto suiteStartTime = SystemTime();
+
+    StartManagedMemory();
+    MMPush(100 MEGABYTE);
+	ShowConsoleWindow();
+
+	
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
 
-    StartManagedMemory();
-    MMPush(1 MEGABYTE);
-
-	auto screen = ShowWindow();
-
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto vres = TestVector();
     if (vres != 0) return vres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto qres = TestQueue();
     if (qres != 0) return qres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto hmres = TestHashMap();
     if (hmres != 0) return hmres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto tres = TestTree();
     if (tres != 0) return tres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto sres = TestString();
     if (sres != 0) return sres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto hres = TestHeaps();
     if (hres != 0) return hres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto tagres = TestTagData();
     if (tagres != 0) return tagres;
     MMPop();
     
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto serdsres = TestSerialisation();
     if (serdsres != 0) return serdsres;
     MMPop();
 
-    MMPush(1 MEGABYTE);
+    MMPush(10 MEGABYTE);
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
     MMPop();
@@ -1475,7 +1553,14 @@ int main() {
     if (ipct != 0) return ipct;
     MMPop();
 
-	DisplaySystem_Shutdown(screen);
+	
+    auto suiteEndTime = SystemTime();
+
+	Console_WriteD(StringNewFormat("\n\nTest suite finished in \x02s. Press enter to continue", (suiteEndTime - suiteStartTime)));
+	char dummy;
+	std::cin.get(dummy); 
+
+	CloseConsoleWindow();
     ShutdownManagedMemory();
 }
 

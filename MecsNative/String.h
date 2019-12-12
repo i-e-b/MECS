@@ -17,7 +17,8 @@ String *StringEmpty();
 String *StringNew(const char *str);
 // Create a mutable string from a single character
 String *StringNew(char c);
-// Somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+// Somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars:
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
 String * StringNewFormat(const char* fmt, ...);
 // Create a new string representation of an integer
 String* StringFromInt32(int32_t i);
@@ -57,7 +58,7 @@ void StringAppendChar(String *str, char c);
 // Add a character to the end of a string, that character repeated a number of times
 void StringAppendChar(String *str, char c, int count);
 // Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars:
-// '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=single char;
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
 void StringAppendFormat(String *str, const char* fmt, ...);
 // Append part of a source string into the end of the destination
 void StringAppendSubstr(String* dest, String* src, int srcStart, int srcLength);

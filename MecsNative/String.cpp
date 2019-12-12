@@ -244,7 +244,8 @@ void StringAppendChar(String *str, char c, int count) {
     for (int i = 0; i < count; i++) VPush_char(str->chars, c);
 }
 
-// internal var-arg appender. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+// internal var-arg appender. `fmt` is taken literally, except for these low ascii chars:
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
 void vStringAppendFormat(String *str, const char* fmt, va_list args) {
     if (str == NULL || fmt == NULL) return;
     
@@ -265,6 +266,12 @@ void vStringAppendFormat(String *str, const char* fmt, va_list args) {
         } else if (*fmt == '\x04') {
             char c = va_arg(args, char);
             VPush_char(chars, c);
+        } else if (*fmt == '\x05') {
+            char* s = va_arg(args, char*);
+            StringAppend(str, s);
+        } else if (*fmt == '\x06') {
+            bool s = va_arg(args, bool);
+			StringAppend(str, (s) ? "true" : "false");
         } else {
             StringAppendChar(str, *fmt);
         }
@@ -272,7 +279,8 @@ void vStringAppendFormat(String *str, const char* fmt, va_list args) {
     }
 }
 
-// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: 
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
 void StringAppendFormat(String *str, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -280,7 +288,8 @@ void StringAppendFormat(String *str, const char* fmt, ...) {
     va_end(args);
 }
 
-// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: '\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex;
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars: 
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
 String * StringNewFormat(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
