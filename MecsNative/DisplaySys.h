@@ -39,6 +39,9 @@ ArenaPtr DisplaySystem_GetArena(ScreenPtr screen);
 // invalidated pixels will be written with the given color
 void DS_VScrollScreen(ScreenPtr screen, int distance, int r, int g, int b);
 
+int DisplaySystem_GetWidth(ScreenPtr screen);
+int DisplaySystem_GetHeight(ScreenPtr screen);
+
 
 //######################### Scan buffer management #########################
 

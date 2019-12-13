@@ -178,6 +178,7 @@
     <ClCompile Include="ArenaAllocator.cpp" />
     <ClCompile Include="CompilerCore.cpp" />
     <ClCompile Include="CompilerOptimisations.cpp" />
+    <ClCompile Include="Console.cpp" />
     <ClCompile Include="Desugar.cpp" />
     <ClCompile Include="DisplaySys_Native.cpp" />
     <ClCompile Include="DisplaySys_Common.cpp" />
@@ -205,6 +206,7 @@
     <ClInclude Include="ArenaAllocator.h" />
     <ClInclude Include="CompilerCore.h" />
     <ClInclude Include="CompilerOptimisations.h" />
+    <ClInclude Include="Console.h" />
     <ClInclude Include="Desugar.h" />
     <ClInclude Include="DisplaySys.h" />
     <ClInclude Include="DisplaySys_Font.h" />

@@ -103,6 +103,9 @@
     <ClCompile Include="DisplaySys_Native.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
+    <ClCompile Include="Console.cpp">
+      <Filter>Source Files\System</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -181,6 +184,9 @@
       <Filter>Source Files\Runtime</Filter>
     </ClInclude>
     <ClInclude Include="DisplaySys_Font.h">
+      <Filter>Source Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Console.h">
       <Filter>Source Files\System</Filter>
     </ClInclude>
   </ItemGroup>

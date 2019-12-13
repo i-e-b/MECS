@@ -22,6 +22,15 @@ typedef struct Screen {
 } Screen;
 
 
+int DisplaySystem_GetWidth(ScreenPtr screen) {
+	if (screen == NULL) return -1;
+	return screen->width;
+}
+int DisplaySystem_GetHeight(ScreenPtr screen) {
+	if (screen == NULL) return -1;
+	return screen->height;
+}
+
 ArenaPtr DisplaySystem_GetArena(ScreenPtr screen) {
 	if (screen == NULL) return NULL;
 	return screen->arena;

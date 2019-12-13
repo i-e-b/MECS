@@ -121,4 +121,9 @@ bool StringTryParse_int32(String *str, int32_t *dest);
 // Parse a fixed-point number from a decimal string (F16.16, passed as int32)
 bool StringTryParse_double(String *str, double *dest); // TODO
 
+
+// Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars:
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
+void vStringAppendFormat(String *str, const char* fmt, va_list args);
+
 #endif
