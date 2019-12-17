@@ -534,11 +534,16 @@ inline void CleanUpHeaps(HeapPtr p_heap, HeapPtr r_heap) {
     // while top of p_heap and r_heap match, remove both.
     auto nextRemove = SP_Element{ 0,-1,0 };
     auto top = SP_Element{ 0,-1,0 };
-    while (HeapTryFindMin(p_heap, &top) && HeapTryFindMin(r_heap, &nextRemove)
-        && top.identifier == nextRemove.identifier) {
-        HeapDeleteMin_SP_Element(r_heap, NULL);
-        HeapDeleteMin_SP_Element(p_heap, NULL);
+    bool ok = true;
+	while (ok &&
+        HeapTryFindMin(p_heap, &top) && HeapTryFindMin(r_heap, &nextRemove)
+        && top.identifier == nextRemove.identifier
+        ) {
+        ok &= HeapDeleteMin_SP_Element(r_heap, NULL);
+        ok &= HeapDeleteMin_SP_Element(p_heap, NULL);
     }
+
+    if (!ok) return;
 
     // clear up second rank (ended objects that are behind the top)
     auto nextObj = SP_Element{ 0,-1,0 };
@@ -736,6 +741,8 @@ bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, i
     SetMaterial(buf, &objId, z, color);
 
 	int x = left;
+    if (dx != NULL) x += *dx;
+
 	int end = right - 8;
 	bool cont = true;
 	while (x <= end) {
@@ -753,7 +760,7 @@ bool DS_DrawStringBounded(ScanBuffer* buf, StringPtr str, int left, int right, i
 		x += FONT_WIDTH;
 	}
 	if (dx != NULL) {
-		if (x + 8 > right) return x = left;
+		if (x + 8 > right) *dx = left;
 		*dx = x - left;
 	}
 	return cont;

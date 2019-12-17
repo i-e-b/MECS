@@ -84,7 +84,7 @@ bool HeapDeleteMin(Heap * H, void* element) {
     int i, Child;
 
     auto MinElement = mmalloc(H->elementSize + sizeof(int));
-    if (MinElement == NULL) return false;
+    if (MinElement == NULL) return false; // TODO: BUG--- this can cause us to infinite loop if we run out of memory
     auto LastElement = mmalloc(H->elementSize + sizeof(int));
     if (LastElement == NULL) { mfree(MinElement); return false; }
 

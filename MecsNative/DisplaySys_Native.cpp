@@ -41,15 +41,18 @@ ScreenPtr DisplaySystem_Start(ArenaPtr arena, int width, int height, int r, int 
 	if (arena == NULL) return NULL;
 	if (width < 100 || height < 100) return NULL;
 
+	// Ensure SDL is up
+	uint32_t subsystem_init;
+	subsystem_init = SDL_WasInit(SDL_INIT_EVERYTHING);
+	if ((subsystem_init & SDL_INIT_VIDEO) == 0) {
+		if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+			return NULL;
+		}
+	}
+
 	auto result = (ScreenPtr)ArenaAllocateAndClear(arena, sizeof(Screen));
 	if (result == NULL) return NULL;
-
 	result->arena = arena;
-
-    if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-		ArenaDereference(arena, result);
-        return NULL;
-	}
 
     result->window = SDL_CreateWindow("MECS for Windows (SDL)", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_SHOWN);
 	

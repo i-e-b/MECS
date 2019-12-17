@@ -15,6 +15,7 @@ typedef struct Console {
 	int left, right;
 } Console;
 
+void LogInternal(ConsolePtr cons, StringPtr msg);
 
 ConsolePtr AttachConsole(ScreenPtr screen, ScanBufferPtr scanBuffer) {
 	if (screen == NULL) return NULL;
@@ -64,47 +65,53 @@ void DeallocateConsole(ConsolePtr console) {
 
 
 // Write a formatted string to the console
-//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
-void Console_WriteFmt(ConsolePtr cons, const char* fmt, ...) {
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool; '\x07'=byte as hex
+void LogFmt(ConsolePtr cons, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     auto str = StringEmptyInArena(cons->arena);
     vStringAppendFormat(str, fmt, args);
-	Console_Write(cons, str);
+	Log(cons, str);
 	StringDeallocate(str);
     va_end(args);
 }
 
 
-void Console_WriteLine(ConsolePtr cons, StringPtr msg) {
+void Log(ConsolePtr cons, StringPtr msg) {
 	auto clone = StringClone(msg, cons->arena);
-	Console_Write(cons, clone);
-	Console_Newline(cons);
+	LogInternal(cons, clone);
+	StringDeallocate(clone);
+}
+
+void LogLine(ConsolePtr cons, StringPtr msg) {
+	auto clone = StringClone(msg, cons->arena);
+	LogInternal(cons, clone);
+	LogLine(cons);
 	StringDeallocate(clone);
 }
 // Write to console, and dispose of source string
-void Console_WriteD(ConsolePtr cons, StringPtr msg) {
-	Console_Write(cons, msg);
+void LogDealloc(ConsolePtr cons, StringPtr msg) {
+	LogInternal(cons, msg);
 	StringDeallocate(msg);
 }
-void Console_WriteChar(ConsolePtr cons, char c) {
+void Log(ConsolePtr cons, char c) {
 	auto msg = StringEmptyInArena(cons->arena);
 	StringAppendChar(msg, c);
-	Console_Write(cons, msg);
+	LogInternal(cons, msg);
 	StringDeallocate(msg);
 }
 
-void Console_Write(ConsolePtr cons, const char* msg) {
+void Log(ConsolePtr cons, const char* msg) {
 	auto tmp = StringNewInArena(msg, cons->arena);
-	Console_Write(cons, tmp);
+	LogInternal(cons, tmp);
 	StringDeallocate(tmp);
 }
-void Console_WriteLine(ConsolePtr cons, const char* msg) {
-	Console_Write(cons, msg);
-	Console_Newline(cons);
+void LogLine(ConsolePtr cons, const char* msg) {
+	Log(cons, msg);
+	LogLine(cons);
 }
 
-void Console_Newline(ConsolePtr cons) {
+void LogLine(ConsolePtr cons) {
 	if (cons == NULL) return;
 
 	cons->ConsoleX = 0;
@@ -113,14 +120,13 @@ void Console_Newline(ConsolePtr cons) {
 }
 
 
-void Console_Write(ConsolePtr cons, StringPtr msg) {
+void LogInternal(ConsolePtr cons, StringPtr msg) {
 	if (cons == NULL || msg == NULL) return;
 	// bottom first, scrolling up
 	int y = cons->y;
 	int right = cons->right;
 
-	int left = cons->left + cons->ConsoleX;
-	if (left + LINE_HEIGHT >= right) left = cons->left;
+	int left = cons->left;
 
 	while (DS_DrawStringBounded(cons->OutputGraphics, msg, left, right, &(cons->ConsoleX), y, 1, /* Text color: */ 0xFfFfFf)){
 		cons->ConsoleX = 0; // only keep the offset if we didn't wrap

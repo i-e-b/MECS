@@ -156,6 +156,46 @@ bool RecursiveWrite(DataTag source, InterpreterState* state, Vector* target) {
     return false;
 }
 
+bool WriteStateless(DataTag source, Vector* target) {
+    switch ((DataType)source.type) {
+        // Simple small types
+    case DataType::Integer:
+    case DataType::Fraction:
+    case DataType::SmallString:
+    {
+        // write the tag into the vector
+        VecPush_byte(target, source.type);
+        for (int i = 2; i >= 0; i--) {
+            VecPush_byte(target, (source.params >> (i*8)) & 0xff);
+        }
+        PushUInt32(source.data, target);
+        return true;
+    }
+
+        // String types
+    case DataType::DebugStringPtr:
+    case DataType::StaticStringPtr:
+    case DataType::StringPtr:
+        return false; // long strings are not supported in stateless mode
+
+        // Containers (here begins the recursion)
+    case DataType::HashtablePtr:
+    case DataType::VectorPtr:
+        return false; // containers are not supported in stateless mode
+
+        // empty types
+    case DataType::Not_a_Result:
+        // write a byte for the type, and nothing else.
+        VecPush_byte(target, source.type);
+        return true;
+        break;
+
+    default: // nothing else is supported in stateless mode
+        return false;
+    }
+    return false;
+}
+
 bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
 
     // This needs to take the raw bytes and put everything back together
@@ -308,6 +348,43 @@ bool FreezeToVector(DataTag source, InterpreterState* state, Vector* target) {
     VectorClear(target);
 
     return RecursiveWrite(source, state, target);
+}
+
+
+bool FreezeToVector(HashMapPtr source, VectorPtr target) {
+    if (target == NULL) return false;
+    if (source == NULL) return false;
+    
+	if (VectorElementSize(target) != 1) return false;
+	VectorClear(target);
+
+    // Write the hashtable header, then read the keys
+	VecPush_byte(target, (int)DataType::HashtablePtr);
+	auto allKeys = HashMapAllEntries(source); // Vector<  HashMap_KVP<string => data tag>  >
+
+	//[entry count: uint 32] n*{ [key length: uint 32][key characters:n] [value type:8][value data:n] }
+	auto length = VecLength(allKeys);
+	PushUInt32(length, target);
+
+	HashMap_KVP entry;
+	for (uint32_t i = 0; i < length; i++)
+	{
+		if (!VectorPop(allKeys, &entry)) return false; //internal failure
+		String* str = *(String**)(entry.Key);
+		DataTag* valTag = (DataTag*)(entry.Value);
+
+		if (str == NULL || valTag == NULL) return false; // invalid hash map
+
+		// Write key (no type tag, it's always a string)
+		PushUInt32(StringLength(str), target);
+		PushStringBytes(str, target);
+
+		// Write the value (NON-recursive)
+        auto ok = WriteStateless(*valTag, target);
+		if (!ok) return false; // error somewhere deeper
+	}
+
+    return true;
 }
 
 // Expand a byte vector that has been filled by `FreezeToVector` into an arena

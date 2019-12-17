@@ -43,6 +43,7 @@ int DisplaySystem_GetWidth(ScreenPtr screen);
 int DisplaySystem_GetHeight(ScreenPtr screen);
 
 
+
 //######################### Scan buffer management #########################
 
 // Create a new scan-buffer, to accept draw commands and be rendered to a buffer

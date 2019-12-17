@@ -145,6 +145,21 @@ String* StringFromInt32(int32_t i) {
     return str;
 }
 
+void StringAppendInt8Hex(String *str, uint8_t value) {
+    if (str == NULL) return;
+    if (VectorIsValid(str->chars) == false) return;
+
+    str->hashval = 0;
+    uint32_t nybble = 0xF0;
+    uint32_t digit = 0;
+    for (int i = 4; i >= 0; i-=4) {
+        digit = (value & nybble) >> i;
+        if (digit <= 9) VPush_char(str->chars, '0' + digit);
+        else VPush_char(str->chars, '7' + digit); // line up with capital 'A'
+        nybble >>= 4;
+    }
+}
+
 void StringAppendInt32Hex(String *str, uint32_t value) {
     if (str == NULL) return;
     if (VectorIsValid(str->chars) == false) return;
@@ -272,6 +287,9 @@ void vStringAppendFormat(String *str, const char* fmt, va_list args) {
         } else if (*fmt == '\x06') {
             bool s = va_arg(args, bool);
 			StringAppend(str, (s) ? "true" : "false");
+		} else if (*fmt == '\x07') {
+            char i = va_arg(args, char);
+            StringAppendInt8Hex(str, i);
         } else {
             StringAppendChar(str, *fmt);
         }

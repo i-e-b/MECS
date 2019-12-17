@@ -18,7 +18,7 @@ String *StringNew(const char *str);
 // Create a mutable string from a single character
 String *StringNew(char c);
 // Somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars:
-//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool; '\x07'=byte as hex
 String * StringNewFormat(const char* fmt, ...);
 // Create a new string representation of an integer
 String* StringFromInt32(int32_t i);
@@ -58,7 +58,7 @@ void StringAppendChar(String *str, char c);
 // Add a character to the end of a string, that character repeated a number of times
 void StringAppendChar(String *str, char c, int count);
 // Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars:
-//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool; '\x07'=byte as hex
 void StringAppendFormat(String *str, const char* fmt, ...);
 // Append part of a source string into the end of the destination
 void StringAppendSubstr(String* dest, String* src, int srcStart, int srcLength);
@@ -123,7 +123,7 @@ bool StringTryParse_double(String *str, double *dest); // TODO
 
 
 // Append, somewhat like sprintf. `fmt` is taken literally, except for these low ascii chars:
-//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool; '\x07'=byte as hex
 void vStringAppendFormat(String *str, const char* fmt, va_list args);
 
 #endif

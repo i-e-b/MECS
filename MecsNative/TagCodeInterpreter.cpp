@@ -1747,8 +1747,6 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 		auto ok = FreezeToVector(param[1], is, data);
 		if (!ok) { return _Exception(is, "Failed to serialise data for IPC send"); }
 
-		// TODO FAULT: are we destroying strings during the freeze process?
-		
 		uint32_t encPtr = ArenaPtrToOffset(is->_memory, data); // allows us to place a 32-bit ptr in 64-bit space
 		if (encPtr < 1) { return _Exception(is, "Failed to serialise data for IPC send: nonsense result from arena allocation"); }
 		DataTag final = EncodePointer(encPtr, DataType::VectorPtr);

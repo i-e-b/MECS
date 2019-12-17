@@ -106,6 +106,9 @@
     <ClCompile Include="Console.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
+    <ClCompile Include="EventSys.cpp">
+      <Filter>Source Files\System</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -187,6 +190,9 @@
       <Filter>Source Files\System</Filter>
     </ClInclude>
     <ClInclude Include="Console.h">
+      <Filter>Source Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="EventSys.h">
       <Filter>Source Files\System</Filter>
     </ClInclude>
   </ItemGroup>

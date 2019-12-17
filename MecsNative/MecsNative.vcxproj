@@ -182,6 +182,7 @@
     <ClCompile Include="Desugar.cpp" />
     <ClCompile Include="DisplaySys_Native.cpp" />
     <ClCompile Include="DisplaySys_Common.cpp" />
+    <ClCompile Include="EventSys.cpp" />
     <ClCompile Include="FileSys.cpp" />
     <ClCompile Include="HashMap.cpp" />
     <ClCompile Include="Heap.cpp" />
@@ -210,6 +211,7 @@
     <ClInclude Include="Desugar.h" />
     <ClInclude Include="DisplaySys.h" />
     <ClInclude Include="DisplaySys_Font.h" />
+    <ClInclude Include="EventSys.h" />
     <ClInclude Include="FileSys.h" />
     <ClInclude Include="HashMap.h" />
     <ClInclude Include="Heap.h" />
