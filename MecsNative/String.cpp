@@ -381,6 +381,8 @@ String *StringChop(String* str, int startIdx, int length) {
 char *StringToCStr(String *str) {
     auto len = StringLength(str);
     auto result = (char*)mmalloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
+    if (result == NULL)
+        return NULL;
     for (unsigned int i = 0; i < len; i++) {
         result[i] = *VGet_char(str->chars, i);
     }

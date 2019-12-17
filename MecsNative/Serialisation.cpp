@@ -317,7 +317,7 @@ bool RecursiveRead(DataTag* dest, Arena* memory, Vector* source) {
             if (!ok) return false;
             
             // write into map
-            ok = MapPut_StringPtr_DataTag(container, StringClone(keyStr), data, false);
+            ok = MapPut_StringPtr_DataTag(container, StringClone(keyStr, memory), data, false);
             if (!ok) return false; // internal error / out of memory
         }
         StringDeallocate(keyStr);

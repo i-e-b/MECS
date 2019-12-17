@@ -3,12 +3,14 @@
 #ifndef heap_h
 #define heap_h
 
+#include "ArenaAllocator.h"
+
 // A generic heap based on the vector container
 typedef struct Heap Heap;
 typedef Heap* HeapPtr;
 
 // Allocate and setup a heap structure with a given size
-Heap *HeapAllocate(int elementByteSize);
+Heap *HeapAllocate(ArenaPtr arena, int elementByteSize);
 // Deallocate a heap
 void HeapDeallocate(Heap * H);
 // Remove all entries without deallocating ( O(n) time )
@@ -40,7 +42,7 @@ bool HeapIsEmpty(Heap* H);
 
 // These must be registered for each distinct pair, as they are type variant
 #define RegisterHeapFor(elemType, nameSpace) \
-    inline Heap * nameSpace##Allocate_##elemType(){return HeapAllocate(sizeof(elemType));}\
+    inline Heap * nameSpace##Allocate_##elemType(ArenaPtr arena){return HeapAllocate(arena, sizeof(elemType));}\
     inline void nameSpace##Insert_##elemType(Heap* h, int priority, elemType* element){ HeapInsert(h,priority,element);}\
     inline void nameSpace##Insert_##elemType(Heap* h, int priority, const elemType* element){ HeapInsert(h,priority,(void*)element);}\
     inline bool nameSpace##DeleteMin_##elemType(Heap * H, elemType* element){return HeapDeleteMin(H, element);}\

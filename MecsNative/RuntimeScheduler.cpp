@@ -10,6 +10,10 @@
 #include "TypeCoersion.h"
 #include "RuntimeScheduler.h"
 
+// System IO
+#include "EventSys.h"
+#include "DisplaySys.h"
+
 typedef uint32_t Name;
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(Name, StringPtr, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
@@ -30,17 +34,26 @@ typedef struct RuntimeScheduler {
 
 	// Last recorded run state
 	SchedulerState state;
+
+	// Event target string container for system events
+    StringPtr sysEventTarget;
+
+	// Event data container for system events
+    VectorPtr sysEventData;
 } RuntimeScheduler;
 
 // Allocate a new scheduler. The scheduler will create its own memory arenas, and those for the interpreters.
 RuntimeSchedulerPtr RTSchedulerAllocate(){
-	auto coreMem = NewArena(1 MEGABYTE);
+	auto coreMem = NewArena(1 MEGABYTE); // just for the schedule and event data. Each interpreter gets an isolated one.
 
 	auto result = (RuntimeScheduler*)ArenaAllocateAndClear(coreMem, sizeof(RuntimeScheduler));
 	if (coreMem == NULL || result == NULL) return NULL;
 
+	result->sysEventData = VectorAllocateArena(coreMem, 1);
+	result->sysEventTarget = StringEmptyInArena(coreMem);
+
 	auto intVec = VectorAllocateArena_InterpreterStatePtr(coreMem);
-	if (intVec == NULL) {
+	if (intVec == NULL || result->sysEventData == NULL || result->sysEventTarget == NULL) {
 		DropArena(&coreMem);
 		return NULL;
 	}
@@ -128,6 +141,23 @@ int Fault(RuntimeSchedulerPtr sched, int line) {
 	return line;
 }
 
+
+int BroadcastSystemEvents(RuntimeSchedulerPtr sched) {
+
+	// get any event
+	if (!EventPoll(sched->sysEventTarget, sched->sysEventData)) return 0;
+
+	int length = VectorLength(sched->interpreters);
+	for (int i = 0; i < length; i++) {
+		auto target = VectorGet_InterpreterStatePtr(sched->interpreters, i);
+		if (target == NULL || *target == NULL) return Fault(sched, __LINE__);
+
+		bool ok = InterpAddIPC(*target, sched->sysEventTarget, sched->sysEventData);
+		if (!ok) return Fault(sched, __LINE__);
+	}
+	return 0;
+}
+
 constexpr auto OK = 0;
 constexpr auto ALL_COMPLETE = -1;
 constexpr auto DROP_THRU = -2;
@@ -138,6 +168,12 @@ constexpr auto DROP_THRU = -2;
 // (use `RTSchedulerState` function to get a flag, and the `RTSchedulerProgramStatistics` function to get detailed states)
 int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) {
 	if (sched == NULL) return Fault(sched, __LINE__);
+
+	// Check for waiting system events
+	auto sysresult = BroadcastSystemEvents(sched);
+	if (sysresult != OK) return sysresult;
+
+	// TODO: pump the display system if it's attached
 
 	// Advance the schedule
 	sched->roundRobin++;
@@ -155,6 +191,7 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) 
 	// check state and run if appropriate
 	// if not, we do nothing and return true (expecting the scheduler to be run endlessly)
 	auto state = InterpreterCurrentState(is);
+
 	ExecutionResult result;
 	switch (state) {
 		// Valid run states

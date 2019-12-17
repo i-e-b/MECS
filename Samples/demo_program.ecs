@@ -1,35 +1,24 @@
-// Creating and using vectors
+set(i 0)
+set(t 0)
+while ( <(i 64)
+    set(j 0)
 
-set(myList new-list()) // a new empty list
-set(fullList new-list(1 2 3)) // a new list of [1,2,3]
-
-push(fullList 4) // now has [1,2,3,4]
-set(fullList concat(new-list(0) fullList)) // now [0,1,2,3,4]
-
-while (
-	>(length(fullList) 0)
-	push(myList pop(fullList))
+    while ( <(j 48)
+        set(x 0)
+        set(y 0)
+        set(z 1)
+        while ( <(z 10)
+            //print( z )
+            
+            set(x get(y))
+            set(y get(z))
+            set(z +(x y))
+            set(t +(t 1))
+        )
+        set(j +(j 1))
+    )
+	//print( i )
+    set(i +(i 1))
 )
-
-print(myList " <- should be [4,3,2,1,0]") //  fullList is now empty
-push(fullList 0 0 0 0) // now has [0,0,0,0]
-
-// index get and set
-print(get(myList 1) " <- 3") // zero-indexed
-print(get(myList 0 2 4) " <- [4,2,0]") // multiple indexes pick to make a new array
-print(myList(2) " <- 2") // function call as index
-
-//             +----> index
-//             | +--> new value
-//set(fullList 1 3)  // !!! This is a confusing syntax, so it's not recommended.
-set(fullList(1) 3)  // Instead, the compiler will de-sugar the var-as-func syntax to the same
-
-set(fullList(0) myList(2))  // treat vector as a function call to determine an index?
-                             // NOTE: `myList(2)` gives a *reference* to the value, not a copy.
-
-print(dequeue(myList) " <- 4")
-
-print(concat(fullList myList) " <- [2,3,0,0, 3,2,1,0]")
-
-print("done")
-
+print( "final value = " z )
+print("ran " t " iterations")

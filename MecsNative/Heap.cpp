@@ -1,6 +1,5 @@
 #include "Heap.h"
 #include "Vector.h"
-#include "MemoryManager.h"
 
 #include "RawData.h"
 
@@ -12,10 +11,13 @@ typedef struct Heap {
     int elementSize;
 } Heap;
 
-Heap * HeapAllocate(int elementByteSize) {
-    auto vec = VectorAllocate(elementByteSize + sizeof(int)); // int for priority, stored inline
+Heap * HeapAllocate(ArenaPtr arena, int elementByteSize) {
+    if (arena == NULL || elementByteSize < 1 || elementByteSize >= ARENA_ZONE_SIZE) return NULL;
+
+    auto vec = VectorAllocateArena(arena, elementByteSize + sizeof(int)); // int for priority, stored inline
     if (vec == NULL) return NULL;
-    Heap *h = (Heap*)mmalloc(sizeof(Heap));
+
+    Heap *h = (Heap*)ArenaAllocate(arena, sizeof(Heap));
     if (h == NULL) {
         VectorDeallocate(vec);
         return NULL;
@@ -30,20 +32,22 @@ Heap * HeapAllocate(int elementByteSize) {
 
 void HeapDeallocate(Heap * H) {
     if (H == NULL) return;
+    auto arena = VectorArena(H->Elements);
     VectorDeallocate(H->Elements);
-    mfree(H);
+    ArenaDereference(arena, H);    
 }
 
 void HeapClear(Heap * H) {
     if (H == NULL) return;
     VectorClear(H->Elements);
+    auto arena = VectorArena(H->Elements);
 
     // place a super-minimum value at the start of the vector
-    auto temp = mcalloc(1, H->elementSize + sizeof(int));
+	auto temp = ArenaAllocateAndClear(arena, H->elementSize + sizeof(int));
     if (temp == NULL) { return; }
     writeInt(temp, INT32_MIN);
     VectorPush(H->Elements, temp);
-    mfree(temp);
+    ArenaDereference(arena, temp);
 }
 
 inline int ElementPriority(Heap *H, int index) {
@@ -52,7 +56,9 @@ inline int ElementPriority(Heap *H, int index) {
 
 void HeapInsert(Heap * H, int priority, void * element) {
     if (H == NULL)  return;
-    auto temp = mmalloc(H->elementSize + sizeof(int));
+    
+    auto arena = VectorArena(H->Elements);
+    auto temp = ArenaAllocateAndClear(arena, H->elementSize + sizeof(int));
     if (temp == NULL) return;
     
     writeIntPrefixValue(temp, priority, element, H->elementSize);
@@ -67,7 +73,7 @@ void HeapInsert(Heap * H, int priority, void * element) {
     }
 
     VectorSet(H->Elements, i, temp, NULL);
-    mfree(temp);
+    ArenaDereference(arena, temp);
 }
 
 // Returns true if heap has no elements
@@ -83,14 +89,16 @@ bool HeapDeleteMin(Heap * H, void* element) {
 
     int i, Child;
 
-    auto MinElement = mmalloc(H->elementSize + sizeof(int));
+    auto arena = VectorArena(H->Elements);
+
+    auto MinElement = ArenaAllocateAndClear(arena, H->elementSize + sizeof(int));
     if (MinElement == NULL) return false; // TODO: BUG--- this can cause us to infinite loop if we run out of memory
-    auto LastElement = mmalloc(H->elementSize + sizeof(int));
-    if (LastElement == NULL) { mfree(MinElement); return false; }
+    auto LastElement = ArenaAllocateAndClear(arena, H->elementSize + sizeof(int));
+    if (LastElement == NULL) { ArenaDereference(arena, MinElement); return false; }
 
     VectorCopy(H->Elements, 1, MinElement); // the first element is always minimum
     if (element != NULL) readIntPrefixValue(element, MinElement, H->elementSize); // so copy it out
-    mfree(MinElement);
+    ArenaDereference(arena, MinElement);
 
     // Now re-enforce the heap property
     VectorPop(H->Elements, LastElement);

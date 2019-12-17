@@ -505,7 +505,7 @@ int TestHeaps() {
     auto str1 = StringEmpty();
     auto str2 = StringEmpty();
     auto str3 = StringEmpty();
-    auto heap = HAllocate_char();
+    auto heap = HAllocate_char(MMCurrent());
     // add out-of-order, but with alphabetical priority
     HInsert_char(heap, 1, "A");
     HInsert_char(heap, 6, "F");
@@ -801,7 +801,7 @@ int TestSerialisation() {
     Log(cnsl,"Result bytes = ");
     length = VecLength(vec);
     for (int i = 0; i < length; i++) {
-		LogFmt(cnsl,"\x03 ",(int)((uint8_t)*VecGet_char(vec, i)));
+		LogFmt(cnsl,"\x07 ",(int)((uint8_t)*VecGet_char(vec, i)));
 	}
     Log(cnsl,"\nSerialisation OK.\n");
 
@@ -812,7 +812,7 @@ int TestSerialisation() {
     Log(cnsl,"Result bytes = ");
     length = VecLength(vec);
     for (int i = 0; i < length; i++) {
-		LogFmt(cnsl,"\x03 ",(int)((uint8_t)*VecGet_char(vec, i)));
+		LogFmt(cnsl,"\x07 ",(int)((uint8_t)*VecGet_char(vec, i)));
 	}
     Log(cnsl,"\nSerialisation OK. Should be exact same data\n");
 
@@ -838,7 +838,7 @@ int TestCompiler() {
 
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
-    //auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
+    //auto pathOfValid = StringNew("hashmaps.ecs"); // should be valid source
     auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
@@ -1376,10 +1376,43 @@ int TestIPC() {
 }
 
 
+int RunWaiterProgram() {
+	int result = 0;
+	
+    Log(cnsl,"******************** End of tests ********************\n");
+
+    // We run a special MECS program to wait for user input before quitting.
+    // This acts as a final demonstration of correctness
+	
+    auto consoleOut = StringEmpty();
+	auto sched = RTSchedulerAllocate();
+
+	RTSchedulerAddProgram(sched, StringNew("SPECIAL_WAIT.ecs"));
+
+	int32_t safetyLatch = 50; // programs should complete in 2500 steps
+	int faultLine = 0;
+	while ((faultLine = RTSchedulerRun(sched, 50, consoleOut)) == 0) { // more rounds = less overhead, but coarser time slicing
+        //DisplaySystem_PumpIdle(OutputScreen);
+		if (StringLength(consoleOut) > 0) {
+            Log(cnsl,consoleOut);
+            StringClear(consoleOut);
+        }
+	}
+
+	if (StringLength(consoleOut) > 0) {
+        Log(cnsl,consoleOut);
+        StringClear(consoleOut);
+    }
+
+	RTSchedulerDeallocate(&sched);
+	StringDeallocate(consoleOut);
+
+	return result;
+}
 
 void ShowConsoleWindow() {
 	// SETUP
-	OutputScreen = DisplaySystem_Start(NewArena(10 MEGABYTE), 800, 600, 0x70, 0x70, 0x80);
+	OutputScreen = DisplaySystem_Start(NewArena(100 MEGABYTE), 800, 600, 0x70, 0x70, 0x80);
 	EventSystem_Start();
 
 	cnsl = AttachConsole(OutputScreen, NULL);
@@ -1477,11 +1510,14 @@ int main() {
 	
     auto suiteEndTime = SystemTime();
 
-	LogFmt(cnsl,"\n\nTest suite finished in \x02s. Press any key to exit", (suiteEndTime - suiteStartTime));
+	LogFmt(cnsl,"\n\nTest suite finished in \x02s.", (suiteEndTime - suiteStartTime));
 
 
-    // Use the eventsys to wait for a key press
+    // Run a scheduler program to wait for keyboard input
+    RunWaiterProgram(); // BUG: the console display is not working after this point!
 
+/*
+    // Use the event system to wait for input
     MMPush(10 MEGABYTES);
     StringPtr eventTarget = StringNew("x");
     VectorPtr eventData = VectorAllocate(1);
@@ -1502,11 +1538,13 @@ int main() {
     }
     MMPop();
 
+    */
 
     // wait again to inspect...
-	char dummy;
+	/*char dummy;
     std::cout << "Input a character to quit: ";
 	std::cin.get(dummy); 
+*/
 
 	CloseConsoleWindow();
     ShutdownManagedMemory();

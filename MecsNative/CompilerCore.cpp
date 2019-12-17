@@ -196,6 +196,30 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
     }
 }
 
+int CountRealFunctionParameters(TreeNode* node) {
+	int nodeCount = TreeCountChildren(node);
+
+	if (nodeCount == 0) return 0;
+
+	// any node that is function-like, has a text of "()" [that is, it has no function name] and is NOT a scope delimiter [thus is not a leaf node]
+	// this is a chain call, and should not be counted as a function parameter.
+	// Examples:
+	//     print()                     <-- zero params
+	//     print("hello" ())           <-- 2 params
+	//     print( mymap("key") )       <-- 1 param
+	//     print( mymap("k")("sub") )  <-- 1 param
+	auto childChain = TreeChild(node);
+	
+	int filteredCount = 0;
+	while (childChain != NULL) {
+		auto nodeData = TreeReadBody_SourceNode(childChain);
+		if (!StringAreEqual(nodeData->Text, "()") || !(TreeCountChildren(childChain) > 0)) filteredCount++; // not a chain extension
+		childChain = TreeSibling(childChain);
+	}
+	return filteredCount;
+}
+
+
 void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
     auto nodeData = TreeReadBody_SourceNode(node);
     int paramCount = 0;
@@ -227,7 +251,8 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
 
     // build a sub-tree to compile in memory-access context
     auto child = TreePivot(node);
-    paramCount += TreeCountChildren(child);
+
+    paramCount += CountRealFunctionParameters(child);
     auto childData = TreeReadBody_SourceNode(child);
 
     // this special case around `get` is probably an artefact of `TreePivot`
@@ -377,29 +402,6 @@ bool AllChildrenAreLeaves(TreeNode* node) {
     return true;
 }
 
-
-int CountRealFunctionParameters(TreeNode* node) {
-	int nodeCount = TreeCountChildren(node);
-
-	if (nodeCount == 0) return 0;
-
-	// any node that is function-like, has a text of "()" [that is, it has no function name] and is NOT a scope delimiter [thus is not a leaf node]
-	// this is a chain call, and should not be counted as a function parameter.
-	// Examples:
-	//     print()                     <-- zero params
-	//     print("hello" ())           <-- 2 params
-	//     print( mymap("key") )       <-- 1 param
-	//     print( mymap("k")("sub") )  <-- 1 param
-	auto childChain = TreeChild(node);
-	
-	int filteredCount = 0;
-	while (childChain != NULL) {
-		auto nodeData = TreeReadBody_SourceNode(childChain);
-		if (!StringAreEqual(nodeData->Text, "()") || !(TreeCountChildren(childChain) > 0)) filteredCount++; // not a chain extension
-		childChain = TreeSibling(childChain);
-	}
-	return filteredCount;
-}
 
 void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
     // 1) Compile the func to a temporary string

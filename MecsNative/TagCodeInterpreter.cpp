@@ -843,11 +843,19 @@ compiles to this:
         auto ok = MapPut_StringPtr_DataTag(src, key, valueToSet, true);
         return;
     }
-    default:
-
+    case (int)DataType::Not_a_Result:
+    {
+        // tried to write into a NaR?
 		is->State = ExecutionState::ErrorState;
         auto info = DbgStr(is, varRef);
-        StringAppendFormat(is->_output, "Tried to set-by-index on the wrong kind of thing (\x01). position: '\x02'", info, is->_position);
+        StringAppendFormat(is->_output, "Tried to set-by-index on an invalid result (NaR) at code position: '\x02'", is->_position);
+        StringDeallocate(info);
+    }
+
+    default:
+		is->State = ExecutionState::ErrorState;
+        auto info = DbgStr(is, varRef);
+        StringAppendFormat(is->_output, "Tried to set-by-index on the wrong kind of thing (type:\x02, value:\x01). position: '\x02'", container.type, info, is->_position);
         StringDeallocate(info);
     }
     // so var stack should have the target, then the value, then indexes in reverse order (should be exactly 1 at the moment)
@@ -904,10 +912,19 @@ void HandleFunctionDefinition(int* position, uint16_t argCount, uint16_t tokenCo
 
     FunctionDefinition* original;
     if (MapGet_Name_FunctionDefinition(is->Functions, functionNameHash, &original)) {
+        auto pos = *position;
+        auto orig = original->StartPosition;
+        if (pos == orig) {
+            // this is the same definition
+			*position = *position + tokenCount + 1; // start + definition length + terminator token
+            return;
+        }
 		is->State = ExecutionState::ErrorState;
-        StringAppendFormat(is->_output, "Function '\x01' redefined at \x02. Original at \x02.", functionNameHash, *position, original->StartPosition);
+        StringAppendFormat(is->_output, "Function [\x03] redefined at \x02. Original at \x02.", functionNameHash, pos, orig);
         return;
     }
+
+    // TODO: change the `fd` call to a jump, so we can use `pick` in a loop?
 
     FunctionDefinition newF = {};
     newF.Kind = FuncDef::Custom;
@@ -1097,6 +1114,7 @@ inline void HandleMemoryAccess(int* position, char action, uint32_t varRef, uint
 
 // dispatch for op codes. valueStack is Vector<DataTag>, returnStack is Vector<int>
 inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint16_t p2, uint8_t p3, int* position, DataTag word, InterpreterState* is) {
+    if (is->State == ExecutionState::ErrorState) return DataType::Exception;
     uint32_t varRef;
 	switch (codeClass)
 	{

@@ -2,6 +2,7 @@
 #include "HashMap.h"
 #include "TagData.h"
 #include "Serialisation.h"
+#include "MemoryManager.h"
 
 RegisterHashMapFor(StringPtr, DataTag, HashMapStringKeyHash, HashMapStringKeyCompare, HashMap)
 
@@ -38,22 +39,17 @@ bool EventPoll(StringPtr target, VectorPtr data) {
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
 		{
+			MMPush(256 KILOBYTES);
 			// Make a hashmap to hold event parameters
 			auto evtData = HashMapAllocate_StringPtr_DataTag(2);
-			auto codeStr = StringNew("code"); // TODO: maybe use short strings for event keys?
-			auto charStr = StringNew("char");
-			auto stateStr = StringNew("state");
-			if (evtData == NULL) return false;
-			HashMapPut_StringPtr_DataTag(evtData, codeStr, EncodeInt32(event.key.keysym.scancode), true);
-			HashMapPut_StringPtr_DataTag(evtData, charStr, EncodeShortStr((char)(event.key.keysym.sym)), true);
-			HashMapPut_StringPtr_DataTag(evtData, stateStr, EncodeBool(event.key.state), true);
+			HashMapPut_StringPtr_DataTag(evtData, StringNew("code"), EncodeInt32(event.key.keysym.scancode), true);
+			HashMapPut_StringPtr_DataTag(evtData, StringNew("char"), EncodeShortStr((char)(event.key.keysym.sym)), true);
+			HashMapPut_StringPtr_DataTag(evtData, StringNew("state"), EncodeBool(event.key.state), true);
 
 			// serialise to data vector
 			bool ok = FreezeToVector(evtData, data);
-			HashMapDeallocate(evtData);
-			StringDeallocate(codeStr);
-			StringDeallocate(charStr);
-			StringDeallocate(stateStr);
+			MMPop();
+
 			if (!ok) return false;
 
 			// set the event type

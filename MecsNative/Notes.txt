@@ -61,9 +61,11 @@ The machine:
 ------------
 
 * [ ] Graphics (native / win split)
-  * [ ] Scrolling console (optimise scroll and dirty regions for this)
-  * [ ] Move `cout` calls in "MecsNative.cpp" to new console
-  * [ ] keyboard input -- console buffer and messaging
+  * [x] Scrolling console (optimise scroll and dirty regions for this)
+  * [x] Move `cout` calls in "MecsNative.cpp" to new console
+  * [ ] keyboard input
+    * [ ] stdin console buffer
+    * [x] keyboard events for MECS code
   * [ ] message handler for graphics
   * [ ] Syntax hiliting editor (caret in the parser and extended AST)
 
@@ -72,7 +74,6 @@ The machine:
 * [x] Performance optimise
   * [x] Special hashmap for scope (like the c# side uses); use array rather than vector.
 * [ ] Tail-recursion support (maybe with counting return stack?)
-* [ ] Try introducing C++ namespacing?
 * [x] TagCode reader (fix byte order)
 * [x] Convert runtime
   * [ ] Add breakpoints
@@ -98,7 +99,7 @@ Actor model stuff:
 	* [ ] Graphics
 	* [ ] Storage (disk)
 * [ ] Special message sender
-	* [ ] Keyboard
+	* [x] Keyboard
 	* [ ] Animation frames
 * [ ] Scheduler
   * [ ]      start new process -- maybe by sending a specific message? (`send("start" "myprog.ecs")`) or a new built-in (`run-prog("myprog.ecs")`)
@@ -106,8 +107,11 @@ Actor model stuff:
 * [x] Make sure all allocations for interpreter are inside its own memory space
   * [ ] Suspend & resume (including suspend-to-disk)
 
-Garbage collector:
-------------------
+Garbage collector / Memory:
+---------------------------
+
+* [ ] Look at removing the "Memory Manager" and making all arena use in the C code explicit.
+
 
 Might want to use a 'copy' GC, to move referenced stuff to a new arena on memory pressure.
 This would save us from having to track anything.

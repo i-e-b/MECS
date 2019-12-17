@@ -1,8 +1,9 @@
 
 // Shows using `return` to give a value out of a pick
-
+print("Pick examples")
 set( val random(1 11) ) // runtime value
 
+// set with the pick in a parameter should work
 set (result
   pick (
     if ( equals(1 val)
@@ -24,3 +25,22 @@ set (result
 )
 
 print("The result was '" result "'")
+
+// pick inside a loop should work
+set(i 0)
+while ( <(i 2)
+	pick (
+		if ( equals(0 i)
+			print("zero")
+		)
+		if ( equals(1 i)
+			print("one")
+		)
+		if ( true
+			print("what?")
+		)
+	)
+	set(i +(i 1))
+)
+
+print("done")

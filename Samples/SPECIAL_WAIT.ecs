@@ -1,0 +1,23 @@
+
+listen("keyboard")
+print("Test suite has ended. Press 'x' key to terminate")
+
+set(running true)
+while( running
+
+	set(key wait("keyboard"))
+	set(char key("keyboard")("char"))
+	
+	pick (
+		if ( not-equal(char "x")
+			print("You pressed " char)
+			print("Press 'x' to exit")
+		)
+		
+		if (true
+			set(running false)
+		)
+	)
+)
+
+print("Goodbye")

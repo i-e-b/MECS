@@ -99,13 +99,13 @@ ScanBuffer * DS_InitScanBuffer(ScreenPtr screen, int width, int height)
         buf->scanLines[i].length = sizeEstimate;
     }
 
-    buf->p_heap = HeapAllocate_SP_Element();
+    buf->p_heap = HeapAllocate_SP_Element(arena);
     if (buf->p_heap == NULL) {
         DS_FreeScanBuffer(buf);
         return NULL;
     }
 
-    buf->r_heap = HeapAllocate_SP_Element();
+    buf->r_heap = HeapAllocate_SP_Element(arena);
     if (buf->r_heap == NULL) {
         DS_FreeScanBuffer(buf);
         return NULL;
@@ -495,7 +495,13 @@ void DS_ClearRows(ScanBuffer *buf, int top, int bottom) {
     if (buf == NULL) return;
 	if (top < 0) top = 0;
 	if (bottom > buf->height) bottom = buf->height;
+
+    HeapClear(buf->p_heap);
+    HeapClear(buf->r_heap);
+
     buf->itemCount = 0; // reset object ids
+
+    // invalidate the marked line. We assume all others are unchanged.
     for (int i = top; i < bottom; i++)
     {
         buf->scanLines[i].count = 0;

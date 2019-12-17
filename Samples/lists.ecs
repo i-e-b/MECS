@@ -24,7 +24,6 @@ print(myList(2) " <- 2") // function call as index
 //set(fullList 1 3)  // !!! This is a confusing syntax, so it's not recommended.
 set(fullList(1) 3)  // Instead, the compiler will de-sugar the var-as-func syntax to the same
 
-// This one isn't working correctly
 set(fullList(0) myList(2))  // treat vector as a function call to determine an index?
                              // NOTE: `myList(2)` gives a *reference* to the value, not a copy.
 

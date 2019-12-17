@@ -6,6 +6,10 @@
 #include "String.h"
 #include "DisplaySys.h"
 
+
+// Comment out to use only graphic console:
+//#define ECHO_TO_STDOUT 1
+
 typedef struct Console Console;
 typedef Console* ConsolePtr;
 
@@ -34,7 +38,7 @@ void LogLine(ConsolePtr cons, const char* msg);
 void LogDealloc(ConsolePtr cons, StringPtr msg);
 
 // Write a formatted string to the console
-//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool
+//'\x01'=(String*); '\x02'=int as dec; '\x03'=int as hex; '\x04'=char; '\x05'=C string (const char*); '\x06'=bool; '\x07'=byte as hex
 void LogFmt(ConsolePtr cons, const char* fmt, ...);
 
 // Write a single character to the console

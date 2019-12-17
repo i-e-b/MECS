@@ -1,4 +1,5 @@
 #include "Console.h"
+#include "MemoryManager.h"
 #include <stdarg.h>
 
 #include <iostream>
@@ -114,14 +115,24 @@ void LogLine(ConsolePtr cons, const char* msg) {
 void LogLine(ConsolePtr cons) {
 	if (cons == NULL) return;
 
+#ifdef ECHO_TO_STDOUT
+	std::cout << "\n";
+#endif
+
 	cons->ConsoleX = 0;
 	DS_VScrollScreen(cons->OutputScreen, -LINE_HEIGHT, /*background color: */ 0x70, 0x70, 0x80);
-	DisplaySystem_PumpIdle(cons->OutputScreen);
 }
 
 
 void LogInternal(ConsolePtr cons, StringPtr msg) {
 	if (cons == NULL || msg == NULL) return;
+
+#ifdef ECHO_TO_STDOUT
+	auto cstr = StringToCStrInArena(msg, cons->arena);
+	std::cout << cstr;
+	ArenaDereference(cons->arena, cstr);
+#endif
+
 	// bottom first, scrolling up
 	int y = cons->y;
 	int right = cons->right;
