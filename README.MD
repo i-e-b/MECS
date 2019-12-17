@@ -352,9 +352,10 @@ pick(
 
 ## Byte code
 
-The compiled output is encoded in NaN-valued 64-bit IEEE754 tags. Each tag has an type prefix, and potentially some values.
+The compiled output is encoded in 64-bit tags. Each tag has an type prefix, and potentially some values.
 The runtime has a value-stack, from where parameters are pulled, and return values added.
 There is also a return-stack for tracking function calls.
+Where a position or offset through the code is encoded, it is always in 64-bit token positions.
 
 Note: the C# code uses an older version of the definitions. It should be considered deprecated.
 
@@ -377,13 +378,13 @@ Pops a value from the value-stack. Makes a relative jump **forward** if that val
 Token count is the number of white-space delimited tokens in the byte code to skip.
 
 ### Opcode `[c][j]  [token count: uint32]`
-Make an unconditional jump **backward**.
+Make an unconditional jump **backward** by a given offset.
 
 ### Opcode `[c][s]  [token count: uint32]`
-Make an unconditional jump **forward**.
+Make an unconditional jump **forward** by a given offset.
 
 ### Opcode `[C][cmp type: byte] [parameter count: uint16]  [tag count: uint16]`
-Compare values on the value-stack and jump **forward** if result is false.
+Compare values on the value-stack and jump **forward** by a given offset if result is false.
 
 ### Opcode `[c][r]`
 Return from a function call. A absolute token position value is popped from the return-stack and program flow continues from there.

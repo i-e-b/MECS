@@ -8,8 +8,6 @@ You can see the base of this here: https://fontstruct.com/fontstructions/show/16
 
 */
 
-#define FONT_WIDTH 8
-
 // Row-based components of the font
 #define fEND 0xffff // end of glyph
 // ON   0123456

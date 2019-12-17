@@ -150,6 +150,36 @@ void DS_VScrollScreen(ScreenPtr screen, int distance, int r, int g, int b) {
 	}
 }
 
+// Erase a rectangle on the screen. This ignores the scan buffer renderer.
+void DS_Erase(ScreenPtr screen, int left, int top, int right, int bottom, int r, int g, int b) {
+	if (screen == NULL || screen->window == NULL) return;
+
+	if (left < 0) left = 0;
+	if (right > screen->width) right = screen->width;
+	if (top < 0) top = 0;
+	if (bottom > screen->height) bottom = screen->height;
+	if (left >= right || top >= bottom) return;
+	
+	auto screenSurface = SDL_GetWindowSurface(screen->window); // Get window surface
+	auto buf = (char*)screenSurface->pixels;
+
+	int pixbytes = (screen->bpp >> 3);
+	int rowbytes = screen->width * pixbytes;
+	left *= pixbytes;
+	right *= pixbytes;
+	
+	for (int y = top; y < bottom; y++)
+	{
+		int dst_y = y * rowbytes;
+		for (int x = left; x < right; x+=4) {
+			buf[dst_y+x+0] = b;
+			buf[dst_y+x+1] = g;
+			buf[dst_y+x+2] = r;
+			buf[dst_y+x+3] = 0; // NA
+		}
+	}
+}
+
 #endif
 
 #ifdef RASPI

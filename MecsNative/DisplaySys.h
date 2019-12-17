@@ -15,6 +15,9 @@ typedef ScanBuffer* ScanBufferPtr;
 typedef struct Screen Screen;
 typedef Screen* ScreenPtr;
 
+// Size of the default console font
+#define FONT_WIDTH 8
+
 //######################### Device management #########################
 
 // Do anything needed to attach to a physical display device
@@ -38,6 +41,9 @@ ArenaPtr DisplaySystem_GetArena(ScreenPtr screen);
 // negative values will move the image up, positive will move it down.
 // invalidated pixels will be written with the given color
 void DS_VScrollScreen(ScreenPtr screen, int distance, int r, int g, int b);
+
+// Erase a rectangle on the screen. This ignores the scan buffer renderer.
+void DS_Erase(ScreenPtr screen, int left, int top, int right, int bottom, int r, int g, int b);
 
 int DisplaySystem_GetWidth(ScreenPtr screen);
 int DisplaySystem_GetHeight(ScreenPtr screen);

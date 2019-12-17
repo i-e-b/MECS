@@ -1379,7 +1379,7 @@ int TestIPC() {
 int RunWaiterProgram() {
 	int result = 0;
 	
-    Log(cnsl,"******************** End of tests ********************\n");
+    Log(cnsl,"\n******************** End of tests ********************\n");
 
     // We run a special MECS program to wait for user input before quitting.
     // This acts as a final demonstration of correctness
@@ -1512,9 +1512,14 @@ int main() {
 
 	LogFmt(cnsl,"\n\nTest suite finished in \x02s.", (suiteEndTime - suiteStartTime));
 
+    MMPush(1 MEGABYTES);
+    auto sdest = StringEmpty();
+    Console_ReadLine(cnsl, sdest);
+    MMPop();
+
 
     // Run a scheduler program to wait for keyboard input
-    RunWaiterProgram(); // BUG: the console display is not working after this point!
+    RunWaiterProgram();
 
 /*
     // Use the event system to wait for input

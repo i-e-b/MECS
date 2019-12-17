@@ -72,6 +72,50 @@ bool EventPoll(StringPtr target, VectorPtr data) {
 }
 
 
+bool EventKeyboardPoll(char *c, bool *down, bool *printable, int* code, bool* shift, bool* ctrl, bool* alt, bool* gui) {
+	SDL_Event event;
+
+	// Check for events. We only loop here if we are ignoring the event
+	// Otherwise, we return a single event to the caller
+	while (SDL_PollEvent(&event) != 0) {
+		switch (event.type) {
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+		{
+			if (down != NULL) { *down = (event.type == SDL_KEYDOWN); }
+
+			if (printable != NULL) {
+				*printable = ((event.key.keysym.sym & SDLK_SCANCODE_MASK) == 0) && (event.key.keysym.sym > 31);
+			}
+
+			if (c != NULL) {
+				char cx = (char)event.key.keysym.sym;
+				if (event.key.keysym.mod & KMOD_SHIFT) {
+					if (cx >= 96 && cx <= 127) cx -= 32;
+				}
+				*c = cx;
+			}
+
+			if (code != NULL) {
+				*code = (int)(event.key.keysym.scancode);
+			}
+
+			if (shift != NULL) *shift = (event.key.keysym.mod & KMOD_SHIFT) > 0;
+			if (ctrl  != NULL) *ctrl  = (event.key.keysym.mod & KMOD_CTRL ) > 0;
+			if (alt   != NULL) *alt   = (event.key.keysym.mod & KMOD_ALT  ) > 0;
+			if (gui   != NULL) *gui   = (event.key.keysym.mod & KMOD_GUI  ) > 0;
+
+			return true;
+		}
+
+		default:
+			// Ignore any other event -- loop and try again
+			break;
+		}
+	}
+	return false; // no unfiltered events available
+}
+
 #endif
 
 #ifdef RASPI

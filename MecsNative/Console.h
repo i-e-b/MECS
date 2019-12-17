@@ -8,7 +8,7 @@
 
 
 // Comment out to use only graphic console:
-//#define ECHO_TO_STDOUT 1
+#define ECHO_TO_STDOUT 1
 
 typedef struct Console Console;
 typedef Console* ConsolePtr;
@@ -19,7 +19,13 @@ ConsolePtr AttachConsole(ScreenPtr screen, ScanBufferPtr scanBuffer);
 // Close down a console
 void DeallocateConsole(ConsolePtr console);
 
-// TODO: shorten the naming to "Log" instead of "Console_Write"?
+// Block execution until a printable character is typed.
+// The console will NOT display a prompt, and will NOT echo the input.
+char Console_ReadChar(ConsolePtr console);
+
+// Block execution until a line of input is supplied.
+// The console WILL display a prompt and WILL echo the input.
+void Console_ReadLine(ConsolePtr console, StringPtr dest);
 
 // Write a string to the console
 void Log(ConsolePtr cons, StringPtr msg);

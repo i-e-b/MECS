@@ -71,6 +71,8 @@ String *StringChop(String* str, int startIdx, int length);
 
 // remove and return the first char of the string. If string is empty, returns '\0'
 char StringDequeue(String* str);
+// remove and return the last char of the string. If string is empty, returns '\0'
+char StringPop(String* str);
 
 // Generate a hash-code for a string. Guaranteed to be non-zero for valid strings.
 uint32_t StringHash(String* str);

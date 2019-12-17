@@ -1,8 +1,15 @@
+// MECS system
 #include "Console.h"
 #include "MemoryManager.h"
+#include "EventSys.h"
+
+// Used for string format calls
 #include <stdarg.h>
 
+// used for echoing to C++ stdout
+#ifdef ECHO_TO_STDOUT
 #include <iostream>
+#endif
 
 const int LINE_HEIGHT = 9;
 typedef struct Console {
@@ -152,4 +159,73 @@ void LogInternal(ConsolePtr cons, StringPtr msg) {
 	DS_RenderBuffer(cons->OutputGraphics, cons->OutputScreen);
 	DS_ClearRows(cons->OutputGraphics, y - LINE_HEIGHT, y + LINE_HEIGHT);
 	DisplaySystem_PumpIdle(cons->OutputScreen);
+}
+
+
+// Block execution until a printable character is typed.
+// The console will NOT display a prompt, and will NOT echo the input.
+char Console_ReadChar(ConsolePtr console) {
+	if (console == NULL) return 0;
+
+	auto screen = console->OutputScreen;
+	bool found = false;
+
+	char c = 0;
+	bool down = false;
+	bool printable = false;
+
+	// Looking for a particular event type:
+    while (!found){
+        // get any event
+		while (! EventKeyboardPoll(&c, &down, &printable, NULL, NULL, NULL, NULL, NULL)) { 
+			DisplaySystem_PumpIdle(screen);
+		}
+		if (down && printable) found = true;
+	}
+
+	return c;
+}
+
+
+void renderReadline(ConsolePtr console, StringPtr dest) {
+	// Very rough redraw. This could be made much more efficient
+	DS_Erase(console->OutputScreen, 0, 2 + console->y - LINE_HEIGHT, console->right, console->y + LINE_HEIGHT, /*background color: */ 0x70, 0x70, 0x80);
+	DS_DrawGlyph(console->OutputGraphics, '>', console->left, console->y, 1, /*black*/ 0); // this will get picked up when we call 'LogInternal'
+	console->ConsoleX = FONT_WIDTH * 2;
+	auto tmp = StringClone(dest, console->arena);
+	LogInternal(console, tmp);
+	ArenaDereference(console->arena, tmp);
+}
+
+// Block execution until a line of input is supplied.
+// The console WILL display a prompt and WILL echo the input.
+void Console_ReadLine(ConsolePtr console, StringPtr dest) {
+	if (console == NULL || dest == NULL) return;
+	StringPtr eventTarget = StringEmptyInArena(console->arena);
+    VectorPtr eventData = VectorAllocateArena(console->arena, 1);
+
+	if (eventTarget == NULL || eventData == NULL) return;
+	auto screen = console->OutputScreen;
+
+	renderReadline(console, dest); // draw the prompt
+
+	bool newline = false;
+	char c = 0;
+	bool down = false;
+	bool printable = false;
+
+	// Looking for a particular event type:
+    while (!newline){
+        // get any event
+		while (! EventKeyboardPoll(&c, &down, &printable, NULL, NULL, NULL, NULL, NULL)) { 
+			DisplaySystem_PumpIdle(screen);
+		}
+		if (c == '\n' || c == '\r') newline = true;
+		else if (down && c == 8) { // backspace
+			StringPop(dest);
+		} else if (down && printable) {
+			StringAppendChar(dest, c);
+		}
+		renderReadline(console, dest);
+	}
 }

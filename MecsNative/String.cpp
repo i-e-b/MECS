@@ -331,6 +331,15 @@ char StringDequeue(String* str) {
     return c;
 }
 
+// remove and return the last char of the string. If string is empty, returns '\0'
+char StringPop(String* str) {
+    if (str == NULL) return '\0';
+    str->hashval = 0;
+    char c;
+    if (!VPop_char(str->chars, &c)) return '\0';
+    return c;
+}
+
 unsigned int StringLength(String * str) {
     if (str == NULL) return 0;
     return VLength(str->chars);
