@@ -15,7 +15,7 @@ bool fileWriteModeWindows(String* path, Vector* buffer, const char* mode) {
     auto realPath = StringNew("C:\\Temp\\MECS\\"); // jail for testing on Windows
     StringAppend(realPath, path);
 
-    auto cpath = StringToCStr(realPath);
+    auto cpath = StringToCStr(realPath, MMCurrent());
     auto file = fopen(cpath, mode);
 
     StringDeallocate(realPath);
@@ -47,7 +47,7 @@ bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, u
     auto realPath = StringNew("C:\\Temp\\MECS\\"); // jail for testing on Windows
     StringAppend(realPath, path);
 
-    auto cpath = StringToCStr(realPath);
+    auto cpath = StringToCStr(realPath, MMCurrent());
     auto file = fopen(cpath, "rb");
 
     StringDeallocate(realPath);
@@ -64,7 +64,8 @@ bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, u
     }
 
     int elemSize = VectorElementSize(buffer);
-    char* elemBuffer = (char*)mmalloc(elemSize);
+    Arena* arena = VectorArena(buffer);
+    char* elemBuffer = (char*)ArenaAllocate(arena, elemSize);
     int idx = 0;
 
     auto len = end - start;

@@ -288,7 +288,7 @@ int TestTree() {
     Log(cnsl,"**************** TREE *******************\n");
 
     Log(cnsl,"Allocating\n");
-    auto tree = TAllocate_exampleElement();
+    auto tree = TAllocate_exampleElement(MMCurrent());
 
     Log(cnsl,"Adding elements\n");
     auto elem1 = exampleElement{ 0,1 };
@@ -336,7 +336,7 @@ int TestString() {
     LogFmt(cnsl,"String length after appends: \x02\n", StringLength(str1));
     LogFmt(cnsl,"Hashes of result string: \x02\n", StringHash(str1));
 
-    auto cstr = StringToCStr(str1);
+    auto cstr = StringToCStr(str1, MMCurrent());
     LogLine(cnsl,cstr);
     mfree(cstr);
     LogFmt(cnsl,"First char = '\x04'\n", StringCharAtIndex(str1, 0));

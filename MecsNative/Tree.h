@@ -8,7 +8,7 @@
 typedef struct TreeNode TreeNode;
 
 // Allocate a tree for a given size of element
-TreeNode* TreeAllocate(int elementSize);
+TreeNode* TreeAllocate(ArenaPtr arena, int elementSize);
 // Deallocate all nodes, and the data held
 void TreeDeallocate(TreeNode* tree);
 
@@ -48,10 +48,12 @@ Vector* TreeAllData(TreeNode *tree);
 // IN: node->[first, second, ...]; OUT: (parent:node)<-first->[second, ...]
 TreeNode* TreePivot(TreeNode *node);
 // Create a node not connected to a tree
-TreeNode* TreeBareNode(int elementSize);
+TreeNode* TreeBareNode(ArenaPtr arena, int elementSize);
 // Add a bare node into a tree
 void TreeAppendNode(TreeNode* parent, TreeNode* child);
 
+// Get the arena being used by a tree node
+ArenaPtr TreeArena(TreeNode* node);
 
 // Macros to create type-specific versions of the methods above.
 // If you want to use the typed versions, make sure you call `RegisterTreeFor(typeName, namespace)` for EACH type
@@ -67,6 +69,7 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child);
     inline Vector* nameSpace##AllData(TreeNode *t){ return TreeAllData(t);}\
     inline bool nameSpace##IsLeaf(TreeNode* node){return TreeIsLeaf(node);}\
     inline TreeNode* nameSpace##Pivot(TreeNode *node){return TreePivot(node);}\
+	inline ArenaPtr nameSpace##Arena(TreeNode *node){return TreeArena(node);}\
     inline int nameSpace##CountChildren(TreeNode* node){return TreeCountChildren(node);}\
 
 
@@ -74,11 +77,11 @@ void TreeAppendNode(TreeNode* parent, TreeNode* child);
 #define RegisterTreeFor(elemType, nameSpace) \
     inline elemType* nameSpace##ReadBody_##elemType(TreeNode *node){return (elemType*)TreeReadBody(node);}\
     inline TreeNode* nameSpace##InsertChild_##elemType(TreeNode* parent, int idx, elemType* element){return TreeInsertChild(parent,idx,element);}\
-    inline TreeNode* nameSpace##BareNode_##elemType(){return TreeBareNode(sizeof(elemType));}\
+    inline TreeNode* nameSpace##BareNode_##elemType(ArenaPtr arena){return TreeBareNode(arena, sizeof(elemType));}\
     inline void nameSpace##SetValue_##elemType(TreeNode* node, elemType* element){TreeSetValue(node,element);}\
     inline TreeNode* nameSpace##AddChild_##elemType(TreeNode* parent, elemType* element){return TreeAddChild(parent, element);}\
     inline TreeNode* nameSpace##AddSibling_##elemType(TreeNode* node, elemType* element){return TreeAddSibling(node,element);}\
-    inline TreeNode* nameSpace##Allocate_##elemType(){return TreeAllocate(sizeof(elemType));}\
+    inline TreeNode* nameSpace##Allocate_##elemType(ArenaPtr arena){return TreeAllocate(arena, sizeof(elemType));}\
 
 
 #endif

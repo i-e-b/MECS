@@ -21,7 +21,7 @@ void StartManagedMemory() {
     if (MEMORY_STACK != NULL) return;
     LOCK = 1;
 
-    MEMORY_STACK = VecAllocate_ArenaPtr();
+    MEMORY_STACK = VecAllocateArena_ArenaPtr(NewArena((128 KILOBYTES)));
 
     LOCK = 0;
 }
@@ -99,6 +99,7 @@ void* MMPopReturn(void* ptr, size_t size) {
 }
 
 // Return the current arena, or NULL if none pushed
+// TODO: if nothing pushed, push a new small arena
 Arena* MMCurrent() {
     if (MEMORY_STACK == NULL) return NULL;
     while (LOCK != 0) {}
@@ -110,13 +111,6 @@ Arena* MMCurrent() {
 
     LOCK = 0;
     return result;
-}
-
-// Allocate memory
-void* mmalloc(size_t size) {
-    ArenaPtr a = MMCurrent();
-    if (a != NULL) return ArenaAllocate(a, size);
-    else return malloc(size);
 }
 
 // Allocate memory array, cleared to zeros

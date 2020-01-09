@@ -387,19 +387,7 @@ String *StringChop(String* str, int startIdx, int length) {
     return result;
 }
 
-char *StringToCStr(String *str) {
-    auto len = StringLength(str);
-    auto result = (char*)mmalloc(1 + (sizeof(char) * len)); // need extra byte for '\0'
-    if (result == NULL)
-        return NULL;
-    for (unsigned int i = 0; i < len; i++) {
-        result[i] = *VGet_char(str->chars, i);
-    }
-    result[len] = 0;
-    return result;
-}
-
-char *StringToCStrInArena(String *str, Arena* a) {
+char *StringToCStr(String *str, Arena* a) {
     auto len = StringLength(str);
     auto result = (char*)ArenaAllocate(a, 1 + (sizeof(char) * len)); // need extra byte for '\0'
     for (unsigned int i = 0; i < len; i++) {
@@ -581,7 +569,7 @@ bool StringFind(String* haystack, String* needle, unsigned int start, unsigned i
     // Rabin–Karp method, but using sum rather than hash (more false positives, but much cheaper on average)
     // get a hash of the 'needle', and try to find somewhere in the haystack that matches.
     // double-check if we find one.
-    char *matchStr = StringToCStrInArena(needle, arena);
+    char *matchStr = StringToCStr(needle, arena);
     char *scanStr = SubstringToCStr(haystack, start, arena);
 
     // make sum of the needle, and an initial sum of the scan hash

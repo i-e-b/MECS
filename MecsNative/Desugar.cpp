@@ -1,5 +1,6 @@
 #include "Desugar.h"
 #include "SourceCodeTokeniser.h"
+#include "MemoryManager.h"
 
 #include <cassert>
 
@@ -16,7 +17,7 @@ bool NeedsDesugaring(String* funcName) {
 }
 
 TreeNode* MakeReturnNode() {
-    auto node = TreeAllocate_SourceNode();
+    auto node = TreeAllocate_SourceNode(MMCurrent());
     auto data = TreeReadBody_SourceNode(node);
 
     data->Text = StringNew("return");
@@ -62,7 +63,7 @@ TreeNode* ConvertToPickList(String* funcName, TreeNode* sourceNode, TagCodeCache
     auto callData = SourceNode{}; callData.Text = newFuncName; callData.functionLike = true;
     auto parenData = SourceNode{}; parenData.Text = StringNew("()"); parenData.NodeType = NodeType::Atom;
 
-    auto wrapper = TreeAllocate_SourceNode();
+    auto wrapper = TreeAllocate_SourceNode(TreeArena(sourceNode));
     auto defineBlock = TreeAddChild_SourceNode(wrapper, &defData); // function def
     auto funcNameBlock = TreeAddChild_SourceNode(defineBlock, &nameData); // name, empty param list
 

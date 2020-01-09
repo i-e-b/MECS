@@ -135,7 +135,7 @@ void LogInternal(ConsolePtr cons, StringPtr msg) {
 	if (cons == NULL || msg == NULL) return;
 
 #ifdef ECHO_TO_STDOUT
-	auto cstr = StringToCStrInArena(msg, cons->arena);
+	auto cstr = StringToCStr(msg, cons->arena);
 	std::cout << cstr;
 	ArenaDereference(cons->arena, cstr);
 #endif

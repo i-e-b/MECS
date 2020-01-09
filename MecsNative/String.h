@@ -76,10 +76,8 @@ char StringPop(String* str);
 
 // Generate a hash-code for a string. Guaranteed to be non-zero for valid strings.
 uint32_t StringHash(String* str);
-// Alloc and copy a new c-string from a mutable string. The result must be deallocated with `mfree()`
-char *StringToCStr(String *str);
 // Alloc and copy a new c-string from a mutable string. The result is stored in the target arena
-char *StringToCStrInArena(String *str, Arena* a);
+char *StringToCStr(String *str, Arena* a);
 // Access the underlying byte vector of the string
 Vector* StringGetByteVector(String* str);
 

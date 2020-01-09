@@ -53,7 +53,7 @@ TreeNode* Repack(TreeNode* parent) {
     root.Unescaped = NULL;
     root.FormattedLocation = 0;
 
-    auto tree = TAllocate_Node();
+    auto tree = TAllocate_Node(TArena(parent));
     TSetValue_Node(tree, &root);
 
     TAppendNode(tree, TChild(parent));

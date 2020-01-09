@@ -309,7 +309,7 @@ void MaybeIncludeWhitespace(bool y, TreeNode** wsNode, TreeNode* target) {
 void PrepareWhitespaceContainer(TreeNode** wsNode) {
     if (wsNode == NULL) return;
     if (*wsNode != NULL) TDeallocate(*wsNode); // didn't get used. Clean it up.
-    *wsNode = TBareNode_Node();
+    *wsNode = TBareNode_Node(TArena(*wsNode));
 }
 
 bool ParseSource(String* source, TreeNode* root, int position, bool preserveMetadata) {
@@ -461,7 +461,7 @@ TreeNode* ParseSourceCode(String* source, bool preserveMetadata) {
     root.Unescaped = NULL;
     root.FormattedLocation = 0;
 
-    auto tree = TAllocate_Node();
+    auto tree = TAllocate_Node(MMCurrent());
     TSetValue_Node(tree, &root);
 
     bool valid = ParseSource(source, tree, 0, preserveMetadata);

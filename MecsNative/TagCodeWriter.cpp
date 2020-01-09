@@ -34,10 +34,14 @@ typedef struct TagCodeCache {
 
     // True, if this tcc is a fragment that returns non-void
     bool _returnsValues; // set externally
+
+    // memory zone we are using
+    ArenaPtr _arena;
 } TagCodeCache;
 
-TagCodeCache * TCW_Allocate() {
-    auto result = (TagCodeCache*)mmalloc(sizeof(TagCodeCache));
+TagCodeCache * TCW_Allocate(ArenaPtr arena) {
+    if (arena == NULL) return NULL;
+    auto result = (TagCodeCache*)ArenaAllocateAndClear(arena, sizeof(TagCodeCache));
     if (result == NULL) return NULL;
 
     result->_opcodes = VecAllocate_DataTag();
@@ -46,6 +50,7 @@ TagCodeCache * TCW_Allocate() {
     result->_codeMap = VecAllocate_int();
     result->_errors = NULL;
     result->_returnsValues = false;
+    result->_arena = arena;
 
     if (result->_opcodes == NULL || result->_stringTable == NULL || result->_symbols == NULL) {
         TCW_Deallocate(result);

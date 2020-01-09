@@ -21,7 +21,7 @@ typedef struct TagCodeCache TagCodeCache;
 
 // Management methods:
 
-TagCodeCache* TCW_Allocate();
+TagCodeCache* TCW_Allocate(ArenaPtr arena);
 void TCW_Deallocate(TagCodeCache* tcc);
 
 // True if any errors were recorded

@@ -269,7 +269,7 @@ bool HashMapGet(HashMap* h, void* key, void** outValue) {
 }
 
 inline HashMap_Entry* HashMapAllocEntry(HashMap* h) {
-    if (h->memory == NULL) return (HashMap_Entry*)mmalloc(sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
+    if (h->memory == NULL) return NULL;
     return (HashMap_Entry*)ArenaAllocateAndClear(h->memory, sizeof(HashMap_Entry) + h->KeyByteSize + h->ValueByteSize);
 }
 

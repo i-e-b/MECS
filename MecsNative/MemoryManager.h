@@ -63,12 +63,6 @@ void* MMPopReturn(void* ptr, size_t size);
 // Return the current arena, or NULL if none pushed
 Arena* MMCurrent();
 
-// Allocate memory
-void* mmalloc(size_t size);
-
-// Allocate memory array, cleared to zeros
-void* mcalloc(int count, size_t size);
-
 // Free memory
 void mfree(void* ptr);
 

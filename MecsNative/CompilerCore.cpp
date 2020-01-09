@@ -22,7 +22,7 @@ RegisterVectorFor(StringPtr, Vec)
 // Compile source code from a syntax tree into a tag code cache
 TagCodeCache* CompileRoot(TreeNode* root, bool debug, bool isSubprogram) {
     if (root == NULL) return NULL;
-    auto wr = TCW_Allocate();
+    auto wr = TCW_Allocate(MMCurrent());
 
     if (debug) {
         auto timeStamp = SystemTime();
@@ -330,7 +330,7 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
     // Split the condition and action
 
     // build a tree for the if/while condition
-    auto condition = TreeAllocate_SourceNode();
+    auto condition = TreeAllocate_SourceNode(MMCurrent());
     auto condData = TreeReadBody_SourceNode(condition);
     condData->Text = StringNew("()");
     condData->SourceLocation = condData->SourceLocation;
@@ -343,7 +343,7 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
 
     // build a tree for the if/while body
     int topOfBlock = TCW_Position(wr) - 1;
-    auto body = TreeAllocate_SourceNode();
+    auto body = TreeAllocate_SourceNode(MMCurrent());
     auto bodyData = TreeReadBody_SourceNode(body);
     bodyData->Text = StringNew("()");
     bodyData->SourceLocation = bodyData->SourceLocation;
@@ -517,7 +517,7 @@ bool IsLeafNode(TreeNode* node) {
 TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNames, HashMap* includedFiles, Context compileContext) {
     if (root == NULL) return NULL;
 
-    auto wr = TCW_Allocate();
+    auto wr = TCW_Allocate(MMCurrent());
 
     // end of syntax line
     if (IsLeafNode(root)) {

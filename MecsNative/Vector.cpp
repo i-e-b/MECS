@@ -97,7 +97,7 @@ void MaybeRebuildSkipTable(Vector *v); // defined later
 
 // abstract over alloc/free to help us pin to one arena
 inline void* VecCAlloc(Vector *v, int count, int size) {
-    if (v->_arena == NULL) return mcalloc(count, size);
+    if (v->_arena == NULL) return NULL;
     return ArenaAllocateAndClear(v->_arena, count*size);
 }
 inline void VecFree(Vector *v, void* ptr) {
@@ -105,7 +105,7 @@ inline void VecFree(Vector *v, void* ptr) {
     else ArenaDereference(v->_arena, ptr);
 }
 inline void* VecAlloc(Vector *v, int size) {
-    if (v->_arena == NULL) return mmalloc(size);
+    if (v->_arena == NULL) return NULL;
     return ArenaAllocate(v->_arena,size);
 }
 
@@ -309,8 +309,9 @@ uint32_t Log2(uint32_t i) {
 
 // Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
 Vector *VectorAllocateArena(Arena* a, int elementSize) {
+    if (a == NULL)
+        return NULL;
     auto result = (Vector*)ArenaAllocateAndClear(a, sizeof(Vector));
-    if (result == NULL) result = (Vector*)mcalloc(1, sizeof(Vector));
     if (result == NULL) return NULL;
 
     result->_arena = a;

@@ -7,6 +7,7 @@
 // Header for each tree node. This covers the first bytes of a node
 // The actual node pointer is oversized to hold the element data
 typedef struct TreeNode {
+    ArenaPtr _arena;          // memory space we're working in.
     TreeNode* ParentPtr;      // Pointer to parent. null means root
     TreeNode* FirstChildPtr;  // Pointer to child linked list. null means leaf node
     TreeNode* NextSiblingPtr; // Pointer to next sibling (linked list of parent's children)
@@ -29,9 +30,10 @@ const unsigned int NODE_HEAD_SIZE = sizeof(TreeNode);
 
 #pragma endregion
 
-TreeNode* TreeAllocate(int elementSize) {
+TreeNode* TreeAllocate(ArenaPtr arena, int elementSize) {
+    if (arena == NULL) return NULL;
     // Make the root node
-    auto Root = (TreeNode*)mcalloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
+    auto Root = (TreeNode*)ArenaAllocateAndClear(arena, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
     if (Root == NULL) {
         return NULL;
     }
@@ -41,8 +43,14 @@ TreeNode* TreeAllocate(int elementSize) {
     Root->NextSiblingPtr = NULL;
     Root->ParentPtr = NULL;
     Root->ElementByteSize = elementSize;
+    Root->_arena = arena;
 
     return Root;
+}
+
+ArenaPtr TreeArena(TreeNode* node) {
+    if (node == NULL) return NULL;
+    return node->_arena;
 }
 
 bool TreeIsLeaf(TreeNode* node) {
@@ -56,9 +64,10 @@ void TreeSetValue(TreeNode* node, void* element) {
 }
 
 TreeNode* AllocateAndWriteNode(TreeNode* parent, int elementByteSize, void* element) {
+    if (parent == NULL) return NULL;
     // Allocate new node and header
     auto nodeSize = NODE_HEAD_SIZE + elementByteSize;
-    auto newChildHead = (TreeNode*)mcalloc(1, nodeSize);
+    auto newChildHead = (TreeNode*)ArenaAllocateAndClear(parent->_arena, nodeSize);
     if (newChildHead == NULL) {
         return NULL;
     }
@@ -68,6 +77,7 @@ TreeNode* AllocateAndWriteNode(TreeNode* parent, int elementByteSize, void* elem
     newChildHead->ElementByteSize = elementByteSize;
     newChildHead->NextSiblingPtr = NULL;
     newChildHead->FirstChildPtr = NULL;
+    newChildHead->_arena = parent->_arena;
 
     writeValue((void*)newChildHead, NODE_HEAD_SIZE, element, newChildHead->ElementByteSize);
     return newChildHead;
@@ -201,9 +211,10 @@ int TreeCountChildren(TreeNode* node) {
 }
 
 // Create a node not connected to a tree
-TreeNode* TreeBareNode(int elementSize) {
+TreeNode* TreeBareNode(ArenaPtr arena, int elementSize) {
+    if (arena == NULL) return NULL;
     // Make the root node
-    auto Root = (TreeNode*)mcalloc(1, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
+    auto Root = (TreeNode*)ArenaAllocateAndClear(arena, NODE_HEAD_SIZE + elementSize); // notice we actually oversize to hold the node data
     if (Root == NULL) {
         return NULL;
     }
@@ -213,6 +224,7 @@ TreeNode* TreeBareNode(int elementSize) {
     Root->NextSiblingPtr = NULL;
     Root->ParentPtr = NULL;
     Root->ElementByteSize = elementSize;
+    Root->_arena = arena;
     return Root;
 }
 
