@@ -15,11 +15,12 @@ bool fileWriteModeWindows(String* path, Vector* buffer, const char* mode) {
     auto realPath = StringNew("C:\\Temp\\MECS\\"); // jail for testing on Windows
     StringAppend(realPath, path);
 
-    auto cpath = StringToCStr(realPath, MMCurrent());
+    auto arena = VectorArena(buffer);
+    auto cpath = StringToCStr(realPath, arena);
     auto file = fopen(cpath, mode);
 
     StringDeallocate(realPath);
-    mfree(cpath);
+    ArenaDereference(arena, cpath);
 
     char c = 0;
     while (VectorDequeue(buffer, &c)) {
@@ -47,11 +48,12 @@ bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, u
     auto realPath = StringNew("C:\\Temp\\MECS\\"); // jail for testing on Windows
     StringAppend(realPath, path);
 
-    auto cpath = StringToCStr(realPath, MMCurrent());
+    auto arena = VectorArena(buffer);
+    auto cpath = StringToCStr(realPath, arena);
     auto file = fopen(cpath, "rb");
 
     StringDeallocate(realPath);
-    mfree(cpath);
+    ArenaDereference(arena, cpath);
 
     if (file == NULL) {
         return false;
@@ -64,7 +66,6 @@ bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, u
     }
 
     int elemSize = VectorElementSize(buffer);
-    Arena* arena = VectorArena(buffer);
     char* elemBuffer = (char*)ArenaAllocate(arena, elemSize);
     int idx = 0;
 
@@ -86,7 +87,7 @@ bool FileLoadChunk(String* path, Vector* buffer, uint64_t start, uint64_t end, u
 
     if (actual != NULL) *actual = readBytes;
 
-    mfree(elemBuffer);
+    ArenaDereference(arena, elemBuffer);
     return true;
 }
 

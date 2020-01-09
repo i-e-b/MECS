@@ -279,7 +279,7 @@ void RecursiveDelete(TreeNode* treeNodePtr) {
     while (current != NULL) {
         if (current->FirstChildPtr != NULL) RecursiveDelete(current->FirstChildPtr);
         var next = current->NextSiblingPtr;
-        mfree(current);
+        ArenaDereference(current->_arena, current);
         current = next;
     }
 }
@@ -288,7 +288,7 @@ void RecursiveDelete(TreeNode* treeNodePtr) {
 void DeleteNode(TreeNode* treeNodePtr) {
     if (treeNodePtr == NULL) return;
     RecursiveDelete(treeNodePtr->FirstChildPtr);
-    mfree(treeNodePtr);
+	ArenaDereference(treeNodePtr->_arena, treeNodePtr);
 }
 
 void TreeRemoveChild(TreeNode* parent, int targetIndex) {

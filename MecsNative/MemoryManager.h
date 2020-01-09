@@ -63,8 +63,4 @@ void* MMPopReturn(void* ptr, size_t size);
 // Return the current arena, or NULL if none pushed
 Arena* MMCurrent();
 
-// Free memory
-void mfree(void* ptr);
-
-
 #endif

@@ -216,7 +216,7 @@ void HashMapDeallocate(HashMap * h) {
     h->IsValid = false;
     h->count = 0;
     if (h->buckets != NULL) VectorDeallocate(h->buckets);
-    mfree(h);
+    ArenaDereference(h->memory, h);
 }
 
 bool Find(HashMap* h, void* key, uint32_t* index, HashMap_Entry** found) {
@@ -274,8 +274,7 @@ inline HashMap_Entry* HashMapAllocEntry(HashMap* h) {
 }
 
 inline void HashMapFreeEntry(HashMap* h, HashMap_Entry* e) {
-    if (h->memory == NULL) mfree(e);
-    else ArenaDereference(h->memory, e);
+    ArenaDereference(h->memory, e);
 }
 
 bool HashMapPut(HashMap* h, void* key, void* value, bool canReplace) {

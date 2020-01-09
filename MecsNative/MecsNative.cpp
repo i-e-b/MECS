@@ -336,9 +336,10 @@ int TestString() {
     LogFmt(cnsl,"String length after appends: \x02\n", StringLength(str1));
     LogFmt(cnsl,"Hashes of result string: \x02\n", StringHash(str1));
 
-    auto cstr = StringToCStr(str1, MMCurrent());
+    auto arena = MMCurrent();
+    auto cstr = StringToCStr(str1, arena);
     LogLine(cnsl,cstr);
-    mfree(cstr);
+    ArenaDereference(arena, cstr);
     LogFmt(cnsl,"First char = '\x04'\n", StringCharAtIndex(str1, 0));
     LogFmt(cnsl,"Last char = '\x04'\n", StringCharAtIndex(str1, -1));
 

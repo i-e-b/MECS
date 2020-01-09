@@ -101,8 +101,7 @@ inline void* VecCAlloc(Vector *v, int count, int size) {
     return ArenaAllocateAndClear(v->_arena, count*size);
 }
 inline void VecFree(Vector *v, void* ptr) {
-    if (v->_arena == NULL) mfree(ptr);
-    else ArenaDereference(v->_arena, ptr);
+    ArenaDereference(v->_arena, ptr);
 }
 inline void* VecAlloc(Vector *v, int size) {
     if (v->_arena == NULL) return NULL;
@@ -309,8 +308,7 @@ uint32_t Log2(uint32_t i) {
 
 // Create a new dynamic vector with the given element size (must be fixed per vector) in a specific memory arena
 Vector *VectorAllocateArena(Arena* a, int elementSize) {
-    if (a == NULL)
-        return NULL;
+    if (a == NULL) return NULL;
     auto result = (Vector*)ArenaAllocateAndClear(a, sizeof(Vector));
     if (result == NULL) return NULL;
 
@@ -417,13 +415,8 @@ void VectorDeallocate(Vector *v) {
     v->ElementByteSize = 0;
     v->ElemsPerChunk = 0;
 
-    // arena aware clean-up
     auto a = v->_arena;
-    if (a == NULL) {
-        mfree(v);
-    } else {
-        ArenaDereference(a, v);
-    }
+	ArenaDereference(a, v);
 }
 
 inline int VectorLength(Vector *v) {

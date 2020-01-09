@@ -75,7 +75,7 @@ void TCW_Deallocate(TagCodeCache* tcc) {
     tcc->_symbols = NULL;
     tcc->_errors = NULL;
 
-    mfree(tcc);
+	ArenaDereference(tcc->_arena, tcc);
 }
 
 bool TCW_ReturnsValues(TagCodeCache* tcc) {
