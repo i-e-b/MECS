@@ -71,6 +71,33 @@ bool EventPoll(StringPtr target, VectorPtr data) {
 	return false; // no unfiltered event
 }
 
+// UK keyboard shift map
+char MapShift(char c) {
+	switch(c) {
+	case '1': return '!';
+	case '2': return '"';
+	case '3': return '£';
+	case '4': return '$';
+	case '5': return '%';
+	case '6': return '^';
+	case '7': return '&';
+	case '8': return '*';
+	case '9': return '(';
+	case '0': return ')';
+	case '-': return '_';
+	case '=': return '+';
+	case '`': return '|';
+	case ',': return '<';
+	case '.': return '>';
+	case '/': return '?';
+	case ';': return ':';
+	case '\'':return '@';
+	case '#': return '~';
+	case '[': return '{';
+	case ']': return '}';
+	case '\\':return '|';
+	}
+}
 
 bool EventKeyboardPoll(char *c, bool *down, bool *printable, int* code, bool* shift, bool* ctrl, bool* alt, bool* gui) {
 	SDL_Event event;
@@ -91,7 +118,8 @@ bool EventKeyboardPoll(char *c, bool *down, bool *printable, int* code, bool* sh
 			if (c != NULL) {
 				char cx = (char)event.key.keysym.sym;
 				if (event.key.keysym.mod & KMOD_SHIFT) {
-					if (cx >= 96 && cx <= 127) cx -= 32;
+					if (cx >= 96 && cx <= 127) cx -= 32; // well designed bit of ascii
+					else cx = MapShift(cx);
 				}
 				*c = cx;
 			}

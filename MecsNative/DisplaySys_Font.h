@@ -567,15 +567,6 @@ uint16_t cmma[] = { __xx___(03)
 uint16_t stop[] = { __xx___(02)
                     __xx___(01) fEND };
 
-uint16_t dqot[] = { _xx_xx_(07)
-                    _xx_xx_(06)
-                    __x_x__(05) fEND };
-
-uint16_t quot[] = { __xx___(07)
-                    __xx___(06)
-                    ___x___(05)
-                    __x____(04) fEND };
-
 uint16_t hash[] = { _xx_xx_(07)
                     xxxxxxx(06)
                     _xx_xx_(05)
@@ -742,10 +733,37 @@ uint16_t chev[] = { ___x___(07)
                     _xx_xx_(05)
                     xx___xx(04) fEND };
 
+// Uncomment your preferred left-quote / back-tick style
+// straight single quote and 'back tick' style left
+/*
 uint16_t btik[] = { __xx___(07)
                     ___xx__(06)
                     ____xx_(05) fEND };
+                    
+uint16_t quot[] = { __xx___(07)
+                    __xx___(06)
+                    __xx___(05) fEND };
+*/
 
+// curved printers' left and right quote
+
+uint16_t btik[] = { ___x___(07)
+                    __x____(06)
+					__xx___(05)
+                    __xx___(04) fEND };
+
+uint16_t quot[] = { __xx___(07)
+                    __xx___(06)
+                    ___x___(05)
+                    __x____(04) fEND };
+
+
+// double quote
+uint16_t dqot[] = { _xx_xx_(07)
+                    _xx_xx_(06)
+                    __x_x__(05) fEND };
+
+// underscore
 uint16_t uscr[] = { xxxxxxx(00) fEND };
 
 uint16_t tild[] = { _xx__xx(05)
