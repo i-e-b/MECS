@@ -113,6 +113,7 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
     add("pop", FuncDef::Pop); add("dequeue", FuncDef::Dequeue);
 
 	add("listen", FuncDef::Listen); add("wait", FuncDef::Wait); add("send", FuncDef::Send);
+    add("run:", FuncDef::Directive_Run);
 
     add("()", FuncDef::UnitEmpty); // empty value marker
 #undef add;
@@ -861,6 +862,11 @@ compiles to this:
     // so var stack should have the target, then the value, then indexes in reverse order (should be exactly 1 at the moment)
 }
 
+DataType HandleSchedulerDirective(InterpreterState* is, uint32_t directiveHash, uint8_t paramCount) {
+	StringAppend(is->_output, "Unimplemented DIRECTIVE -- IGNORED!");
+	return DataType::Void;
+}
+
 inline DataType PrepareFunctionCall(int* position, uint32_t nameHash, uint16_t nbParams, InterpreterState* is) {
     auto functionNameHash = nameHash;
 
@@ -1150,9 +1156,8 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
 		return DataType::Void;
 
     case 'd': // scheduler directive, for launching new programs etc.
-		StringAppendFormat(is->_output, "Unimplemented DIRECTIVE op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
-		return DataType::Exception;
-        return DataType::Void;
+		varRef = p2 + (p1 << 16);
+        return HandleSchedulerDirective(is, varRef, p3);
 
 	default:
 		StringAppendFormat(is->_output, "Unexpected op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));

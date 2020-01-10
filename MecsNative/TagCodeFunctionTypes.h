@@ -59,6 +59,7 @@ enum class FuncDef {
 	Send,
 	Listen,
 	Wait,
+    Directive_Run,
 
     UnitEmpty
 };

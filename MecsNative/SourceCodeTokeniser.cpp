@@ -476,6 +476,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 						}
 
 						parent = current;
+                        StringAppendChar(word, ':'); // the ':' is part of the directive name, so it doesn't clash with variables.
 						tmp = newNodeDirective(startLoc, word);
 						tmp.functionLike = true;
 						current = TAddChild_Node(parent, &tmp);
