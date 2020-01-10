@@ -86,6 +86,8 @@ void TCW_Memory(TagCodeCache* tcc, char action, uint32_t crushed);
 void TCW_Increment(TagCodeCache* tcc, int8_t incr, String* targetName);
 // Function call
 void TCW_FunctionCall(TagCodeCache* tcc, String* functionName, int parameterCount);
+// Scheduler directive
+void TCW_Directive(TagCodeCache* tcc, String* functionName, int parameterCount);
 // Add a define-and-skip set of opcodes *before* merging in the compiled function opcodes.
 void TCW_FunctionDefine(TagCodeCache* tcc, String* functionName, int argCount, int tokenCount);
 // Add a single symbol reference

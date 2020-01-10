@@ -79,7 +79,7 @@ void LogFmt(ConsolePtr cons, const char* fmt, ...) {
     va_start(args, fmt);
     auto str = StringEmptyInArena(cons->arena);
     vStringAppendFormat(str, fmt, args);
-	Log(cons, str);
+	LogInternal(cons, str);
 	StringDeallocate(str);
     va_end(args);
 }
@@ -207,6 +207,7 @@ void Console_ReadLine(ConsolePtr console, StringPtr dest) {
 	if (eventTarget == NULL || eventData == NULL) return;
 	auto screen = console->OutputScreen;
 
+	LogLine(console);
 	renderReadline(console, dest); // draw the prompt
 
 	bool newline = false;

@@ -23,3 +23,8 @@ set(tmp 1 +(get(A 1) get(B 1)))
 set(tmp 2 +(get(A 2) get(B 2)))
 push(tmp) // need a new function that directly adds to the value stack, like `return` would
 unset(tmp)
+
+
+run:"program.ecs" // schedule in parallel
+wait(run:"program.ecs") // run synchronously, return result value
+

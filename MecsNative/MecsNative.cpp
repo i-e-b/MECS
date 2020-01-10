@@ -1437,6 +1437,7 @@ int main() {
 	ShowConsoleWindow();
     EventSystem_Start();
 	
+    /*
     auto aares = TestArenaAllocator();
     if (aares != 0) return aares;
 
@@ -1484,6 +1485,7 @@ int main() {
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
     MMPop();
+    */
 
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
@@ -1495,6 +1497,7 @@ int main() {
     if (runit != 0) return runit;
     MMPop();
 
+    /*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
 
@@ -1507,7 +1510,7 @@ int main() {
     auto ipct = TestIPC();
     if (ipct != 0) return ipct;
     MMPop();
-
+*/
 	
     auto suiteEndTime = SystemTime();
 
@@ -1521,30 +1524,6 @@ int main() {
 
     // Run a scheduler program to wait for keyboard input
     RunWaiterProgram();
-
-/*
-    // Use the event system to wait for input
-    MMPush(10 MEGABYTES);
-    StringPtr eventTarget = StringNew("x");
-    VectorPtr eventData = VectorAllocate(1);
-    
-    // Looking for a particular event type:
-    while (!StringAreEqual(eventTarget, "keyboard")){
-        // get any event
-		while (!EventPoll(eventTarget, eventData)) {
-			DisplaySystem_PumpIdle(OutputScreen);
-		}
-		Log(cnsl, eventTarget);
-        char cdat = 0;
-        while (VectorPop(eventData, &cdat)) {
-            LogFmt(cnsl, "\x07", cdat);
-        }
-
-        // BUG: something in this loop is causing memory to run out.
-    }
-    MMPop();
-
-    */
 
     // wait again to inspect...
 	/*char dummy;

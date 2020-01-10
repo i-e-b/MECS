@@ -8,7 +8,7 @@ print("Sending a bunch of keyboard events")
 set(myMessage new-map("code" 123, "char" "x")) // a real keyboard event would probably have a 'current state' or similar
 set(count 10)
 while ( >(count 0)
-	send("keyboard" myMessage) // second read breaks strings!
+	send("keyboard" myMessage)
 	set(count -(count 1))
 )
 

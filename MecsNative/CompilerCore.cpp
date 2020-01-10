@@ -501,6 +501,8 @@ bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, TreeNode* node
 
     if (StringAreEqual(funcName, "return")) { 
         TCW_Return(wr, nodeChildCount);
+    } else if (nodeData->NodeType == NodeType::Directive) {
+        TCW_Directive(wr, funcName, nodeChildCount);
     } else {
         TCW_FunctionCall(wr, funcName, nodeChildCount);
     }

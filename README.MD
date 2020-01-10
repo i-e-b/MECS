@@ -414,3 +414,7 @@ This only works for the most local scope, or the global scope.
 Increment/decrement by a fixed value.
 Looks up a variable with the given name-hash, adds the value of `inc` and stores it back.
 No value is added or removed from the value-stack.
+
+### Opcode `[d][x] [param count: uint8] [name hash: uint32]`
+Call a scheduler directive. The param count MUST be given, but can be zero.
+This drives special scheduler operations, like `run:` for spawning child processes

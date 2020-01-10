@@ -89,6 +89,19 @@ Node newNodeAtom(int sourceLoc, String* str) {
     n.SourceLocation = sourceLoc;
     return n;
 }
+Node newNodeDirective(int sourceLoc, String* str) {
+    auto n = Node{};
+    n.NodeType = NodeType::Directive;
+    n.IsValid = true;
+    n.Text = str;
+    n.Unescaped = NULL;
+    n.SourceLocation = sourceLoc;
+    return n;
+}
+
+inline bool IsQuote(char c) {
+    return (c == '"' || c == '\'' || c == '`');
+}
 
 // skip any whitespace (any of ',', ' ', '\t', '\r', '\n'). Most of the complexity is to capture metadata for auto-format
 int SkipWhitespace(String* exp, int position, TreeNode* mdParent) {
@@ -179,6 +192,9 @@ String* ReadString (String* exp, int* inOutPosition, char end, bool* outEndedCor
     int length = StringLength(exp);
     auto sb = StringEmpty();
     *outEndedCorrectly = false;
+    
+    char end2 = end;
+    if (end == '`') { end2 = '\'';} // allow `quote' as a string
 
     while (i < length) {
         char car = StringCharAtIndex(exp, i);
@@ -203,7 +219,7 @@ String* ReadString (String* exp, int* inOutPosition, char end, bool* outEndedCor
                 nb++;
                 i++;
             }
-        } else if (car == end) { // end of string
+        } else if (car == end || car == end2) { // end of string
             *outEndedCorrectly = true;
             break;
         } else { // normal characters
@@ -244,8 +260,9 @@ String* ReadWord(String* expression, int position) {
     {
         char c = StringCharAtIndex(expression, i);
 
-        if (c == ' ' || c == '\n' || c == '\t' || c == ')'
-            || c == '(' || c == ',' || c == '\r')
+        if (c == ' ' || c == '\n' || c == '\r' || c == '\t' // whitespace
+            || c == ')' || c == '('                         // parens
+            || c == ',' || c == ':')                        // special
         {
             break;
         }
@@ -356,6 +373,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
         case '"': // start of strings
         case '\'':
+        case '`':
         {
             if (preserveMetadata) {
                 tmp = newNodeDelimiter(i, car);
@@ -375,6 +393,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
             TAddChild_Node(current, &tmp);
 
             if (preserveMetadata && endedCorrectly) {
+                car = StringCharAtIndex(source, i);
                 tmp = newNodeDelimiter(i, car);
                 TAddChild_Node(current, &tmp);
             }
@@ -429,6 +448,51 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                     if (preserveMetadata) {
                         TAddChild_Node(current, &newNodeOpenCall(i));
                     }
+                }
+                else if (car == ':') {
+                    // TODO: scheduler directive? we expect a string here?
+                    
+                    i++;
+					i = SkipWhitespace(source, i, wsNode);
+					car = StringCharAtIndex(source, i);
+                    if (IsQuote(car)) {
+                        // OK, a directive string
+                        
+						if (preserveMetadata) {
+							tmp = newNodeDelimiter(i, car);
+							TAddChild_Node(current, &tmp);
+						}
+
+						i++;
+						auto old_i = i;
+						bool endedCorrectly;
+						auto words = ReadString(source, &i, car, &endedCorrectly);
+
+
+						if (preserveMetadata && endedCorrectly) {
+							car = StringCharAtIndex(source, i);
+							tmp = newNodeDelimiter(i, car);
+							TAddChild_Node(current, &tmp);
+						}
+
+						parent = current;
+						tmp = newNodeDirective(startLoc, word);
+						tmp.functionLike = true;
+						current = TAddChild_Node(parent, &tmp);
+						tmp = newNodeString(startLoc, words);
+						TAddChild_Node(current, &tmp);
+                        
+                        return false;
+					}
+					else {
+
+						tmp = newNodeError(i, StringNew("\r\nError: '"));
+						StringAppend(tmp.ErrorMessage, word);
+						StringAppend(tmp.ErrorMessage, "' looks like a system directive, but you didn't give a string");
+
+						TAddChild_Node(current, &tmp);
+						return false;
+					}
                 }
                 else
                 {
@@ -504,6 +568,7 @@ String* DescribeNodeType(NodeType nt) {
     case NodeType::ScopeDelimiter: return StringNew("[scope delimiter]");
     case NodeType::StringLiteral: return StringNew("String");
     case NodeType::Whitespace: return StringNew("[whitespace]");
+    case NodeType::Directive: return StringNew("Directive");
     default: return StringNew("<UNKNOWN>");
     }
 }
@@ -523,7 +588,11 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
     Node* n = TReadBody_Node(node);
 
     // Write the node contents
-    StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
+    if (n->IsValid) {
+        StringAppend(outp, (n->Unescaped == NULL) ? n->Text : n->Unescaped);
+    } else {
+        StringAppend(outp, n->ErrorMessage);
+	}
 
     // Recursively write child nodes
     bool leadingWhite = false;

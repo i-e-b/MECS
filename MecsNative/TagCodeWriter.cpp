@@ -552,13 +552,18 @@ void TCW_Increment(TagCodeCache* tcc, int8_t incr, String* targetName) {
     VecPush_DataTag(tcc->_opcodes, EncodeLongOpcode('i', incr, crush));
 }
 
-void TCW_FunctionCall(TagCodeCache* tcc, String* functionName, int parameterCount) {
+
+void TCW_Directive(TagCodeCache* tcc, String* functionName, int parameterCount) {
     if (tcc == NULL) return;
 
-    // Recent change: function call uses p3 for param count, and saves an opcode
+    uint32_t crush;
+    EncodeVariableRef(functionName, &crush);
+    TCW_AddSymbol(tcc, crush, functionName); // just in case it's an unknown function, we can give a better error message.
+    VecPush_DataTag(tcc->_opcodes, EncodeWideLongOpcode('d', 'x', crush, parameterCount));
+}
 
-    //VecPush_DataTag(tcc->_opcodes, EncodeVariableRef(functionName, NULL));  // reference the function name
-    //VecPush_DataTag(tcc->_opcodes, EncodeOpcode('f', 'c', (uint16_t)parameterCount, 0));  // call function
+void TCW_FunctionCall(TagCodeCache* tcc, String* functionName, int parameterCount) {
+    if (tcc == NULL) return;
 
     uint32_t crush;
     EncodeVariableRef(functionName, &crush);

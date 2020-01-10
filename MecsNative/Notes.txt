@@ -120,6 +120,7 @@ Could also have a 'fallback' mode keeping 2 scopes at once to avoid stop-the-wor
 
 * [-] ~periodically look for 'potential garbage' names in the running scope. If not found, deallocate~
 * [-] ~extend 'potential garbage' to hold a list instead of single refs~
+* [ ] Auto-grow for regions (GC copying into a larger arena when an allocation fails)
 * [ ] ensure all allocated objects go into the scope (i.e. child data of complex types. Should get a hidden unique name?)
 * [ ] maybe have 'destroy&recreate' for actors?
 * [ ] Avoid stop-the-world where possible.

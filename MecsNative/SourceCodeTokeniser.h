@@ -17,6 +17,8 @@ enum NodeType {
     Atom = 3,
     // The root of a parsed document
     Root = 4,
+    // A special directive to drive the scheduler above the current program (used for forking etc)
+    Directive = 5,
 
     // A node that has not been correctly configured
     InvalidNode = 255,

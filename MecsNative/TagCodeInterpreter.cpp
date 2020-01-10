@@ -1149,6 +1149,11 @@ inline DataType ProcessOpCode(char codeClass, char codeAction, uint16_t p1, uint
 		ScopeMutateNumber(is->_variables, varRef, (int8_t)codeAction);
 		return DataType::Void;
 
+    case 'd': // scheduler directive, for launching new programs etc.
+		StringAppendFormat(is->_output, "Unimplemented DIRECTIVE op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
+		return DataType::Exception;
+        return DataType::Void;
+
 	default:
 		StringAppendFormat(is->_output, "Unexpected op code at \x02 : '\x01'\n", position, DiagnosticString(word, is));
 		return DataType::Exception;

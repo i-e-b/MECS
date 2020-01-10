@@ -213,6 +213,7 @@ HashMap* HashMapAllocate(unsigned int size, int keyByteSize, int valueByteSize, 
 }
 
 void HashMapDeallocate(HashMap * h) {
+    if (h == NULL) return;
     h->IsValid = false;
     h->count = 0;
     if (h->buckets != NULL) VectorDeallocate(h->buckets);
