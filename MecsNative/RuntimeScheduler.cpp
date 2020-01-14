@@ -32,6 +32,9 @@ typedef struct RuntimeScheduler {
 	// Next interpreter slot that should be used. This may be off the end, and need reset.
 	int roundRobin;
 
+	// tracker for making unique program IDs
+	int programInstanceNumber;
+
 	// Last recorded run state
 	SchedulerState state;
 
@@ -60,6 +63,7 @@ RuntimeSchedulerPtr RTSchedulerAllocate(){
 
 	result->baseMemory = coreMem;
 	result->roundRobin = -1;
+	result->programInstanceNumber = 0;
 	result->interpreters = intVec;
 	result->state = SchedulerState::Running;
 
@@ -99,6 +103,13 @@ Vector* RTS_Compile(StringPtr filename, HashMap *symbols, Arena* symbolStringSto
 	}
 
 	auto compilableSyntaxTree = ParseSourceCode(code, false);
+
+	auto parseResult = (SourceNode*)TreeReadBody(compilableSyntaxTree);
+    if (!parseResult->IsValid) {
+        //Log(cnsl,"The source file was not valid (FAIL!)\n");
+		return NULL;
+    } 
+
 	auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
 
 	auto nextPos = TCW_AppendToVector(tagCode, program);
@@ -117,7 +128,8 @@ Vector* RTS_Compile(StringPtr filename, HashMap *symbols, Arena* symbolStringSto
 
 // Read, compile and add a program to the execution schedule
 // Returns false if there were any errors loading
-bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath){
+// If the `processId` string is provided, it will have the process instance unique ID appended to it.
+bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath, StringPtr processId){
 	if (sched == NULL || filePath == NULL) return false;
 	
 	auto symbols = MapAllocateArena_Name_StringPtr(16, sched->baseMemory);
@@ -126,6 +138,10 @@ bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath){
     auto prog = InterpAllocate(code, 10 MEGABYTE, symbols); // copy bytecode into a new interpreter
     VectorDeallocate(code); // deallocate from ambient memory
 	if (prog == NULL) return false;
+
+	sched->programInstanceNumber++;
+	InterpSetId(prog, sched->programInstanceNumber);
+	if (processId != NULL) StringAppendInt32(processId, sched->programInstanceNumber);
 
 	// Store the interpreter
 	VectorPush_InterpreterStatePtr(sched->interpreters, prog);
@@ -199,6 +215,7 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) 
 		case ExecutionState::Waiting: // waiting for console data. Will loop if not enough data
 		case ExecutionState::IPC_Ready: // was waiting, now has data
 		case ExecutionState::IPC_Send: // requested a send, can now continue
+		case ExecutionState::IPC_Spawn:
 			result = InterpRun(is, rounds);
 			break;
 
@@ -206,7 +223,7 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) 
 		case ExecutionState::Complete:
 		case ExecutionState::Running:
 		case ExecutionState::IPC_Wait:
-			return OK;
+			return OK; // calling again will cycle through interpreters
 
 		// Fail states
 		default:
@@ -225,6 +242,18 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) 
 
 		case ExecutionState::Running:
 			return Fault(sched, __LINE__);
+
+		case ExecutionState::IPC_Spawn:
+		{
+			StringPtr procId = StringEmptyInArena(sched->baseMemory);
+			if (!RTSchedulerAddProgram(sched, result.IPC_Out_Target, procId)){
+				return Fault(sched, __LINE__);
+			}
+			// push a value back onto the caller's value stack that represents a unique ID for this scheduler program instance.
+			InterpreterPushValue(is, EncodeShortStr(procId)); // limited to 9'999'999 spawns before it repeats
+			ArenaDereference(sched->baseMemory, procId);
+			return OK;
+		}
 
 		// Broadcast IPC to all programs (including self)
 		case ExecutionState::IPC_Send:
@@ -249,6 +278,8 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) 
 		// The program ended. Check to see if any others are running
 		case ExecutionState::Complete:
 		{
+			// TODO: Broadcast a termination message to remaining interpreters with the stopped program's unique instance ID
+
 			// Check to see if all programs have finished.
 			// If so, return non-success.
 			int length = VectorLength(sched->interpreters);
@@ -256,6 +287,7 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) 
 				auto target = VectorGet_InterpreterStatePtr(sched->interpreters, i);
 				if (target == NULL || *target == NULL) return Fault(sched, __LINE__);
 				bool done = InterpreterCurrentState(*target) == ExecutionState::Complete;
+
 				if (!done) return OK; // at least one more to run
 			}
 			sched->state = SchedulerState::Complete;

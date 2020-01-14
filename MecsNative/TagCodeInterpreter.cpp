@@ -39,6 +39,9 @@ RegisterVectorFor(HashMap_KVP, Vec)
 // the smallest difference considered for float equality
 const float ComparisonPrecision = 1e-10;
 
+// Maximum size of the value stack.
+const int MAX_STACK = 512;
+
 /*
     Our interpreter is a two-stack model
 */
@@ -65,6 +68,7 @@ typedef struct InterpreterState {
 	// Inter-Program Communication
 	HashMap* IPC_Queues; // Map<TargetName -> Vector< datavec > >; where datavec is Vector<byte>
 	HashMap* IPC_Queue_WaitFlags; // Map<TargetName -> bool>; `true` means the interpreter is waiting for this message
+    int ExternalId; // ID for use by scheduler
 
     // number of byte codes interpreted (also used for random number generation)
     int _stepsTaken;
@@ -119,6 +123,10 @@ void AddBuiltInFunctionSymbols(HashMap* fd) {
 #undef add;
 }
 
+void InterpSetId(InterpreterState* is, int id) {
+    if (is == NULL) return;
+    is->ExternalId = id;
+}
 
 void InterpDescribeCode(InterpreterState* is, String* target){
 	if (is == NULL || target == NULL) return;
@@ -309,6 +317,24 @@ ExecutionResult IPCSendExecutionResult(InterpreterState* is) {
 	return r;
 }
 
+ExecutionResult IPCSpawnExecutionResult(InterpreterState* is) {
+    ExecutionResult r = {};
+    r.Result = NonResult();
+    r.State = ExecutionState::IPC_Spawn;
+
+	DataTag tag;
+
+	// pop out string target
+    if (!VecPop_DataTag(is->_valueStack, &tag)) {
+		is->State = ExecutionState::ErrorState;
+        StringAppendFormat(is->_output, "Value stack underflow at position \x03 when reading directive target", is->_position);
+        return FailureResult(is->_position);
+    }
+
+	r.IPC_Out_Target = CastString(is, tag);
+
+	return r;
+}
 
 // Return the most recent interpreter state
 ExecutionState InterpreterCurrentState(InterpreterState* is) {
@@ -345,6 +371,20 @@ void DescribeCodePosition(InterpreterState* is, String* outp) {
 	}
 
 	DescribeTag(*tagptr, outp, is->DebugSymbols);
+}
+
+
+// Push a value onto the interpreter's value stack. This should only be done
+// when the interpreter is paused. Used by the scheduler to feed process IDs.
+bool InterpreterPushValue(InterpreterState* is, DataTag value) {
+    if (is == NULL) return false;
+    if (is->State == ExecutionState::Running) return false;
+
+    // TODO: handle pointer-type values
+    if (IsAllocated(value)) return false;
+
+    VecPush_DataTag(is->_valueStack, value);
+    return true;
 }
 
 DataTag* ReadParams(InterpreterState* is, uint16_t nbParams){
@@ -862,9 +902,27 @@ compiles to this:
     // so var stack should have the target, then the value, then indexes in reverse order (should be exactly 1 at the moment)
 }
 
+DataType WriteErrorState(InterpreterStatePtr is, const char* message) {
+	is->State = ExecutionState::ErrorState;
+	VecPush_DataTag(is->_valueStack, _Exception(is, message));
+    StringAppend(is->_output, message);
+	return DataType::Exception;
+}
+
 DataType HandleSchedulerDirective(InterpreterState* is, uint32_t directiveHash, uint8_t paramCount) {
-	StringAppend(is->_output, "Unimplemented DIRECTIVE -- IGNORED!");
-	return DataType::Void;
+    auto run_ = GetCrushedName("run:");
+
+    if (directiveHash != run_) return WriteErrorState(is, "Unknown directive. Expected `run:`");
+	if (paramCount != 1) return WriteErrorState(is, "A `run:` directive must have 1 parameter: source file name");
+
+    auto param = ReadParams(is, paramCount);
+	auto target = param[0]; // the string target name
+    
+	VecPush_DataTag(is->_valueStack, target);
+    
+    ArenaDereference(is->_memory, param);
+
+	return DataType::IPCSpawn;
 }
 
 inline DataType PrepareFunctionCall(int* position, uint32_t nameHash, uint16_t nbParams, InterpreterState* is) {
@@ -1853,8 +1911,8 @@ inline bool CheckProgramWindow(InterpreterState* is, DataTag** programWindow, in
 
     // out of cached range. Re-cache
     if (*programWindow != NULL) VecFreeCache(is->_program, programWindow);
-    *low = pos - 200;
-    *high = pos + 400; // bias forward of current position
+    *low = pos - 25;
+    *high = pos + 50; // bias forward of current position
     *programWindow = VecCacheRange_DataTag(is->_program, low, high);
     if (*programWindow == NULL) {
         // total failure. Out of memory?
@@ -1985,6 +2043,13 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
 	uint16_t p1, p2;
 	uint8_t p3;
 
+    
+	// Prevent stackoverflow the lazy way
+	// Ex: if(true 1 10 20)
+	while (VecLength(is->_valueStack) > MAX_STACK) {
+		VecDequeue_DataTag(is->_valueStack, NULL);
+	}
+
     while (true){
         if (localSteps >= maxCycles) {
             VecFreeCache(is->_program, programWindow);
@@ -2001,17 +2066,10 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
         is->_stepsTaken++;
         localSteps++;
 
-        // Prevent stackoverflow.
-        // Ex: if(true 1 10 20)
-        /*if ((is->_stepsTaken & 127) == 0 && VecLength(is->_valueStack) > 100) { // TODO: improve this mess. Maybe add sentinels and dequeue on returns?
-            for (int i = 0; i < 100; i++) {
-                VectorDequeue(is->_valueStack, NULL); // knock values off the far side of the stack.
-            }
-        }*/
-
-
-        if (!CheckProgramWindow(is, &programWindow, &lowIndex, &highIndex)) break;
-        auto word = programWindow[is->_position - lowIndex];
+        /*if (!CheckProgramWindow(is, &programWindow, &lowIndex, &highIndex)) break;
+        auto word = programWindow[is->_position - lowIndex];*/
+        auto wordPtr = VecGet_DataTag(is->_program, is->_position);
+        auto word = *wordPtr;
 
 		if (word.type == opCodeType) { // instructions
 			DecodeOpcode(word, &codeClass, &codeAction, &p1, &p2, &p3);
@@ -2029,6 +2087,9 @@ ExecutionResult InterpRunInternal(InterpreterState* is, int maxCycles) {
 				case DataType::IPCSend:
 					is->_position++; // don't repeat send command
 					return IPCSendExecutionResult(is); // program wants to broadcast an IPC message. It has set stack values and is yielding.
+                case DataType::IPCSpawn:
+                    is->_position++;
+                    return IPCSpawnExecutionResult(is);
 
 				case DataType::EndOfProgram: goto GOOD_EXIT; // program is exiting early (based on logic)
 

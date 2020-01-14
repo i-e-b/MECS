@@ -33,7 +33,8 @@ void RTSchedulerDeallocate(RuntimeSchedulerPtr *sched);
 
 // Read, compile and add a program to the execution schedule
 // Returns false if there were any errors loading
-bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath);
+// If the `processId` string is provided, it will have the process instance unique ID appended to it.
+bool RTSchedulerAddProgram(RuntimeSchedulerPtr sched, StringPtr filePath, StringPtr processId);
 
 // Run ONE of the scheduled programs for a given number of rounds.
 // Each time you call this, a different program may be given the rounds.

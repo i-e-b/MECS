@@ -36,6 +36,9 @@ DataTag IPCWaitRequest() {
 DataTag IPCSendRequest() {
     return DataTag{ (int)DataType::IPCSend, 0, 0 };
 }
+DataTag IPCSpawnRequest() {
+    return DataTag{ (int)DataType::IPCSpawn, 0, 0 };
+}
 
 // return a tag that is never valid (denotes an error)
 DataTag InvalidTag() {

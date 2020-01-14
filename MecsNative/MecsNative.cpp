@@ -839,7 +839,6 @@ int TestCompiler() {
 
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
-    //auto pathOfValid = StringNew("hashmaps.ecs"); // should be valid source
     auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
@@ -1039,6 +1038,11 @@ int TestRuntimeExec() {
 			}
 		}
 		break;
+    case ExecutionState::IPC_Spawn:
+		StringAppend(str, "\r\nProgram wants to run the program at '");
+		StringAppend(str, result.IPC_Out_Target);
+		StringAppend(str, "'");
+        break;
     case ExecutionState::Running:
         StringAppend(str, "\r\nProgram still running?");
 		resultState = 2;
@@ -1099,6 +1103,11 @@ int AppendFinishState (InterpreterState* is, ExecutionResult result, String* str
 		StringAppend(str, result.IPC_Out_Target);
 		StringAppendFormat(str, "' with \x02 bytes of data", VectorLength(result.IPC_Out_Data));
 		break;
+    case ExecutionState::IPC_Spawn:
+		StringAppend(str, "\r\nProgram wants to run the program at '");
+		StringAppend(str, result.IPC_Out_Target);
+		StringAppend(str, "'");
+        break;
 	case ExecutionState::IPC_Wait:
 		{
 			StringAppend(str, "\r\nProgram wants is waiting for IPC data: ");
@@ -1315,8 +1324,8 @@ int TestIPC() {
     auto consoleOut = StringEmpty();
 	auto sched = RTSchedulerAllocate();
 
-	RTSchedulerAddProgram(sched, StringNew("ipc_prog1.ecs"));
-	RTSchedulerAddProgram(sched, StringNew("ipc_prog2.ecs"));
+	RTSchedulerAddProgram(sched, StringNew("ipc_prog1.ecs"), NULL);
+	RTSchedulerAddProgram(sched, StringNew("ipc_prog2.ecs"), NULL);
 
 	int32_t safetyLatch = 50; // programs should complete in 2500 steps
 	int faultLine = 0;
@@ -1377,6 +1386,85 @@ int TestIPC() {
 }
 
 
+int TestSchedulerSpawning() {
+	int result = 0;
+	
+    Log(cnsl,"***************** SCHEDULER SPAWN TESTING ******************\n");
+
+	
+    auto consoleOut = StringEmpty();
+	auto sched = RTSchedulerAllocate();
+
+	auto OK = RTSchedulerAddProgram(sched, StringNew("schedulerSpawn.ecs"), NULL);
+    RTSchedulerDebugDump(sched, consoleOut);
+	LogLine(cnsl, consoleOut);
+	StringClear(consoleOut);
+
+    if (!OK) {
+		LogLine(cnsl, "Initial program was not read correctly");
+        return -1;
+    }
+
+	int32_t safetyLatch = 50; // this test program should complete well inside in (50*50) steps
+	int faultLine = 0;
+	while ((faultLine = RTSchedulerRun(sched, 50, consoleOut)) == 0) { // more rounds = less overhead, but coarser time slicing
+
+		//std::cout << "\n#" << RTSchedulerLastProgramIndex(sched) << "\n";
+		if (StringLength(consoleOut) > 0) {
+			Log(cnsl,consoleOut);
+			StringClear(consoleOut);
+		}
+
+		// system time is fun time
+		if (--safetyLatch < 0) {
+			Log(cnsl,"\n########## Schedule ran too long. Abandoning. ##########");
+			break;
+		}
+	}
+
+	if (StringLength(consoleOut) > 0) {
+		LogLine(cnsl,consoleOut);
+		StringClear(consoleOut);
+	}
+
+    LogFmt(cnsl, "\nFinal output state = \x02;", faultLine);
+
+	// now check to see if there was an error
+	auto endState = RTSchedulerState(sched);
+	switch (endState) {
+	case SchedulerState::Complete:
+		Log(cnsl,"\nSchedule completed OK!\n");
+		break;
+
+	case SchedulerState::Faulted:
+		LogFmt(cnsl,"\nSchedule encountered a fault; LINE = \x02\nIn program#\x02\n", faultLine, RTSchedulerLastProgramIndex(sched));
+		RTSchedulerDebugDump(sched, consoleOut);
+		LogLine(cnsl,consoleOut);
+		StringClear(consoleOut);
+		result = 1;
+		break;
+
+	case SchedulerState::Running:
+		LogFmt(cnsl,"\nScheduler didn't finish running; \x02\n", faultLine);
+		break;
+
+	default:
+		LogFmt(cnsl,"\nUNEXPECTED STATE: \x02\n", (int)endState);
+		result = 2;
+		break;
+	}
+
+	RTSchedulerDeallocate(&sched);
+	StringDeallocate(consoleOut);
+
+    size_t alloc, unalloc;
+    int objects;
+    ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
+	LogFmt(cnsl,"\nRuntime used in external memory:\x02 bytes across \x02 objects. \x02 free.\n", alloc, objects, unalloc);
+
+	return result;
+}
+
 int RunWaiterProgram() {
 	int result = 0;
 	
@@ -1388,7 +1476,7 @@ int RunWaiterProgram() {
     auto consoleOut = StringEmpty();
 	auto sched = RTSchedulerAllocate();
 
-	RTSchedulerAddProgram(sched, StringNew("SPECIAL_WAIT.ecs"));
+	RTSchedulerAddProgram(sched, StringNew("SPECIAL_WAIT.ecs"), NULL);
 
 	int32_t safetyLatch = 50; // programs should complete in 2500 steps
 	int faultLine = 0;
@@ -1485,19 +1573,17 @@ int main() {
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
     MMPop();
-    */
 
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
     MMPop();
-
+    
     MMPush(10 MEGABYTES);
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
     MMPop();
 
-    /*
     auto suite = TestProgramSuite();
     if (suite != 0) return suite;
 
@@ -1510,8 +1596,14 @@ int main() {
     auto ipct = TestIPC();
     if (ipct != 0) return ipct;
     MMPop();
-*/
+    */
 	
+    MMPush(10 MEGABYTES);
+    auto schtst = TestSchedulerSpawning();
+    //if (schtst != 0) return schtst;
+    MMPop();
+
+
     auto suiteEndTime = SystemTime();
 
 	LogFmt(cnsl,"\n\nTest suite finished in \x02s.", (suiteEndTime - suiteStartTime));

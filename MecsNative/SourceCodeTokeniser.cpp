@@ -482,8 +482,6 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 						current = TAddChild_Node(parent, &tmp);
 						tmp = newNodeString(startLoc, words);
 						TAddChild_Node(current, &tmp);
-                        
-                        return false;
 					}
 					else {
 

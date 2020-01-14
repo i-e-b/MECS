@@ -70,6 +70,10 @@ enum class DataType {
 	// The triggering call will *NOT* be repeated when a message is available.
 	IPCSend = 252,
 
+	// This special value means the program would like to run another program in the background
+    // The triggering call will *NOT* be repeated when a message is available.
+    IPCSpawn = 253,
+
     Flag = 255 // A marker for internal testing
 };
 

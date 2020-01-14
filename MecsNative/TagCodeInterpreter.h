@@ -19,12 +19,15 @@ enum class ExecutionState {
     // Program failed with an error
     ErrorState,
 
-	// Program is waiting for an IPC message
+	// Program is waiting for an IPC message (InterpreterState.IPC_Queue_WaitFlags should be populated)
 	IPC_Wait,
-	// Program wants to send an IPC message
+	// Program wants to send an IPC message (ExecutionResult.IPC_Out_Target and ExecutionResult.IPC_Out_Data should be populated)
 	IPC_Send,
 	// Program can continue after IPC_Wait state
-	IPC_Ready
+	IPC_Ready,
+
+    // Program would like to run another program in the background. (ExecutionResult.IPC_Out_Target should contain the path to the source code file)
+    IPC_Spawn
 };
 typedef struct ExecutionResult {
     // If/how the interpreter stopped
@@ -58,6 +61,9 @@ ExecutionState InterpreterCurrentState(InterpreterState* is);
 // Remember to check execution state afterward
 ExecutionResult InterpRun(InterpreterState* is, int maxCycles);
 
+// Set an ID for this interpreter. Used by the scheduler.
+void InterpSetId(InterpreterState* is, int id);
+
 // Try to add an incoming IPC message to an InterpreterState.
 // Only call when the program is in a wait state.
 // The call will ignore the request if it is not interested in the target type
@@ -80,6 +86,10 @@ void* InterpreterDeref(InterpreterState* is, DataTag encodedPosition);
 
 // Get the variables scope of the interpreter instance
 Scope* InterpreterScope(InterpreterState* is);
+
+// Push a value onto the interpreter's value stack. This should only be done
+// when the interpreter is paused. Used by the scheduler to feed process IDs.
+bool InterpreterPushValue(InterpreterState* is, DataTag value);
 
 // Store a new string in the RW memory, and return a string pointer token for it
 // The original string parameter is deallocated
