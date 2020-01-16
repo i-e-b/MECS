@@ -450,38 +450,56 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                     }
                 }
                 else if (car == ':') {
-                    // TODO: scheduler directive? we expect a string here?
                     
+                    // Scheduler directive. We expect a string here.
+                    
+					StringAppendChar(word, ':'); // the ':' is part of the directive name, so it doesn't clash with variables.
                     i++;
 					i = SkipWhitespace(source, i, wsNode);
+                    MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
 					car = StringCharAtIndex(source, i);
+
                     if (IsQuote(car)) {
                         // OK, a directive string
+						i++;
+						auto old_i = i;
+						bool endedCorrectly;
+						auto words = ReadString(source, &i, car, &endedCorrectly);
+                        i++;
+
+                        if (!endedCorrectly) {
+							tmp = newNodeError(i, StringNew("\r\nError: '"));
+							StringAppend(tmp.ErrorMessage, word);
+							StringAppend(tmp.ErrorMessage, "' system directive argument was not ended correctly");
+
+							TAddChild_Node(current, &tmp);
+							return false;
+                        }
+
+                        // node for directive
+						tmp = newNodeDirective(startLoc, word);
+						tmp.functionLike = true;
+
+                        // add to tree
+						//parent = current;
+						auto xcurrent = TAddChild_Node(current, &tmp);
                         
 						if (preserveMetadata) {
 							tmp = newNodeDelimiter(i, car);
 							TAddChild_Node(current, &tmp);
 						}
 
-						i++;
-						auto old_i = i;
-						bool endedCorrectly;
-						auto words = ReadString(source, &i, car, &endedCorrectly);
+                        // add directive argument to directive node
+						tmp = newNodeString(old_i, words);
+						TAddChild_Node(xcurrent, &tmp);
+                        
 
-
+                        // This isn't working well
 						if (preserveMetadata && endedCorrectly) {
 							car = StringCharAtIndex(source, i);
 							tmp = newNodeDelimiter(i, car);
 							TAddChild_Node(current, &tmp);
 						}
-
-						parent = current;
-                        StringAppendChar(word, ':'); // the ':' is part of the directive name, so it doesn't clash with variables.
-						tmp = newNodeDirective(startLoc, word);
-						tmp.functionLike = true;
-						current = TAddChild_Node(parent, &tmp);
-						tmp = newNodeString(startLoc, words);
-						TAddChild_Node(current, &tmp);
 					}
 					else {
 
@@ -605,6 +623,7 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
                 child = TSibling(child);
                 continue;
             }
+
             leadingWhite = false;
             if (n->NodeType == NodeType::ScopeDelimiter) {
                 StringAppendChar(outp, ' ', (indent - 1) * 4);
@@ -613,7 +632,7 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
                 StringAppendChar(outp, ' ', (indent) * 4);
             }
         }
-        if (n->NodeType == NodeType::Newline) {
+        if (n->NodeType == NodeType::Newline) { // TODO: newlines aren't rendering correctly
             leadingWhite = true;
         }
 

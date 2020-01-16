@@ -839,7 +839,8 @@ int TestCompiler() {
 
     auto code = StringEmpty();
     auto pathOfInvalid = StringNew("Test.txt"); // not valid source
-    auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
+    //auto pathOfValid = StringNew("demo_program.ecs"); // should be valid source
+    auto pathOfValid = StringNew("schedulerSpawn.ecs"); // should be valid source
 
     auto vec = StringGetByteVector(code);
     uint64_t read = 0;
@@ -1573,12 +1574,12 @@ int main() {
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
     MMPop();
-
+*/
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
     MMPop();
-    
+  /*  
     MMPush(10 MEGABYTES);
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;

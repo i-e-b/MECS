@@ -249,6 +249,7 @@ int RTSchedulerRun(RuntimeSchedulerPtr sched, int rounds, StringPtr consoleOut) 
 			if (!RTSchedulerAddProgram(sched, result.IPC_Out_Target, procId)){
 				return Fault(sched, __LINE__);
 			}
+			StringClear(result.IPC_Out_Target);
 			// push a value back onto the caller's value stack that represents a unique ID for this scheduler program instance.
 			InterpreterPushValue(is, EncodeShortStr(procId)); // limited to 9'999'999 spawns before it repeats
 			ArenaDereference(sched->baseMemory, procId);
