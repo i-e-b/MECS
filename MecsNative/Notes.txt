@@ -1,6 +1,13 @@
 Components to do:
 =================
 
+Immediate TODO
+--------------
+
+* [ ] Rebuild Tree container to make it less crap
+* [ ] Rebuild parser to make it more robust and flexible
+
+
 Code niceties
 -------------
 

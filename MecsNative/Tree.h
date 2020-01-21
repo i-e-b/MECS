@@ -5,6 +5,16 @@
 
 #include "Vector.h"
 
+/*
+
+This is a Linked-node general tree implementation (using pointers everywhere)
+
+I plan to replace it.
+
+*/
+
+
+
 typedef struct TreeNode TreeNode;
 
 // Allocate a tree for a given size of element

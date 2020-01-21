@@ -109,6 +109,9 @@
     <ClCompile Include="EventSys.cpp">
       <Filter>Source Files\System</Filter>
     </ClCompile>
+    <ClCompile Include="Tree_2.cpp">
+      <Filter>Source Files\Containers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vector.h">
@@ -194,6 +197,9 @@
     </ClInclude>
     <ClInclude Include="EventSys.h">
       <Filter>Source Files\System</Filter>
+    </ClInclude>
+    <ClInclude Include="Tree_2.h">
+      <Filter>Source Files\Containers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

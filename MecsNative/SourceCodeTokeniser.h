@@ -6,6 +6,13 @@
 #include "Tree.h"
 #include "String.h"
 
+/*
+
+The code tokeniser takes text input, and builds an AST for the compiler to use.
+
+*/
+
+
 enum NodeType {
     // Unspecified node. Determined by context
     Default = 0,
