@@ -1390,7 +1390,7 @@ int TestIPC() {
 	return result;
 }
 
-void renderStrToStr(StringPtr* src, StringPtr dst) {
+static void renderStrToStr(StringPtr* src, StringPtr dst) {
     if (src == NULL || *src == NULL || dst == NULL) return;
     StringAppend(dst, *src);
 }
@@ -1410,6 +1410,8 @@ int TestDTree() {
     auto tree = DTAllocate_StringPtr(arena);
     int root = DTRootId(tree);
 
+    LogFmt(cnsl, "Checking arena: \x05\n", (DTArena(tree) == arena) ? "OK" : "FAIL");
+
     /*
     Building this:
 
@@ -1418,6 +1420,7 @@ int TestDTree() {
       |   +-- gc1
       |   |  +-- ggc1
       |   |  +-- ggc2
+      |   |  +-- ggc3
       |   +-- gc2
       |
       +-- ch2
@@ -1431,6 +1434,7 @@ int TestDTree() {
 		int gc1 = DTAddChild_StringPtr(tree, ch1, StringNew("gc1"));
 			int ggc1 = DTAddChild_StringPtr(tree, gc1, StringNew("ggc1"));
 			int ggc2 = DTAddChild_StringPtr(tree, gc1, StringNew("ggc2"));
+			int ggc3 = DTAddSibling_StringPtr(tree, ggc1, StringNew("ggc3"));
 		int gc2 = DTAddChild_StringPtr(tree, ch1, StringNew("gc2"));
     int ch2 = DTAddChild_StringPtr(tree, root, StringNew("ch2"));
 		int gc3 = DTAddChild_StringPtr(tree, ch2, StringNew("gc3"));
@@ -1442,7 +1446,84 @@ int TestDTree() {
 	Log(cnsl, str);
     StringDeallocate(str);
     
+    /*
+    Pivot on `gc1` should result in
 
+    root
+      +-- ch1
+      |   +-- gc1
+      |   |  +-- ggc1
+      |   |     +-- ggc2
+      |   |     +-- ggc3
+      |   +-- gc2
+      |
+      +-- ch2
+      |   +-- gc3
+      |
+      +-- ch3
+    */
+
+    int gcp = DTPivot(tree, gc1);
+    LogFmt(cnsl, "\n\nPivoting gc1. Expecting: \x02 == \x02 ?\n", ggc1, gcp);
+
+    // visualise the modified tree
+    str = StringEmpty();
+    DTRenderToString_StringPtr(tree, str, renderStrToStr);
+	Log(cnsl, str);
+    StringDeallocate(str);
+
+    Log(cnsl, "\nAssertions:\n");
+    LogFmt(cnsl, "gc1 is \x05, gc2 is \x05\n",
+        DTIsLeaf(tree, gc1) ? "Leaf":"Branch",
+        DTIsLeaf(tree, gc2) ? "Leaf":"Branch"
+        );
+
+    LogFmt(cnsl, "ID of ggc1's 2nd child: \x02 (should be '\x02')\n",
+        DTGetNthChildId(tree, ggc1, 1), ggc3
+        );
+    LogFmt(cnsl, "Text of ggc1's 2nd child: \x01 (should be 'ggc3')\n",
+        *DTReadBody_StringPtr(tree, DTGetNthChildId(tree, ggc1, 1))
+        );
+
+    LogFmt(cnsl, "Root has \x02 children (should be 3). gc2 has \x02 (should be 0)\n",
+        DTCountChildren(tree, root),
+        DTCountChildren(tree, gc2)
+        );
+
+    LogFmt(cnsl, "First child of 'ch2' is '\x01'; next sibling of 'ch2' is '\x01'; parent of 'ch2' is '\x01'\n",
+        *DTReadBody_StringPtr(tree, DTGetChildId(tree, ch2)),
+        *DTReadBody_StringPtr(tree, DTGetSiblingId(tree, ch2)),
+        *DTReadBody_StringPtr(tree, DTGetParentId(tree, ch2))
+        );
+
+    
+    /*
+    Move ggc3 under ch2, should result in:
+
+    root
+      +-- ch1
+      |   +-- gc1
+      |   |  +-- ggc1
+      |   |     +-- ggc2
+      |   |
+      |   +-- gc2
+      |
+      +-- ch2
+      |   +-- ggc3
+      |   +-- gc3
+      |
+      +-- ch3
+    */
+    Log(cnsl, "\n\nDeleting ggc3 and re-adding under ch2 as first child\n");
+    auto val = DTReadBody_StringPtr(tree, ggc3);
+    DTInsertChild_StringPtr(tree, ch2, 0, *val);
+	DTRemoveChild(tree, ggc1, 1);
+
+    // visualise the modified tree
+    str = StringEmpty();
+    DTRenderToString_StringPtr(tree, str, renderStrToStr);
+	Log(cnsl, str);
+    StringDeallocate(str);
 
     ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
 	LogFmt(cnsl,"\nMemory used for tree:      \x02 bytes across \x02 objects. \x02 free.", alloc, objects, unalloc);
@@ -1454,7 +1535,6 @@ int TestDTree() {
         StringDeallocate(sx);
     }
     VecDeallocate(vec);
-
     // dealloc tree
 	DTDeallocate(&tree);
 
@@ -1694,7 +1774,7 @@ int main() {
 
 	LogFmt(cnsl,"\n\nTest suite finished in \x02s.", (suiteEndTime - suiteStartTime));
 
-    /*
+    //*
     MMPush(1 MEGABYTES);
     auto sdest = StringEmpty();
     Console_ReadLine(cnsl, sdest);
@@ -1703,7 +1783,7 @@ int main() {
 
     // Run a scheduler program to wait for keyboard input
     RunWaiterProgram();
-    */
+    //*/
 
 	CloseConsoleWindow();
     ShutdownManagedMemory();

@@ -271,10 +271,10 @@ int DTreeGetNthChildId(DTreePtr tree, int parentId, int childIdx) {
 	int lastIdx = rel->ChildId;
 
 	while (count < childIdx) {
-		lastIdx = rel->NextSibling;
-		if (lastIdx < 0) return INVALID;
 		rel = VectorGet_DRelation(tree->Relations, lastIdx);
 		if (rel == NULL) return INVALID;
+		lastIdx = rel->NextSibling;
+		if (lastIdx < 0) return INVALID;
 		count++;
 	}
 	return lastIdx;
