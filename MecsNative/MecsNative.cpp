@@ -5,6 +5,7 @@
 #include "Vector.h"
 #include "HashMap.h"
 #include "Tree.h"
+#include "Tree_2.h"
 #include "String.h"
 #include "Heap.h"
 #include "ArenaAllocator.h"
@@ -55,6 +56,9 @@ RegisterHashMapFor(int, float, HashMapIntKeyHash, HashMapIntKeyCompare, Map)
 
 RegisterTreeStatics(T)
 RegisterTreeFor(exampleElement, T)
+
+RegisterDTreeStatics(DT)
+RegisterDTreeFor(StringPtr, DT)
 
 RegisterHeapStatics(H)
 RegisterHeapFor(char, H)
@@ -1386,6 +1390,82 @@ int TestIPC() {
 	return result;
 }
 
+void renderStrToStr(StringPtr* src, StringPtr dst) {
+    if (src == NULL || *src == NULL || dst == NULL) return;
+    StringAppend(dst, *src);
+}
+
+int TestDTree() {
+	int result = 0;
+	
+	Log(cnsl, "***************** COMPACT TREE ******************\n");
+
+    auto arena = NewArena(10 MEGABYTES);
+    
+    size_t alloc, unalloc;
+    int objects;
+    ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
+	LogFmt(cnsl,"\nEmpty arena:               \x02 bytes across \x02 objects. \x02 free.\n", alloc, objects, unalloc);
+
+    auto tree = DTAllocate_StringPtr(arena);
+    int root = DTRootId(tree);
+
+    /*
+    Building this:
+
+    root
+      +-- ch1
+      |   +-- gc1
+      |   |  +-- ggc1
+      |   |  +-- ggc2
+      |   +-- gc2
+      |
+      +-- ch2
+      |   +-- gc3
+      |
+      +-- ch3
+    */
+
+    DTSetValue_StringPtr(tree, root, StringNew("root"));
+    int ch1 = DTAddChild_StringPtr(tree, root, StringNew("ch1"));
+		int gc1 = DTAddChild_StringPtr(tree, ch1, StringNew("gc1"));
+			int ggc1 = DTAddChild_StringPtr(tree, gc1, StringNew("ggc1"));
+			int ggc2 = DTAddChild_StringPtr(tree, gc1, StringNew("ggc2"));
+		int gc2 = DTAddChild_StringPtr(tree, ch1, StringNew("gc2"));
+    int ch2 = DTAddChild_StringPtr(tree, root, StringNew("ch2"));
+		int gc3 = DTAddChild_StringPtr(tree, ch2, StringNew("gc3"));
+    int ch3 = DTAddChild_StringPtr(tree, root, StringNew("ch3"));
+
+    // visualise the tree
+    auto str = StringEmpty();
+    DTRenderToString_StringPtr(tree, str, renderStrToStr);
+	Log(cnsl, str);
+    StringDeallocate(str);
+    
+
+
+    ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
+	LogFmt(cnsl,"\nMemory used for tree:      \x02 bytes across \x02 objects. \x02 free.", alloc, objects, unalloc);
+
+    // clean up strings
+    StringPtr sx = NULL;
+    auto vec = DTAllData(tree, NULL);
+    while (VecPop_StringPtr(vec, &sx)) {
+        StringDeallocate(sx);
+    }
+    VecDeallocate(vec);
+
+    // dealloc tree
+	DTDeallocate(&tree);
+
+    ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
+	LogFmt(cnsl,"\nMemory used after dealloc: \x02 bytes across \x02 objects. \x02 free.", alloc, objects, unalloc);
+    
+    ArenaGetState(MMCurrent(), &alloc, &unalloc, NULL, NULL, &objects, NULL);
+	LogFmt(cnsl,"\nMemory leaked externally:  \x02 bytes across \x02 objects. \x02 free.", alloc, objects, unalloc);
+
+    return result;
+}
 
 int TestSchedulerSpawning() {
 	int result = 0;
@@ -1525,6 +1605,11 @@ int main() {
     MMPush(1 MEGABYTE);
 	ShowConsoleWindow();
     EventSystem_Start();
+
+    MMPush(10 MEGABYTES);
+    int dtree = TestDTree();
+    if (dtree != 0) return dtree;
+    MMPop();
 	
     /*
     auto aares = TestArenaAllocator();
@@ -1574,12 +1659,12 @@ int main() {
     auto fsres = TestFileSystem();
     if (fsres != 0) return fsres;
     MMPop();
-*/
+
     MMPush(10 MEGABYTES);
     auto bigone = TestCompiler();
     if (bigone != 0) return bigone;
     MMPop();
-  /*  
+
     MMPush(10 MEGABYTES);
     auto runit = TestRuntimeExec();
     if (runit != 0) return runit;
@@ -1597,18 +1682,19 @@ int main() {
     auto ipct = TestIPC();
     if (ipct != 0) return ipct;
     MMPop();
-    */
 	
     MMPush(10 MEGABYTES);
     auto schtst = TestSchedulerSpawning();
     //if (schtst != 0) return schtst;
     MMPop();
 
+    */
 
     auto suiteEndTime = SystemTime();
 
 	LogFmt(cnsl,"\n\nTest suite finished in \x02s.", (suiteEndTime - suiteStartTime));
 
+    /*
     MMPush(1 MEGABYTES);
     auto sdest = StringEmpty();
     Console_ReadLine(cnsl, sdest);
@@ -1617,12 +1703,7 @@ int main() {
 
     // Run a scheduler program to wait for keyboard input
     RunWaiterProgram();
-
-    // wait again to inspect...
-	/*char dummy;
-    std::cout << "Input a character to quit: ";
-	std::cin.get(dummy); 
-*/
+    */
 
 	CloseConsoleWindow();
     ShutdownManagedMemory();
