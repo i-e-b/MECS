@@ -8,7 +8,7 @@
 */
 
 #include "String.h"
-#include "Tree.h"
+#include "Tree_2.h"
 #include "Scope.h"
 #include "TagCodeWriter.h"
 
@@ -16,6 +16,6 @@
 bool NeedsDesugaring(String* funcName);
 
 // Expand input nodes
-TreeNode* DesugarProcessNode(String* funcName, Scope* parameterNames, TreeNode* node, TagCodeCache* tcc);
+DTreeNode* DesugarProcessNode(String* funcName, Scope* parameterNames, DTreeNode* node, TagCodeCache* tcc);
 
 #endif

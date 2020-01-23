@@ -3,7 +3,8 @@
 #ifndef sourcecodetokeniser_h
 #define sourcecodetokeniser_h
 
-#include "Tree.h"
+//#include "Tree.h"
+#include "Tree_2.h"
 #include "String.h"
 
 /*
@@ -77,16 +78,17 @@ typedef struct SourceNode {
     // Length of contents (in characters) from the last time the node was formatted
     int FormattedLength;
 } SourceNode;
+typedef SourceNode* SourceNodePtr;
 
 /// <summary>
 /// Read an source string and output tree of `SourceNode`
 /// </summary>
 /// <param name="source">Input text</param>
 /// <param name="preserveMetadata">if true, comments and spacing will be included</param>
-TreeNode* ParseSourceCode(String* source, bool preserveMetadata);
+DTreePtr ParseSourceCode(ArenaPtr arena, String* source, bool preserveMetadata);
 
 // Write the abstract syntax tree out as a source code string. This does auto-formatting
-String* RenderAstToSource(TreeNode* ast);
+String* RenderAstToSource(DTreePtr ast);
 
 // Create a human-readable description of a SourceNode
 String* DescribeSourceNode(SourceNode *n);
@@ -95,6 +97,6 @@ String* DescribeSourceNode(SourceNode *n);
 String* DescribeNodeType(NodeType nt);
 
 // Clean up tree, deallocating anything stored during the `Read` process
-void DeallocateAST(TreeNode* ast);
+void DeallocateAST(DTreePtr ast);
 
 #endif

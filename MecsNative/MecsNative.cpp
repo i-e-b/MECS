@@ -59,6 +59,8 @@ RegisterTreeFor(exampleElement, T)
 
 RegisterDTreeStatics(DT)
 RegisterDTreeFor(StringPtr, DT)
+RegisterDTreeFor(SourceNodePtr, DT)
+RegisterDTreeFor(SourceNode, DT)
 
 RegisterHeapStatics(H)
 RegisterHeapFor(char, H)
@@ -859,7 +861,9 @@ int TestCompiler() {
     StringClear(code); // also clears the underlying vector
     if (syntaxTree == NULL) { Log(cnsl,"Parser failed entirely"); return -2; }
 
-    SourceNode *result = (SourceNode*)TreeReadBody(syntaxTree);
+    //SourceNode *result = (SourceNode*)TreeReadBody(syntaxTree);
+    SourceNode *result = DTReadBody_SourceNode(syntaxTree, DTRootId(syntaxTree));
+
 
     if (result->IsValid) {
         Log(cnsl,"The source file was parsed correctly!? It should not have been!\n");
@@ -883,7 +887,7 @@ int TestCompiler() {
     StringDeallocate(code);
     if (syntaxTree == NULL) { Log(cnsl,"Parser failed entirely"); return -5; }
 
-    result = (SourceNode*)TreeReadBody(syntaxTree);
+    result = (SourceNode*)DTReadBody_SourceNode(syntaxTree, DTRootId(syntaxTree));
 
     if (!result->IsValid) {
         Log(cnsl,"The source file was not valid (FAIL!)\n");
@@ -1394,6 +1398,10 @@ static void renderStrToStr(StringPtr* src, StringPtr dst) {
     if (src == NULL || *src == NULL || dst == NULL) return;
     StringAppend(dst, *src);
 }
+static void DeallocString(StringPtr* str) {
+    if (str == NULL || *str == NULL) return;
+    StringDeallocate(*str);
+}
 
 int TestDTree() {
 	int result = 0;
@@ -1441,10 +1449,7 @@ int TestDTree() {
     int ch3 = DTAddChild_StringPtr(tree, root, StringNew("ch3"));
 
     // visualise the tree
-    auto str = StringEmpty();
-    DTRenderToString_StringPtr(tree, str, renderStrToStr);
-	Log(cnsl, str);
-    StringDeallocate(str);
+	LogDealloc(cnsl, DTRenderToString_StringPtr(tree, renderStrToStr));
     
     /*
     Pivot on `gc1` should result in
@@ -1467,10 +1472,7 @@ int TestDTree() {
     LogFmt(cnsl, "\n\nPivoting gc1. Expecting: \x02 == \x02 ?\n", ggc1, gcp);
 
     // visualise the modified tree
-    str = StringEmpty();
-    DTRenderToString_StringPtr(tree, str, renderStrToStr);
-	Log(cnsl, str);
-    StringDeallocate(str);
+	LogDealloc(cnsl, DTRenderToString_StringPtr(tree, renderStrToStr));
 
     Log(cnsl, "\nAssertions:\n");
     LogFmt(cnsl, "gc1 is \x05, gc2 is \x05\n",
@@ -1520,21 +1522,60 @@ int TestDTree() {
 	DTRemoveChild(tree, ggc1, 1);
 
     // visualise the modified tree
-    str = StringEmpty();
-    DTRenderToString_StringPtr(tree, str, renderStrToStr);
-	Log(cnsl, str);
-    StringDeallocate(str);
+	LogDealloc(cnsl, DTRenderToString_StringPtr(tree, renderStrToStr));
 
+	/*
+	   Copy ch1 as a new tree
+
+	   ch1
+		  +-- gc1
+	      |  +-- ggc1
+	      |     +-- ggc2
+	      |
+		  +-- gc2
+	*/
+    Log(cnsl, "\n\nCopying subtree from ch1\n");
+    auto subtree = DTCopySubtree(tree, ch1);
+	LogDealloc(cnsl, DTRenderToString_StringPtr(subtree, renderStrToStr));
+
+
+    /*
+    Inject the new subtree back under ch3:
+
+    root
+      +-- ch1
+      |   +-- gc1
+      |   |  +-- ggc1
+      |   |     +-- ggc2
+      |   |
+      |   +-- gc2
+      |
+      +-- ch2
+      |   +-- ggc3
+      |   +-- gc3
+      |
+      +-- ch3
+	      +--ch1
+			  +-- gc1
+			  |  +-- ggc1
+			  |     +-- ggc2
+			  |
+			  +-- gc2
+    */
+
+    Log(cnsl, "\n\nCopying subtree back under ch3\n");
+    int newNodeId = DTAppendSubtree(tree, ch3, subtree, DTRootId(subtree));
+
+	DTDeallocate(&subtree); // should be able to kill this without harming the tree we copied into
+	LogDealloc(cnsl, DTRenderToString_StringPtr(tree, renderStrToStr));
+
+
+    // Measure memory state, and check we can clean-up effectively.
     ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);
 	LogFmt(cnsl,"\nMemory used for tree:      \x02 bytes across \x02 objects. \x02 free.", alloc, objects, unalloc);
 
     // clean up strings
-    StringPtr sx = NULL;
-    auto vec = DTAllData(tree, NULL);
-    while (VecPop_StringPtr(vec, &sx)) {
-        StringDeallocate(sx);
-    }
-    VecDeallocate(vec);
+    DTApplyAll_StringPtr(tree, DeallocString);
     // dealloc tree
 	DTDeallocate(&tree);
 

@@ -3,8 +3,11 @@
 
 typedef SourceNode Node; // 'SourceNode'. Typedef just for brevity
 
-RegisterTreeStatics(T)
-RegisterTreeFor(Node, T)
+//RegisterTreeStatics(T)
+//RegisterTreeFor(Node, T)
+
+RegisterDTreeStatics(DT)
+RegisterDTreeFor(Node, DT)
 
 Node newNode(int sourceLoc, String* text, NodeType type) {
     auto n = Node{};
@@ -104,7 +107,7 @@ inline bool IsQuote(char c) {
 }
 
 // skip any whitespace (any of ',', ' ', '\t', '\r', '\n'). Most of the complexity is to capture metadata for auto-format
-int SkipWhitespace(String* exp, int position, TreeNode* mdParent) {
+int SkipWhitespace(String* exp, int position, DTreeNode* mdParent) {
     int lastcap = position;
     int i = position;
     int length = StringLength(exp);
@@ -127,7 +130,7 @@ int SkipWhitespace(String* exp, int position, TreeNode* mdParent) {
             if (capNL) {
                 // switch from newlines to regular space
                 // output NL so far
-                if (mdParent != NULL) TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline));
+                if (mdParent != NULL) DTAddChild_Node(*mdParent, newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline));
                 lastcap = i;
             }
             capNL = false;
@@ -141,7 +144,7 @@ int SkipWhitespace(String* exp, int position, TreeNode* mdParent) {
             if (capWS) {
                 // switch from regular space to newlines
                 // output WS so far
-                if (mdParent != NULL) TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace));
+                if (mdParent != NULL) DTAddChild_Node(*mdParent, newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace));
                 lastcap = i;
             }
             i++;
@@ -159,12 +162,12 @@ int SkipWhitespace(String* exp, int position, TreeNode* mdParent) {
     if (i != lastcap) {
         if (capNL) {
             if (mdParent != NULL) {
-                TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline));
+                DTAddChild_Node(*mdParent, newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Newline));
             }
         }
         if (capWS) {
             if (mdParent != NULL) {
-                TAddChild_Node(mdParent, &newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace));
+                DTAddChild_Node(*mdParent, newNode(lastcap, StringSlice(exp, lastcap, i - lastcap), NodeType::Whitespace));
             }
         }
     }
@@ -275,7 +278,7 @@ String* ReadWord(String* expression, int position) {
 }
 
 // Try to read a line comment. Returns false if it's not a line comment
-bool TryCaptureComment(String* source, int* inOutPosition, bool preserveMetadata, TreeNode* mdParent)
+bool TryCaptureComment(String* source, int* inOutPosition, bool preserveMetadata, DTreeNode* mdParent)
 {
     unsigned int end;
     int i = *inOutPosition;
@@ -289,7 +292,7 @@ bool TryCaptureComment(String* source, int* inOutPosition, bool preserveMetadata
         end = NextNewline(source, i);
         if (preserveMetadata) {
             tmp = newNode(i, StringSlice(source, i, end - i), NodeType::Comment);
-            TAddChild_Node(mdParent, &tmp);
+            DTAddChild_Node(*mdParent, tmp);
         }
         *inOutPosition = end - 1;
         return true;
@@ -299,7 +302,7 @@ bool TryCaptureComment(String* source, int* inOutPosition, bool preserveMetadata
         if (!found) end = StringLength(source);
         if (preserveMetadata) {
             tmp = newNode(i, StringSlice(source, i, end - i + 2), NodeType::Comment);
-            TAddChild_Node(mdParent, &tmp);
+            DTAddChild_Node(*mdParent, tmp);
         }
         *inOutPosition = end + 1;
         return true;
@@ -312,35 +315,35 @@ bool IsNumeric(String* word) {
     return StringTryParse_double(word, NULL);
 }
 
-void MaybeIncludeWhitespace(bool y, TreeNode** wsNode, TreeNode* target) {
-    if (wsNode == NULL || *wsNode == NULL) return;
+void MaybeIncludeWhitespace(bool y, DTreeNode* wsNode, DTreeNode target) {
+    if (wsNode == NULL || wsNode == NULL) return;
     if (y) {
-        TAppendNode(target, TChild(*wsNode)); // include any childen, but not the top node
-        ArenaDereference(TArena(*wsNode), *wsNode); // specifically NOT dealloc the whole chain -- it's added to 'target' now
-        *wsNode = NULL; // kill the whitespace node ref
-    } else {
-        TDeallocate(*wsNode); // Not using the whitespace. Clean it all up
-        *wsNode = NULL; // kill the whitespace node ref
+        int id = DTGetChildId(*wsNode);
+        DTAppendSubtree(target, DTNode(wsNode->Tree, id)); // this does a copy
     }
+    DTClear(wsNode->Tree);
 }
-void PrepareWhitespaceContainer(TreeNode** wsNode) {
+void PrepareWhitespaceContainer(DTreeNode* wsNode) {
     if (wsNode == NULL) return;
-    if (*wsNode != NULL) TDeallocate(*wsNode); // didn't get used. Clean it up.
-    *wsNode = TBareNode_Node(TArena(*wsNode));
+    
+    DTClear(wsNode->Tree);
+    wsNode->NodeId = DTRootId(wsNode->Tree);
 }
 
-bool ParseSource(String* source, TreeNode* root, int position, bool preserveMetadata) {
+bool ParseSource(String* source, DTreePtr tree, int position, bool preserveMetadata) {
     int i = position;
     int length = StringLength(source);
-    auto current = root;
-    Node tmp = newNodeInvalid();
-    TreeNode* parent = current;
-    TreeNode* wsNode = NULL;
+    auto current = DTNode(tree, DTRootId(tree));
+    //Node tmp = newNodeInvalid();
+    DTreeNode parent = current;
+
+    DTreePtr wsTree = DTAllocate_Node(DTArena(tree));
+    DTreeNode wsNode = DTNode(wsTree, DTRootId(wsTree));
 
     while (i < length)
     {
         PrepareWhitespaceContainer(&wsNode);
-        i = SkipWhitespace(source, i, wsNode);
+        i = SkipWhitespace(source, i, &wsNode);
         MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
 
         if (i >= length) { break; }
@@ -352,20 +355,17 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
         {
         case '(': // start of call
             parent = current;
-            tmp = newNodeOpenCall(i);
-            current = TAddChild_Node(parent, &tmp);
+            current.NodeId = DTAddChild_Node(parent, newNodeOpenCall(i));
             break;
         case ')': // end of call
         {
             if (preserveMetadata) {
-                tmp = newNodeCloseCall(i);
-                TAddChild_Node(current, &tmp);
+                DTAddChild_Node(current, newNodeCloseCall(i));
             }
 
-            current = TParent(current);
-            if (current == NULL) {
-                tmp = newNodeError(i, StringNew("###PARSER ERROR: ROOT CRASH###"));
-                TAddChild_Node(current, &tmp);
+            current.NodeId = DTGetParentId(current);
+            if (!DTValidNode(current)) {
+				DTAddChild_Node(current, newNodeError(i, StringNew("###PARSER ERROR: ROOT CRASH###")));
                 return false;
             }
             break;
@@ -376,8 +376,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
         case '`':
         {
             if (preserveMetadata) {
-                tmp = newNodeDelimiter(i, car);
-                TAddChild_Node(current, &tmp);
+                DTAddChild_Node(current, newNodeDelimiter(i, car));
             }
 
             i++;
@@ -385,23 +384,22 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
             bool endedCorrectly;
             auto words = ReadString(source, &i, car, &endedCorrectly);
 
-            tmp = newNodeString(old_i, words);
+            auto tmp = newNodeString(old_i, words);
             if (preserveMetadata) {
                 tmp.Unescaped = StringSlice(source, old_i, i - old_i);
             }
 
-            TAddChild_Node(current, &tmp);
+            DTAddChild_Node(current, tmp);
 
             if (preserveMetadata && endedCorrectly) {
                 car = StringCharAtIndex(source, i);
-                tmp = newNodeDelimiter(i, car);
-                TAddChild_Node(current, &tmp);
+                DTAddChild_Node(current, newNodeDelimiter(i, car));
             }
             break;
         }
 
         case '/': //maybe a comment?
-            if (TryCaptureComment(source, &i, preserveMetadata, current))
+            if (TryCaptureComment(source, &i, preserveMetadata, &current))
             {
                 break;
             }
@@ -418,11 +416,11 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                 i += wordLength;
 
                 PrepareWhitespaceContainer(&wsNode);
-                i = SkipWhitespace(source, i, wsNode);
+                i = SkipWhitespace(source, i, &wsNode);
                 if (i > length) {
                     // Unexpected end of input
                     // To help formatting and diagnosis, write the last bits.
-                    TAddSibling_Node(current, &newNodeAtom(startLoc, word));
+                    DTAddSibling_Node(current, newNodeAtom(startLoc, word));
                     MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
                     return false;
                 }
@@ -431,22 +429,20 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                 {
                     // we need the atom we create to NOT be a leaf!
                     if (IsNumeric(word)) {
-                        tmp = newNodeError(i, StringNew("Error: '"));
-                        StringAppend(tmp.ErrorMessage, word);
-                        StringAppend(tmp.ErrorMessage, "' used like a function name, but looks like a number");
-
-                        TAddChild_Node(current, &tmp);
+                        DTAddChild_Node(current, 
+                            newNodeError(i, StringNewFormat("Error: '\x01' used like a function name, but looks like a number", word ))
+                        );
                         return false;
-                    }
+                    } else {
+						parent = current;
+						auto tmp = newNodeAtom(startLoc, word);
+						tmp.functionLike = true;
+						current.NodeId = DTAddChild_Node(parent, tmp);
 
-                    parent = current;
-                    tmp = newNodeAtom(startLoc, word);
-                    tmp.functionLike = true;
-                    current = TAddChild_Node(parent, &tmp);
-
-                    MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
-                    if (preserveMetadata) {
-                        TAddChild_Node(current, &newNodeOpenCall(i));
+						MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
+						if (preserveMetadata) {
+							DTAddChild_Node(current, newNodeOpenCall(i));
+						}
                     }
                 }
                 else if (car == ':') {
@@ -455,7 +451,7 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                     
 					StringAppendChar(word, ':'); // the ':' is part of the directive name, so it doesn't clash with variables.
                     i++;
-					i = SkipWhitespace(source, i, wsNode);
+					i = SkipWhitespace(source, i, &wsNode);
                     MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
 					car = StringCharAtIndex(source, i);
 
@@ -468,56 +464,48 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
                         i++;
 
                         if (!endedCorrectly) {
-							tmp = newNodeError(i, StringNew("\r\nError: '"));
-							StringAppend(tmp.ErrorMessage, word);
-							StringAppend(tmp.ErrorMessage, "' system directive argument was not ended correctly");
-
-							TAddChild_Node(current, &tmp);
+							DTAddChild_Node(current, 
+                                newNodeError(i, StringNewFormat("\r\nError: '\x01' system directive argument was not ended correctly", word))
+                            );
 							return false;
                         }
 
                         // node for directive
-						tmp = newNodeDirective(startLoc, word);
+						auto tmp = newNodeDirective(startLoc, word);
 						tmp.functionLike = true;
 
                         // add to tree
 						//parent = current;
-						auto xcurrent = TAddChild_Node(current, &tmp);
+						auto dirPos = DTAddChild_Node(current, tmp);
                         
 						if (preserveMetadata) {
-							tmp = newNodeDelimiter(i, car);
-							TAddChild_Node(current, &tmp);
+							DTAddChild_Node(current, newNodeDelimiter(i, car));
 						}
 
                         // add directive argument to directive node
-						tmp = newNodeString(old_i, words);
-						TAddChild_Node(xcurrent, &tmp);
+						int id = DTAddChild_Node(current.Tree, dirPos, newNodeString(old_i, words));
                         
 
                         // This isn't working well
 						if (preserveMetadata && endedCorrectly) {
 							car = StringCharAtIndex(source, i);
-							tmp = newNodeDelimiter(i, car);
-							TAddChild_Node(current, &tmp);
+							DTAddChild_Node(current, newNodeDelimiter(i, car));
 						}
 					}
 					else {
-
-						tmp = newNodeError(i, StringNew("\r\nError: '"));
-						StringAppend(tmp.ErrorMessage, word);
-						StringAppend(tmp.ErrorMessage, "' looks like a system directive, but you didn't give a string");
-
-						TAddChild_Node(current, &tmp);
+						DTAddChild_Node(current, 
+                            newNodeError(i, StringNewFormat("\r\nError: '\x01' looks like a system directive, but you didn't give a string", word))
+                        );
 						return false;
 					}
                 }
                 else
                 {
                     i--;
-                    tmp = newNodeAtom(startLoc, word);
+                    auto tmp = newNodeAtom(startLoc, word);
                     if (IsNumeric(word)) tmp.NodeType = NodeType::Numeric;
 
-                    TAddChild_Node(current, &tmp);
+                    DTAddChild_Node(current, tmp);
 
                     MaybeIncludeWhitespace(preserveMetadata, &wsNode, current);
                 }
@@ -529,11 +517,11 @@ bool ParseSource(String* source, TreeNode* root, int position, bool preserveMeta
 
         i++;
     }
-    if (wsNode != NULL) TDeallocate(wsNode);
+    DTDeallocate(wsNode);
     return true;
 }
 
-TreeNode* ParseSourceCode(String* source, bool preserveMetadata) {
+DTreePtr ParseSourceCode(ArenaPtr arena, String* source, bool preserveMetadata) {
     auto root = Node();
     root.NodeType = NodeType::Root;
     root.SourceLocation = 0;
@@ -542,23 +530,23 @@ TreeNode* ParseSourceCode(String* source, bool preserveMetadata) {
     root.Unescaped = NULL;
     root.FormattedLocation = 0;
 
-    auto tree = TAllocate_Node(MMCurrent());
-    TSetValue_Node(tree, &root);
+    auto tree = DTAllocate_Node(arena);
+    DTSetValue_Node(tree, 0, root);
 
     bool valid = ParseSource(source, tree, 0, preserveMetadata);
 
     if (!valid) {
         root.IsValid = false;
-        TSetValue_Node(tree, &root);
+		DTSetValue_Node(tree, 0, root);
     }
 
     return tree;
 }
 
-void DeallocateAST(TreeNode* ast) {
+void DeallocateAST(DTreePtr ast) {
     if (ast == NULL) return;
 
-    auto vec = TAllData(ast); // vector of SourceNode
+    auto vec = DTAllData(ast, NULL); // vector of SourceNode
 
     Node n = Node{};
     while (VectorPop(vec, &n)) {
@@ -568,7 +556,7 @@ void DeallocateAST(TreeNode* ast) {
     }
 
     VectorDeallocate(vec);
-    TreeDeallocate(ast);
+    DTreeDeallocate(&ast);
 }
 
 
@@ -600,9 +588,9 @@ String* DescribeSourceNode(SourceNode *n) {
 
 // Recursively descend into the nodes.
 // TODO: handle highlighting, cursor position
-void Render_Rec(TreeNode* node, int indent, String* outp) {
+void Render_Rec(DTreePtr tree, int nodeId, int indent, String* outp) {
 
-    Node* n = TReadBody_Node(node);
+    Node* n = DTReadBody_Node(tree, nodeId);
 
     // Write the node contents
     if (n->IsValid) {
@@ -613,14 +601,14 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
 
     // Recursively write child nodes
     bool leadingWhite = false;
-    auto child = TChild(node);
-    while (child != NULL) {
-        n = TReadBody_Node(child);
+    auto childId = DTGetChildId(tree, nodeId);
+    while (childId >= 0) {
+        n = DTReadBody_Node(tree, childId);
 
         // Handle re-indenting
         if (leadingWhite) {
             if (n->NodeType == NodeType::Whitespace) { // skip leading whitespace
-                child = TSibling(child);
+                childId = DTGetSiblingId(tree, childId);
                 continue;
             }
 
@@ -637,17 +625,17 @@ void Render_Rec(TreeNode* node, int indent, String* outp) {
         }
 
         // write node text
-        Render_Rec(child, indent + 1, outp);
-        child = TSibling(child); // next node at this level
+        Render_Rec(tree, childId, indent + 1, outp);
+        childId = DTGetSiblingId(tree, childId); // next node at this level
     }
 }
 
-String* RenderAstToSource(TreeNode* ast) {
+String* RenderAstToSource(DTreePtr ast) {
     if (ast == NULL) return NULL;
 
     auto outp = StringEmpty();
 
-    Render_Rec(ast, 0, outp);
+    Render_Rec(ast, DTRootId(ast), 0, outp);
     
     return outp;
 }

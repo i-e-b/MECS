@@ -64,6 +64,24 @@ DTreePtr DTreeAllocate(ArenaPtr arena, int dataElementSize) {
 	return result;
 }
 
+
+void DTreeClear(DTreePtr tree) {
+	if (tree == NULL) return;
+
+	VectorClear(tree->Relations);
+	VectorClear(tree->Data);
+
+	// Insert a root node
+	DRelation crel = {};
+	crel.DataIndex = INVALID;
+	crel.ParentId = INVALID;
+	crel.NextSibling = INVALID;
+	crel.ChildId = INVALID;
+
+	VectorPush_DRelation(tree->Relations, crel);
+	tree->RootIndex = VectorLength(tree->Relations) - 1;
+}
+
 int DTreeRootId(DTreePtr tree) {
 	if (tree == NULL) return INVALID;
 	return tree->RootIndex;
@@ -209,7 +227,6 @@ void* DTreeReadBody(DTreePtr tree, int nodeId) {
 	if (rel == NULL || rel->DataIndex < 0) return NULL;
 	return VectorGet(tree->Data, rel->DataIndex);
 }
-
 
 
 // Returns the ID of the first child of a node, or negative
@@ -393,7 +410,7 @@ int DTreePivot(DTreePtr tree, int nodeId) {
 	return pivotIndex;
 }
 
-void RenderToStringRec(DTreePtr tree, int targetNode, StringPtr str, int depth, DTreeNodeRenderFunc* render) {
+static void RenderToStringRec(DTreePtr tree, int targetNode, StringPtr str, int depth, DTreeNodeRenderFunc* render) {
 	auto rel = VectorGet_DRelation(tree->Relations, targetNode);
 	// indent
 	StringAppendChar(str, ' ', depth * 2);
@@ -422,8 +439,100 @@ void RenderToStringRec(DTreePtr tree, int targetNode, StringPtr str, int depth, 
 }
 
 // Draw a representation of the tree to the given string
-void DTree_RenderToString(DTreePtr tree, StringPtr string, DTreeNodeRenderFunc* nodeRenderFunc) {
+void DTreeRenderToString(DTreePtr tree, StringPtr string, DTreeNodeRenderFunc* nodeRenderFunc) {
 	if (tree == NULL || string == NULL || nodeRenderFunc == NULL) return;
 
 	RenderToStringRec(tree, tree->RootIndex, string, 0, nodeRenderFunc);
+}
+
+static inline bool CopyData(DTreePtr src, DTreePtr dst, int srcNode, int dstNode) {
+	auto data = DTreeReadBody(src, srcNode);
+	return DTreeSetValue(dst, dstNode, data);
+}
+
+static int NewBlankNode(DTreePtr tree, int parentId) {
+	DRelation crel = {};
+	crel.DataIndex = INVALID;
+	crel.ParentId = parentId;
+	crel.NextSibling = INVALID;
+	crel.ChildId = INVALID;
+
+	VectorPush_DRelation(tree->Relations, crel);
+	return VectorLength(tree->Relations) - 1;
+}
+
+static bool CopyRecursive(DTreePtr src, DTreePtr dst, int srcNode, int dstNode, bool isRoot) {
+	// Copy data for this node
+	auto ok = CopyData(src, dst, srcNode, dstNode);
+	if (!ok) return false;
+
+	
+	// recurse children
+	auto srcRel = VectorGet_DRelation(src->Relations, srcNode);
+	if (srcRel->ChildId >= 0) {
+		// make node on dst side, recurse
+		int newChildIdx = NewBlankNode(dst, dstNode);
+		VectorGet_DRelation(dst->Relations, dstNode)->ChildId = newChildIdx;
+		CopyRecursive(src, dst, srcRel->ChildId, newChildIdx, false);
+	}
+
+	if (isRoot) return true; // don't copy root siblings
+
+	// recurse next sibling
+	int sibIdx = srcRel->NextSibling;
+	if (sibIdx < 0) return true;
+
+	// make node on dst side, recurse
+	int newSibIdx = NewBlankNode(dst, dstNode);
+	VectorGet_DRelation(dst->Relations, dstNode)->NextSibling = newSibIdx;
+	return CopyRecursive(src, dst, sibIdx, newSibIdx, false);
+}
+
+
+// Make a new normalised copy of the tree, from a given node down.
+DTreePtr DTreeCopySubtree(DTreePtr src, int newRootId) {
+	if (src == NULL || newRootId < 0) return NULL;
+
+	auto dst = DTreeAllocate(src->_memory, src->_elementSize);
+	if (dst == NULL) return NULL;
+
+	auto ok = CopyRecursive(src, dst, newRootId, dst->RootIndex, true);
+
+	if (!ok) {
+		DTreeDeallocate(&dst);
+		return NULL;
+	}
+
+	return dst;
+}
+
+// Draw a representation of the tree to the given string
+StringPtr DTreeRenderToString(DTreePtr tree, DTreeNodeRenderFunc* nodeRenderFunc) {
+	auto str = StringEmptyInArena(tree->_memory);
+	DTreeRenderToString(tree, str, nodeRenderFunc);
+	return str;
+}
+
+void DTreeApplyAll(DTreePtr tree, DTreeApplyFunc* func) {
+	if (tree == NULL || func == NULL) return;
+
+	int length = VectorLength(tree->Data);
+	for (int i = 0; i < length; i++)
+	{
+		auto data = VectorGet(tree->Data, i);
+		if (data != NULL) func(data);
+	}
+}
+
+// Copy a subtree from one tree to another
+int DTreeAppendSubtree(DTreePtr dst, int dstParentId, DTreePtr src, int srcRootId) {
+	if (dst == NULL || src == NULL || dstParentId < 0 || srcRootId < 0) return INVALID;
+	
+	if (dst == src) {
+		// TODO: make a copy first, then merge it back-- so we don't end up in a bad place
+		return INVALID;
+	}
+
+	auto ok = CopyRecursive(src, dst, newRootId, dst->RootIndex, true);
+
 }
