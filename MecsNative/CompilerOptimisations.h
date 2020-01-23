@@ -22,6 +22,6 @@ bool CO_IsSimpleComparsion(DTreeNode* condition, int opCodeCount);
 bool CO_IsSimpleSet(DTreeNode* setNode);
 
 // Pack a comparison between two simple values into a single op-code. Reduces loop condition complexity
-DTreeNode* CO_ReadSimpleComparison(DTreeNode* condition, CmpOp *outCmpOp, uint16_t* outArgCount);
+DTreeNode CO_ReadSimpleComparison(DTreeNode* condition, CmpOp *outCmpOp, uint16_t* outArgCount);
 
 #endif

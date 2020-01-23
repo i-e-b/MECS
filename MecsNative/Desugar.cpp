@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-RegisterTreeFor(SourceNode, Tree)
+RegisterDTreeFor(SourceNode, Tree)
 
 String* SugarName(String* original, int position) {
     return StringNewFormat("__\x01_s\x02", original, position);
