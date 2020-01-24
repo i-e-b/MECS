@@ -14,14 +14,15 @@
 RegisterHashMapStatics(Map)
 RegisterHashMapFor(StringPtr, bool, HashMapStringKeyHash, HashMapStringKeyCompare, Map)
 
-RegisterTreeFor(SourceNode, Tree)
+RegisterDTreeStatics(DT)
+RegisterDTreeFor(SourceNode, DT)
 
 RegisterVectorFor(char, Vec)
 RegisterVectorFor(StringPtr, Vec)
 
 // Compile source code from a syntax tree into a tag code cache
-TagCodeCache* CompileRoot(TreeNode* root, bool debug, bool isSubprogram) {
-    if (root == NULL) return NULL;
+TagCodeCache* CompileRoot(DTreeNode root, bool debug, bool isSubprogram) {
+    if (!DTValidNode(root)) return NULL;
     auto wr = TCW_Allocate(MMCurrent());
 
     if (debug) {
@@ -48,8 +49,9 @@ TagCodeCache* CompileRoot(TreeNode* root, bool debug, bool isSubprogram) {
 }
 
 
-bool IsUnwrappedIdentifier(String* valueName, TreeNode* rootNode, Context compileContext) {
-    auto root = TreeReadBody_SourceNode(rootNode);
+bool IsUnwrappedIdentifier(String* valueName, DTreeNode rootNode, Context compileContext) {
+    //auto root = TreeReadBody_SourceNode(rootNode);
+    auto root = DTReadBody_SourceNode(rootNode);
     if (root->NodeType != NodeType::Atom || compileContext == Context::MemoryAccess) return false;
 
     if (   StringAreEqual(valueName, "false") // reserved identifiers
@@ -57,9 +59,9 @@ bool IsUnwrappedIdentifier(String* valueName, TreeNode* rootNode, Context compil
 
     return true;
 }
-bool IsMemoryFunction(TreeNode* node) {
-    if (node == NULL) return false;
-    auto source = TreeReadBody_SourceNode(node);
+bool IsMemoryFunction(DTreeNode node) {
+    if (!DTValidNode(node)) return false;
+    auto source = DTReadBody_SourceNode(node);
     auto str = source->Text;
 
     if (   StringAreEqual(str, "get")
@@ -69,18 +71,18 @@ bool IsMemoryFunction(TreeNode* node) {
 
     return false;
 }
-bool IsInclude(TreeNode* node) {
-    if (node == NULL) return false;
-    auto source = TreeReadBody_SourceNode(node);
+bool IsInclude(DTreeNode node) {
+    if (!DTValidNode(node)) return false;
+    auto source = DTReadBody_SourceNode(node);
     auto str = source->Text;
 
     if (StringAreEqual(str, "import")) return true;
 
     return false;
 }
-bool IsFlowControl(TreeNode* node) {
-    if (node == NULL) return false;
-    auto source = TreeReadBody_SourceNode(node);
+bool IsFlowControl(DTreeNode node) {
+    if (!DTValidNode(node)) return false;
+    auto source = DTReadBody_SourceNode(node);
     auto str = source->Text;
 
     if (   StringAreEqual(str, "if")
@@ -88,9 +90,9 @@ bool IsFlowControl(TreeNode* node) {
 
     return false;
 }
-bool IsFunctionDefinition(TreeNode* node) {
-    if (node == NULL) return false;
-    auto source = TreeReadBody_SourceNode(node);
+bool IsFunctionDefinition(DTreeNode node) {
+    if (!DTValidNode(node)) return false;
+    auto source = DTReadBody_SourceNode(node);
     auto str = source->Text;
 
     if (StringAreEqual(str, "def")) return true;
@@ -99,13 +101,14 @@ bool IsFunctionDefinition(TreeNode* node) {
 }
 
 // Map parameter names to positional names. This must match the expectations of the interpreter
-void ParameterPositions(Scope* parameterNames, TreeNode* paramDef, TagCodeCache* wr) {
+void ParameterPositions(Scope* parameterNames, DTreeNode paramDef, TagCodeCache* wr) {
     ScopePush(parameterNames, NULL);
     int i = 0;
 
-    auto chain = TreeChild(paramDef);
-    while (chain != NULL) {
-        auto data = TreeReadBody_SourceNode(chain);
+    auto tree = paramDef.Tree;
+    auto chain = DTGetChildId(paramDef);
+    while (chain >= 0) {
+        auto data = DTReadBody_SourceNode(tree, chain);
         if (InScope(parameterNames, GetCrushedName(data->Text))) {
             TCW_AddError(wr, StringNewFormat("Duplicate parameter '\x01'.\r\nAll parameter names must be unique in a single function definition", data->Text));
             return;
@@ -120,13 +123,13 @@ void ParameterPositions(Scope* parameterNames, TreeNode* paramDef, TagCodeCache*
         TCW_AddSymbol(wr, originalReference, data->Text);
         TCW_AddSymbol(wr, parameterReference, StringNewFormat("param[\x02]", i));
 
-        chain = TreeSibling(chain);
+        chain = DTGetSiblingId(tree, chain);
         i++;
     }
 }
 
-void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context compileContext, TagCodeCache* wr) {
-    auto root = TreeReadBody_SourceNode(rootNode);
+void EmitLeafNode(DTreeNode rootNode, bool debug, Scope* parameterNames, Context compileContext, TagCodeCache* wr) {
+    auto root = DTReadBody_SourceNode(rootNode);
     DataTag leafValue = {};
     bool substitute = false;
     auto valueName = root->Text;
@@ -196,8 +199,8 @@ void EmitLeafNode(TreeNode* rootNode, bool debug, Scope* parameterNames, Context
     }
 }
 
-int CountRealFunctionParameters(TreeNode* node) {
-	int nodeCount = TreeCountChildren(node);
+int CountRealFunctionParameters(DTreeNode node) {
+	int nodeCount = DTCountChildren(node);
 
 	if (nodeCount == 0) return 0;
 
@@ -208,25 +211,26 @@ int CountRealFunctionParameters(TreeNode* node) {
 	//     print("hello" ())           <-- 2 params
 	//     print( mymap("key") )       <-- 1 param
 	//     print( mymap("k")("sub") )  <-- 1 param
-	auto childChain = TreeChild(node);
+    auto tree = node.Tree;
+	auto childChain = DTGetChildId(node);
 	
 	int filteredCount = 0;
-	while (childChain != NULL) {
-		auto nodeData = TreeReadBody_SourceNode(childChain);
-		if (!StringAreEqual(nodeData->Text, "()") || !(TreeCountChildren(childChain) > 0)) filteredCount++; // not a chain extension
-		childChain = TreeSibling(childChain);
+	while (childChain >= 0) {
+		auto nodeData = DTReadBody_SourceNode(tree, childChain);
+		if (!StringAreEqual(nodeData->Text, "()") || !(DTCountChildren(tree, childChain) > 0)) filteredCount++; // not a chain extension
+		childChain = DTGetSiblingId(tree, childChain);
 	}
 	return filteredCount;
 }
 
 
-void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
-    auto nodeData = TreeReadBody_SourceNode(node);
+void CompileMemoryFunction(int level, bool debug, DTreeNode node, TagCodeCache* wr, Scope* parameterNames) {
+    auto nodeData = DTReadBody_SourceNode(node);
     int paramCount = 0;
     // Check for special increment mode
     int8_t incr;
     String* target = NULL;
-    if (CO_IsSimpleSet(node) && CO_IsSmallIncrement(node, &incr, &target)) {
+    if (CO_IsSimpleSet(&node) && CO_IsSmallIncrement(&node, &incr, &target)) {
         TCW_Increment(wr, incr, target);
         return;
     }
@@ -241,23 +245,25 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
     // 3. get/set primary reference is elided.
 
     // handle `get` and `set` where we have a var-as-func style indexing
-    auto targetChildCount = TreeCountChildren(TreeChild(node));
+    auto tree = node.Tree;
+    auto targetChildCount = DTCountChildren(tree, DTGetChildId(node));
     if (targetChildCount > 0) {
         // complex set/get, using var-as-func
         // compile out the indexes
-        TCW_Merge(wr, Compile(TreeChild(node), level, debug, parameterNames, NULL, Context::MemoryAccess));
+        auto childNode = DTNode(tree, DTGetChildId(node));
+        TCW_Merge(wr, Compile(childNode, level, debug, parameterNames, NULL, Context::MemoryAccess));
         paramCount += targetChildCount;
     }
 
     // build a sub-tree to compile in memory-access context
-    auto child = TreePivot(node);
+    auto child = DTPivot(node);
 
-    paramCount += CountRealFunctionParameters(child);
-    auto childData = TreeReadBody_SourceNode(child);
+    paramCount += CountRealFunctionParameters(DTNode(tree, child));
+    auto childData = DTReadBody_SourceNode(tree, child);
 
     // this special case around `get` is probably an artefact of `TreePivot`
     if (!isAccessRequest || paramCount > 0) {
-        TCW_Merge(wr, Compile(child, level + 1, debug, parameterNames, NULL, context));
+        TCW_Merge(wr, Compile(DTNode(tree, child), level + 1, debug, parameterNames, NULL, context));
     }
 
     if (debug) { TCW_Comment(wr, StringNewFormat("// Memory function : '\x01'", nodeData->Text)); }
@@ -266,12 +272,12 @@ void CompileMemoryFunction(int level, bool debug, TreeNode* node, TagCodeCache* 
     TCW_Memory(wr, act, childData->Text, paramCount);
 }
 
-void CompileExternalFile(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames, HashMap* includedFiles) {
+void CompileExternalFile(int level, bool debug, DTreeNode node, TagCodeCache* wr, Scope* parameterNames, HashMap* includedFiles) {
     //     1) Check against import list. If already done, warn and skip.
     //     2) Read file. Fail = terminate with error
     //     3) Compile to opcodes
     //     4) Inject opcodes in `wr`
-    auto root = TreeReadBody_SourceNode(node);
+    auto root = DTReadBody_SourceNode(node);
 
     if (includedFiles == NULL) {
         TCW_AddError(wr, StringNewFormat("Files can only be included at the root level [#\03]", root->SourceLocation));
@@ -279,8 +285,9 @@ void CompileExternalFile(int level, bool debug, TreeNode* node, TagCodeCache* wr
     }
 
     // check against import list
-    auto firstChild = TreeChild(node);
-    auto firstChildData = TreeReadBody_SourceNode(firstChild);
+    auto tree = node.Tree;
+    auto firstChild = DTGetChildId(node);
+    auto firstChildData = DTReadBody_SourceNode(tree, firstChild);
     auto targetFile = firstChildData->Text;
 
     if (MapGet_StringPtr_bool(includedFiles, targetFile, NULL)) {
@@ -302,8 +309,8 @@ void CompileExternalFile(int level, bool debug, TreeNode* node, TagCodeCache* wr
     MapPut_StringPtr_bool(includedFiles, targetFile, true, true);
 
     // Parse and compile
-    TreeNode* parsed = ParseSourceCode(inclCode, false);
-    auto programFragment = Compile(parsed, level, debug, parameterNames, includedFiles, Context::External);
+    auto parsed = ParseSourceCode(MMCurrent(), inclCode, false);
+    auto programFragment = Compile(DTNode(parsed, DTRootId(parsed)), level, debug, parameterNames, includedFiles, Context::External);
 
     if (debug) { TCW_Comment(wr, StringNewFormat("// File import: '\x01'", targetFile)); }
 
@@ -312,12 +319,12 @@ void CompileExternalFile(int level, bool debug, TreeNode* node, TagCodeCache* wr
     if (debug) { TCW_Comment(wr, StringNewFormat("// <-- End of file import: '\x01'", targetFile)); }
 }
 
-bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
+bool CompileConditionOrLoop(int level, bool debug, DTreeNode node, TagCodeCache* wr, Scope* parameterNames) {
     // return true if we output a value
     bool returns = false;
 
-    auto nodeData = TreeReadBody_SourceNode(node);
-    int nodeChildCount = TreeCountChildren(node);
+    auto nodeData = DTReadBody_SourceNode(node);
+    int nodeChildCount = DTCountChildren(node);
 
     if (nodeChildCount < 1) {
         TCW_AddError(wr, StringNewFormat("\x01 requires parameter(s)", nodeData->Text));
@@ -393,41 +400,43 @@ bool CompileConditionOrLoop(int level, bool debug, TreeNode* node, TagCodeCache*
     return returns;
 }
 
-bool AllChildrenAreLeaves(TreeNode* node) {
-    auto chain = TreeChild(node);
-    while (chain != NULL) {
-        if (TreeCountChildren(chain) > 0) return false;
-        chain = TreeSibling(chain);
+bool AllChildrenAreLeaves(DTreeNode node) {
+    auto tree = node.Tree;
+    auto chain = DTGetChildId(node);
+    while (chain >= 0) {
+        if (DTCountChildren(tree, chain) > 0) return false;
+        chain = DTGetSiblingId(tree, chain);
     }
     return true;
 }
 
 
-void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCache* wr, Scope* parameterNames) {
+void CompileFunctionDefinition(int level, bool debug, DTreeNode node, TagCodeCache* wr, Scope* parameterNames) {
     // 1) Compile the func to a temporary string
     // 2) Inject a new 'def' op-code, that names the function and does an unconditional jump over it.
     // 3) Inject the compiled func
     // 4) Inject a new 'return' op-code
 
-    auto nodeData = TreeReadBody_SourceNode(node);
-    int nodeChildCount = TreeCountChildren(node);
+    auto tree = node.Tree;
+    auto nodeData = DTReadBody_SourceNode(node);
+    int nodeChildCount = DTCountChildren(node);
 
 
     if (nodeChildCount != 2) {
 
-        auto definitionNode = TreeChild(node); // parameters in parens
+        auto definitionNode = DTGetChildId(node); // parameters in parens
 
         auto msg = StringNewFormat("Function definition must have 3 parts (found \x02): the name, the parameter list, and the definition.\r\n", nodeChildCount);
         StringAppend(msg, "Call like `def (   myFunc ( param1 param2 ) ( ... statements ... )   )`\r\n");
         StringAppendFormat(msg, "Found at \x02, near '\x01'\r\n", nodeData->SourceLocation, DescribeSourceNode(nodeData));
-        StringAppendFormat(msg, "Def node? \x01\r\n", DescribeSourceNode(TreeReadBody_SourceNode(definitionNode)));
+        StringAppendFormat(msg, "Def node? \x01\r\n", DescribeSourceNode(DTReadBody_SourceNode(tree, definitionNode)));
 
         if (nodeChildCount > 2) {
-            auto bodyNode = TreeSibling(definitionNode); //expressions defining the function
-            auto bodyData = TreeReadBody_SourceNode(bodyNode);
+            auto bodyNode = DTGetSiblingId(tree, definitionNode); //expressions defining the function
+            auto bodyData = DTReadBody_SourceNode(tree, bodyNode);
 
-            auto nNode = TreeSibling(bodyNode); //expressions defining the function
-            auto nData = TreeReadBody_SourceNode(nNode);
+            auto nNode = DTGetSiblingId(tree, bodyNode); //expressions defining the function
+            auto nData = DTReadBody_SourceNode(tree, nNode);
 
             StringAppendFormat(msg, "Body node? \x01\r\n", DescribeSourceNode(bodyData));
             StringAppendFormat(msg, "Extra node? \x01\r\n", DescribeSourceNode(nData));
@@ -437,11 +446,11 @@ void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCac
         return;
     }
 
-    auto definitionNode = TreeChild(node); // parameters in parens
-    auto bodyNode = TreeSibling(definitionNode); //expressions defining the function
-    auto bodyData = TreeReadBody_SourceNode(bodyNode);
+    auto definitionNode = DTGetChildId(node); // parameters in parens
+    auto bodyNode = DTGetSiblingId(tree, definitionNode); //expressions defining the function
+    auto bodyData = DTReadBody_SourceNode(tree, bodyNode);
 
-    if (!AllChildrenAreLeaves(definitionNode)) {
+    if (!AllChildrenAreLeaves(DTNode(tree, definitionNode))) {
         auto str = StringNew("Function parameters must be simple names.\r\n");
         StringAppend(str, "`def ( myFunc (  param1  ) ( ... ) )` is OK,\r\n");
         StringAppend(str, "`def ( myFunc ( (param1) ) ( ... ) )` is not OK");
@@ -453,13 +462,13 @@ void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCac
         return;
     }
 
-    auto definitionData = TreeReadBody_SourceNode(definitionNode);
+    auto definitionData = DTReadBody_SourceNode(tree, definitionNode);
     auto functionName = definitionData->Text;
-    auto argCount = TreeCountChildren(definitionNode);
+    auto argCount = DTCountChildren(tree, definitionNode);
 
-    ParameterPositions(parameterNames, definitionNode, wr);
+    ParameterPositions(parameterNames, DTNode(tree, definitionNode), wr);
 
-    auto subroutine = Compile(bodyNode, level, debug, parameterNames, NULL, Context::Default);
+    auto subroutine = Compile(DTNode(tree, bodyNode), level, debug, parameterNames, NULL, Context::Default);
     int tokenCount = TCW_OpCodeCount(subroutine);
 
     if (debug) {
@@ -483,8 +492,8 @@ void CompileFunctionDefinition(int level, bool debug, TreeNode* node, TagCodeCac
     //   a jump-to-absolute-position by return stack & pop
 }
 
-bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, TreeNode* node, Scope* parameterNames) {
-    auto nodeData = TreeReadBody_SourceNode(node);
+bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, DTreeNode node, Scope* parameterNames) {
+    auto nodeData = DTReadBody_SourceNode(node);
     auto funcName = nodeData->Text;
 
     if (NeedsDesugaring(funcName)) {
@@ -510,14 +519,14 @@ bool CompileFunctionCall(int level, bool debug, TagCodeCache* wr, TreeNode* node
     return (StringAreEqual(funcName, "return")) && (nodeChildCount > 0); // is there a value return?
 }
 
-bool IsLeafNode(TreeNode* node) {
-    auto nodeData = TreeReadBody_SourceNode(node);
-    return TreeIsLeaf(node) && !nodeData->functionLike;
+bool IsLeafNode(DTreeNode node) {
+    auto nodeData = DTReadBody_SourceNode(node);
+    return DTIsLeaf(node) && !nodeData->functionLike;
 }
 
 // Function/Program compiler. This is called recursively when subroutines are found
-TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNames, HashMap* includedFiles, Context compileContext) {
-    if (root == NULL) return NULL;
+TagCodeCache* Compile(DTreeNode root, int indent, bool debug, Scope* parameterNames, HashMap* includedFiles, Context compileContext) {
+    if (!DTValidNode(root)) return NULL;
 
     auto wr = TCW_Allocate(MMCurrent());
 
@@ -528,13 +537,14 @@ TagCodeCache* Compile(TreeNode* root, int indent, bool debug, Scope* parameterNa
     }
 
     // otherwise, recurse down (depth first)
+    auto tree = root.Tree;
     auto rootContainer = root;
-    auto chain = TreeChild(root);
-    while (chain != NULL) {
+    auto chain = DTGetChildId(root);
+    while (chain >= 0) {
         if (TCW_HasErrors(wr)) return wr;
 
-        auto node = chain;
-        chain = TreeSibling(chain);
+        auto node = DTNode(tree, chain);
+        chain = DTGetSiblingId(tree, chain);
         if (IsLeafNode(node)) {
             TCW_Merge(wr, Compile(node, indent + 1, debug, parameterNames, includedFiles, compileContext));
             continue;

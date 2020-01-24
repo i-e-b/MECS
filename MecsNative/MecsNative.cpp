@@ -1565,10 +1565,59 @@ int TestDTree() {
 
     Log(cnsl, "\n\nCopying subtree back under ch3\n");
     int newNodeId = DTAppendSubtree(tree, ch3, subtree, DTRootId(subtree));
-
 	DTDeallocate(&subtree); // should be able to kill this without harming the tree we copied into
+
 	LogDealloc(cnsl, DTRenderToString_StringPtr(tree, renderStrToStr));
 
+    /*
+    Inject an intermediate node under ch2:
+
+    root
+      +-- ch1
+      |   +-- gc1
+      |   |  +-- ggc1
+      |   |     +-- ggc2
+      |   |
+      |   +-- gc2
+      |
+      +-- ch2
+      |   +-- newNode
+      |       +-- ggc3
+      |       +-- gc3
+      |
+      +-- ch3
+	      +--ch1
+			  +-- gc1
+			  |  +-- ggc1
+			  |     +-- ggc2
+			  |
+			  +-- gc2
+    */
+    
+    Log(cnsl, "\n\nInject intermediate node under ch2:\n");
+    newNodeId = DTInjectNode_StringPtr(tree, ch2, StringNew("newNode"));
+	LogDealloc(cnsl, DTRenderToString_StringPtr(tree, renderStrToStr));
+    
+    /*
+    Remove ch3 by ID:
+
+    root
+      +-- ch1
+      |   +-- gc1
+      |   |  +-- ggc1
+      |   |     +-- ggc2
+      |   |
+      |   +-- gc2
+      |
+      +-- ch2
+          +-- newNode
+              +-- ggc3
+              +-- gc3
+    */
+    
+    Log(cnsl, "\n\nRemove ch3 from node by ID:\n");
+    DTRemoveChildById(tree, root, ch3);
+	LogDealloc(cnsl, DTRenderToString_StringPtr(tree, renderStrToStr));
 
     // Measure memory state, and check we can clean-up effectively.
     ArenaGetState(arena, &alloc, &unalloc, NULL, NULL, &objects, NULL);

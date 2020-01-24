@@ -113,10 +113,13 @@ int DTreeGetNthChildId(DTreePtr tree, int parentId, int childIdx);
 int DTreeInsertChild(DTreePtr tree, int parentId, int targetIndex, void* element);
 // Remove a child by index and stitch the chain back together
 void DTreeRemoveChild(DTreePtr tree, int parentId, int targetIndex);
+// Remove a child by ID and stitch the chain back together. If no ID matches, nothing will happen
+// returns the index of the child found
+int DTreeRemoveChildById(DTreePtr tree, int parentId, int targetId);
+
 // Provide a vector of all node data. Order is arbitrary. Caller should dispose.
 // If an arena is not provided, the tree's own storage will be used
 VectorPtr DTreeAllData(DTreePtr tree, ArenaPtr arena);
-
 // Apply a function to each data element in turn, independent of position in the tree. This is useful for deallocation too.
 void DTreeApplyAll(DTreePtr tree, DTreeApplyFunc* func);
 
@@ -124,6 +127,11 @@ void DTreeApplyAll(DTreePtr tree, DTreeApplyFunc* func);
 // IN: node->[first, second, ...]; OUT: (parent:node)<-first->[second, ...]
 // Returns the Id of the first child
 int DTreePivot(DTreePtr tree, int nodeId);
+
+// Insert a new node between a parent and all its children
+// IN: node->[first, second, ...]; OUT: (parent:node)<-newNode->[first, second, ...]
+// Returns the Id of the new node
+int DTreeInjectNode(DTreePtr tree, int parentId, void* element);
 
 
 // Get the arena being used by a tree node
@@ -146,6 +154,8 @@ ArenaPtr DTreeArena(DTreePtr tree);
     inline int nameSpace##CountChildren(DTreeNode node){return DTreeCountChildren(node.Tree, node.NodeId);}\
     inline void nameSpace##RemoveChild(DTreePtr tree, int parentId, int targetIndex){ DTreeRemoveChild( tree, parentId, targetIndex);}\
     inline void nameSpace##RemoveChild(DTreeNode node, int targetIndex){ DTreeRemoveChild( node.Tree, node.NodeId, targetIndex);}\
+    inline int nameSpace##RemoveChildById(DTreePtr tree, int parentId, int targetId){ return DTreeRemoveChildById( tree, parentId, targetId);}\
+    inline int nameSpace##RemoveChildById(DTreeNode node, int targetId){ return DTreeRemoveChildById( node.Tree, node.NodeId, targetId);}\
     inline int nameSpace##GetNthChildId(DTreePtr tree, int parentId, int childIdx){ return DTreeGetNthChildId( tree, parentId, childIdx);}\
     inline int nameSpace##GetNthChildId(DTreeNode node, int childIdx){ return DTreeGetNthChildId( node.Tree, node.NodeId, childIdx);}\
     inline int nameSpace##GetParentId(DTreePtr tree, int childId){ return DTreeGetParentId( tree, childId);}\
@@ -164,7 +174,6 @@ ArenaPtr DTreeArena(DTreePtr tree);
     inline void nameSpace##Clear(DTreePtr tree) { DTreeClear(tree); }\
     inline bool nameSpace##ValidNode(DTreeNode node) { return (node.NodeId >= 0); }\
 
-
 // These must be registered for each distinct pair, as they are type variant
 #define RegisterDTreeFor(elemType, nameSpace) \
     inline DTreePtr nameSpace##Allocate_##elemType(ArenaPtr arena){return DTreeAllocate(arena, sizeof(elemType));}\
@@ -181,6 +190,7 @@ ArenaPtr DTreeArena(DTreePtr tree);
     inline bool nameSpace##SetValue_##elemType(DTreeNode node, elemType element){return DTreeSetValue(node.Tree, node.NodeId, &element);}\
     inline elemType* nameSpace##ReadBody_##elemType(DTreePtr tree, int nodeId){return (elemType*)DTreeReadBody(tree, nodeId);}\
     inline elemType* nameSpace##ReadBody_##elemType(DTreeNode node){return (elemType*)DTreeReadBody(node.Tree, node.NodeId);}\
-
+    inline int nameSpace##InjectNode_##elemType(DTreePtr tree, int parentId, elemType element){return DTreeInjectNode(tree, parentId, &element);}\
+    inline int nameSpace##InjectNode_##elemType(DTreeNode node, elemType element){return DTreeInjectNode(node.Tree, node.NodeId, &element);}\
 
 #endif

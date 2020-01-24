@@ -4,8 +4,9 @@ Components to do:
 Immediate TODO
 --------------
 
-* [ ] Rebuild Tree container to make it less crap
+* [x] Rebuild Tree container to make it less crap (hopefully)
 * [ ] Rebuild parser to make it more robust and flexible
+  * [ ] Do the de-sugaring directly in the AST so we can inspect it
 
 
 Code niceties

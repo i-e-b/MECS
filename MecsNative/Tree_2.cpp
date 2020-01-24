@@ -378,6 +378,44 @@ void DTreeRemoveChild(DTreePtr tree, int parentId, int targetIndex) {
 	srel->NextSibling = targetRel->NextSibling;
 }
 
+
+// Remove a child by ID and stitch the chain back together. If no ID matches, nothing will happen
+int DTreeRemoveChildById(DTreePtr tree, int parentId, int targetId) {
+	if (tree == NULL || parentId < 0 || targetId < 0) return;
+
+	auto prel = VectorGet_DRelation(tree->Relations, parentId);
+
+	// Case 1: no existing child
+	if (prel->ChildId < 0) { return -1; }
+	
+	// Case 2: existing child and index is zero (remove 1st child)
+	if (prel->ChildId == targetId) {
+		auto oldChildRel = VectorGet_DRelation(tree->Relations, prel->ChildId);
+		prel->ChildId = oldChildRel->NextSibling;
+		return 0;
+	}
+	
+	// Case 3: walk sibling chain
+	auto srel = VectorGet_DRelation(tree->Relations, prel->ChildId);
+	int count = 1;
+	int lastIdx = srel->NextSibling;
+
+	while (srel->NextSibling != targetId) {
+		lastIdx = srel->NextSibling;
+		if (lastIdx < 0) return -1; // off the end of the chain
+		
+		srel = VectorGet_DRelation(tree->Relations, lastIdx);
+		if (srel == NULL) return -1; // broken tree
+		count++;
+	}
+
+	// found link, skip over it in sibling chain
+	if (srel->NextSibling < 0) return -1;
+	auto targetRel = VectorGet_DRelation(tree->Relations, srel->NextSibling);
+	srel->NextSibling = targetRel->NextSibling;
+	return count;
+}
+
 // Create a 'pivot' of a node. The first child is brought up, and it's siblings become children.
 // IN: node->[first, second, ...]; OUT: (parent:node)<-first->[second, ...]
 // If the 'first' child has its own children, the pivoted nodes ('second'...) are added to the end of that sibling chain.
@@ -408,6 +446,23 @@ int DTreePivot(DTreePtr tree, int nodeId) {
 	endRel->NextSibling = frel->NextSibling;
 	frel->NextSibling = INVALID;
 	return pivotIndex;
+}
+
+
+// Insert a new node between a parent and all its children
+// IN: node->[first, second, ...]; OUT: (parent:node)<-newNode->[first, second, ...]
+// Returns the Id of the new node
+int DTreeInjectNode(DTreePtr tree, int parentId, void* element) {
+	if (tree == NULL || parentId < 0) return INVALID;
+
+	int childIdx;
+	auto newRel = InsertNode(tree, parentId, element, &childIdx);
+	auto prel = VectorGet_DRelation(tree->Relations, parentId);
+
+	newRel->ChildId = prel->ChildId;
+	prel->ChildId = childIdx;
+
+	return childIdx;
 }
 
 static void RenderToStringRec(DTreePtr tree, int targetNode, StringPtr str, int depth, DTreeNodeRenderFunc* render) {

@@ -16,6 +16,6 @@
 bool NeedsDesugaring(String* funcName);
 
 // Expand input nodes
-DTreeNode* DesugarProcessNode(String* funcName, Scope* parameterNames, DTreeNode* node, TagCodeCache* tcc);
+DTreeNode DesugarProcessNode(String* funcName, Scope* parameterNames, DTreeNode node, TagCodeCache* tcc);
 
 #endif

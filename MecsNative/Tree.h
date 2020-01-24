@@ -59,7 +59,7 @@ Vector* TreeAllData(TreeNode *tree);
 TreeNode* TreePivot(TreeNode *node);
 // Create a node not connected to a tree
 TreeNode* TreeBareNode(ArenaPtr arena, int elementSize);
-// Add a bare node into a tree
+// Add a bare node into a tree, at the end of the parent's child chain
 void TreeAppendNode(TreeNode* parent, TreeNode* child);
 
 // Get the arena being used by a tree node
