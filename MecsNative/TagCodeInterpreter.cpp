@@ -1650,9 +1650,9 @@ DataTag EvaluateBuiltInFunction(int* position, FuncDef kind, int nbParams, DataT
 
         auto code = CastString(is, param[0]);
         //StringAppendFormat(is->_output, "\nEvaluating: [[\x01]]\n", code);
-        auto compilableSyntaxTree = ParseSourceCode(code, false);
+        auto compilableSyntaxTree = ParseSourceCode(MMCurrent(), code, false);
 
-        auto tagCode = CompileRoot(compilableSyntaxTree, false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
+        auto tagCode = CompileRoot(DTreeRootNode(compilableSyntaxTree), false, true); // a variant that 'EndOfSubProgram' instead of 'EndOfProgram'
 
         auto nextPos = TCW_AppendToVector(tagCode, is->_program); // These opcodes should be removed when 'EndOfSubProgram' is reached
         if (nextPos < 0) return RuntimeError(is->_position);

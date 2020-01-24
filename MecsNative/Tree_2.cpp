@@ -107,6 +107,17 @@ ArenaPtr DTreeArena(DTreePtr tree) {
 	return tree->_memory;
 }
 
+DTreeNode DTreeMakeNode(DTreePtr tree, int nodeId) {
+	auto x = DTreeNode{}; x.Tree = tree; x.NodeId = nodeId; return x;
+}
+
+DTreeNode DTreeRootNode(DTreePtr tree) {
+	auto x = DTreeNode{};
+	x.Tree = tree;
+	x.NodeId = tree->RootIndex;
+	return x;
+}
+
 // Provide a vector of all node data. Order is arbitrary. Caller should dispose.
 // If an arena is not provided, the tree's own storage will be used
 VectorPtr DTreeAllData(DTreePtr tree, ArenaPtr arena) {
@@ -128,9 +139,13 @@ bool DTreeIsLeaf(DTreePtr tree, int nodeId) {
 // Add a new node, and return it's relation data
 // This will be a floating node, and requires binding into the tree
 DRelation* InsertNode(DTreePtr tree, int parentId, void* element, int* childIdx) {
-	// Insert the data
-	if (!VectorPush(tree->Data, element)) return NULL;
-	auto didx = VectorLength(tree->Data) - 1;
+	int didx = INVALID;
+
+	if (element != NULL){
+		// Insert the data
+		if (!VectorPush(tree->Data, element)) return NULL;
+		didx = VectorLength(tree->Data) - 1;
+	}
 	
 	// Insert the node
 	DRelation crel = {};
@@ -181,7 +196,7 @@ int DTreeEndOfSiblingChain(DTreePtr tree, int nodeId) {
 
 // Add a child to the end of the parent's child chain. The NodeId of the new node is returned (or negative if invalid)
 int DTreeAddChild(DTreePtr tree, int parentId, void* element) {
-	if (tree == NULL || parentId < 0 || element == NULL) return INVALID;
+	if (tree == NULL || parentId < 0) return INVALID;
 
 	int childIdx = INVALID;
 	DRelation* rel =  InsertNode(tree, parentId, element, &childIdx);
@@ -381,7 +396,7 @@ void DTreeRemoveChild(DTreePtr tree, int parentId, int targetIndex) {
 
 // Remove a child by ID and stitch the chain back together. If no ID matches, nothing will happen
 int DTreeRemoveChildById(DTreePtr tree, int parentId, int targetId) {
-	if (tree == NULL || parentId < 0 || targetId < 0) return;
+	if (tree == NULL || parentId < 0 || targetId < 0) return INVALID;
 
 	auto prel = VectorGet_DRelation(tree->Relations, parentId);
 
@@ -588,6 +603,9 @@ int DTreeAppendSubtree(DTreePtr dst, int dstParentId, DTreePtr src, int srcRootI
 		return INVALID;
 	}
 
-	auto ok = CopyRecursive(src, dst, newRootId, dst->RootIndex, true);
+	auto dstNode = DTreeAddChild(dst, dstParentId, NULL);
+	if (dstNode < 0) return INVALID;
+
+	auto ok = CopyRecursive(src, dst, srcRootId, dstNode, true);
 
 }

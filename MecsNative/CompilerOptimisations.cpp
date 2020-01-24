@@ -44,13 +44,13 @@ bool IsSimpleType(DTreeNode node) {
     }
 }
 
-
-bool CO_IsSimpleSet(DTreeNode setNode) {
+bool CO_IsSimpleSet(DTreeNode* setNode){
+//bool CO_IsSimpleSet(DTreeNode setNode) {
 #ifdef DISABLE_OPTIMISATIONS
     return false;
 #endif
-    auto nodeData = TReadBody_Node(setNode);
-    return (StringAreEqual(nodeData->Text, "set") && TCountChildren(setNode.Tree, TGetChildId(setNode)) == 0);
+    auto nodeData = TReadBody_Node(*setNode);
+    return (StringAreEqual(nodeData->Text, "set") && TCountChildren(setNode->Tree, TGetChildId(*setNode)) == 0);
 }
 
 //bool CO_IsSmallIncrement(TreeNode * node, int8_t * outIncr, String ** outVarName) {
@@ -204,7 +204,8 @@ DTreeNode CO_ReadSimpleComparison(DTreeNode* condition, CmpOp *outCmpOp, uint16_
     else if (StringAreEqual(txt, "<")) *outCmpOp = CmpOp::Less;
     else if (StringAreEqual(txt, ">")) *outCmpOp = CmpOp::Greater;
 
-    else return;// NULL;
+    else return DTreeMakeNode(NULL, -1);
 
+	// TODO...
     //return Repack(target); // this is weird and tricky. Figure out a nicer way of doing it.
 }

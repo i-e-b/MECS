@@ -133,6 +133,8 @@ int DTreePivot(DTreePtr tree, int nodeId);
 // Returns the Id of the new node
 int DTreeInjectNode(DTreePtr tree, int parentId, void* element);
 
+DTreeNode DTreeMakeNode(DTreePtr tree, int nodeId);
+DTreeNode DTreeRootNode(DTreePtr tree);
 
 // Get the arena being used by a tree node
 ArenaPtr DTreeArena(DTreePtr tree);

@@ -102,15 +102,15 @@ Vector* RTS_Compile(StringPtr filename, HashMap *symbols, Arena* symbolStringSto
 		return NULL;
 	}
 
-	auto compilableSyntaxTree = ParseSourceCode(code, false);
+	auto compilableSyntaxTree = ParseSourceCode(MMCurrent(), code, false);
 
-	auto parseResult = (SourceNode*)TreeReadBody(compilableSyntaxTree);
+	auto parseResult = (SourceNode*)DTreeReadBody(compilableSyntaxTree, DTreeRootId(compilableSyntaxTree));
     if (!parseResult->IsValid) {
         //Log(cnsl,"The source file was not valid (FAIL!)\n");
 		return NULL;
     } 
 
-	auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
+	auto tagCode = CompileRoot(DTreeRootNode(compilableSyntaxTree), false, false);
 
 	auto nextPos = TCW_AppendToVector(tagCode, program);
 	if (symbols != NULL) {

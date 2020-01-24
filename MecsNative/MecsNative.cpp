@@ -735,8 +735,8 @@ int TestSerialisation() {
     auto code = StringNew("return(new-map('a' 1, 'b' new-list(1 2 'x'), 'c' 'Hello, world!', 'd' 2))"); // map with heterogeneous list
 
 
-    auto compilableSyntaxTree = ParseSourceCode(code, false); // Compiler doesn't like metadata!
-    auto compiled = CompileRoot(compilableSyntaxTree, false, false);
+    auto compilableSyntaxTree = ParseSourceCode(MMCurrent(), code, false); // Compiler doesn't like metadata!
+    auto compiled = CompileRoot(DTreeRootNode(compilableSyntaxTree), false, false);
     TCW_AppendToVector(compiled, tagCode);
 
     auto interp = InterpAllocate(tagCode, 1 MEGABYTE, NULL);
@@ -857,7 +857,7 @@ int TestCompiler() {
     }
     
     Log(cnsl,"Reading a non-source code file: ");
-    auto syntaxTree = ParseSourceCode(code, false);
+    auto syntaxTree = ParseSourceCode(MMCurrent(), code, false);
     StringClear(code); // also clears the underlying vector
     if (syntaxTree == NULL) { Log(cnsl,"Parser failed entirely"); return -2; }
 
@@ -882,8 +882,8 @@ int TestCompiler() {
         Log(cnsl,"Failed to read file. Test inconclusive.\n");
         return -4;
     }
-    auto compilableSyntaxTree = ParseSourceCode(code, false); // Compiler doesn't like metadata!
-    syntaxTree = ParseSourceCode(code, true);
+    auto compilableSyntaxTree = ParseSourceCode(MMCurrent(), code, false); // Compiler doesn't like metadata!
+    syntaxTree = ParseSourceCode(MMCurrent(), code, true);
     StringDeallocate(code);
     if (syntaxTree == NULL) { Log(cnsl,"Parser failed entirely"); return -5; }
 
@@ -903,7 +903,7 @@ int TestCompiler() {
     LogLine(cnsl,nstr);
 
     Log(cnsl,"Attempting to compile:\n");
-    auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
+    auto tagCode = CompileRoot(DTreeRootNode(compilableSyntaxTree), false, false);
 
     if (TCW_HasErrors(tagCode)) {
         Log(cnsl,"COMPILE FAILED!\n");
@@ -1157,8 +1157,8 @@ int RunProgram(const char* filename) {
             return 1;
         }
         StringDeallocate(fileName);
-        auto compilableSyntaxTree = ParseSourceCode(code, false);
-        auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
+        auto compilableSyntaxTree = ParseSourceCode(MMCurrent(), code, false);
+        auto tagCode = CompileRoot(DTreeRootNode(compilableSyntaxTree), false, false);
 
         auto nextPos = TCW_AppendToVector(tagCode, program);
 
@@ -1259,8 +1259,8 @@ Vector* Compile(const char* filename) {
 		return NULL;
 	}
 	StringDeallocate(fileName);
-	auto compilableSyntaxTree = ParseSourceCode(code, false);
-	auto tagCode = CompileRoot(compilableSyntaxTree, false, false);
+	auto compilableSyntaxTree = ParseSourceCode(MMCurrent(), code, false);
+	auto tagCode = CompileRoot(DTreeRootNode(compilableSyntaxTree), false, false);
 
 	auto nextPos = TCW_AppendToVector(tagCode, program);
 

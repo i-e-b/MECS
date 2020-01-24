@@ -373,7 +373,7 @@ bool CompileConditionOrLoop(int level, bool debug, DTreeNode node, TagCodeCache*
         uint16_t argCount;
 
         auto argNodes = CO_ReadSimpleComparison(condition, &cmpOp, &argCount);
-        if (argNodes == NULL) {
+        if (!DTValidNode(argNodes)) {
             TCW_AddError(wr, StringNew("Simple comparison optimisation is faulty. Inspect pre-check."));
             return false;
         }
